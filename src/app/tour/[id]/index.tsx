@@ -1,8 +1,8 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StopStamp } from '@/components/Stamp';
+import { DuotoneImage } from '@/components/DuotoneImage';
+import { StopStamp, TourSeal } from '@/components/Stamp';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
@@ -32,7 +32,7 @@ export default function Cover() {
     <TourThemeProvider palette={p}>
       <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
         <View style={{ height: 270 }}>
-          <Image source={tour.stops[1].photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} />
+          <DuotoneImage source={tour.stops[tour.emblemStop].photo} palette={p} style={StyleSheet.absoluteFill} />
           <IconButton label="Volver" glyph="‹" onPress={() => router.back()} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
         </View>
         <View style={s.body}>
@@ -51,18 +51,23 @@ export default function Cover() {
               const got = lastVisit?.stamps[st.id];
               return (
                 <View key={st.id} style={s.stampCell}>
-                  <StopStamp stop={st} index={i} date={stampDate(got)} ghost={!got} color={p.t} size={72} />
+                  <StopStamp tour={tour} index={i} date={stampDate(got)} ghost={!got} size={72} />
                   <Text style={s.stampName} numberOfLines={2}>{st.name}</Text>
                 </View>
               );
             })}
           </View>
 
+          <View style={{ alignItems: 'center', marginTop: 14, gap: 4 }}>
+            <TourSeal tour={tour} width={210} date={stampDate(lastVisit?.completedAt)} collected={tour.stops.map(st => !!lastVisit?.stamps[st.id])} ghost={!lastVisit?.completedAt} />
+            <Text style={type.caption}>Con todos los sellos consigues el visado del tour</Text>
+          </View>
+
           <Text style={[type.headline, s.h]}>Paradas</Text>
           {tour.stops.map((st, i) => (
             <View key={st.id} style={s.stop}>
               <View style={[s.pin, { borderColor: p.t }]}><Text style={[s.pinText, { color: p.t }]}>{i + 1}</Text></View>
-              <Image source={st.photo} style={s.thumb} contentFit="cover" />
+              <DuotoneImage source={st.photo} palette={p} style={s.thumb} />
               <View style={{ flex: 1 }}>
                 <Text style={s.stopName}>{st.name}</Text>
                 <Text style={type.caption}>{i === 0 ? 'Inicio' : KIND_LABEL[st.kind]}</Text>
@@ -82,8 +87,8 @@ const s = StyleSheet.create({
   body: { padding: 18, gap: 6 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 10 },
   h: { marginTop: 18, marginBottom: 8 },
-  stamps: { flexDirection: 'row', justifyContent: 'space-between' },
-  stampCell: { width: '24%', alignItems: 'center', gap: 4 },
+  stamps: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', rowGap: 10 },
+  stampCell: { width: '25%', alignItems: 'center', gap: 4 },
   stampName: { fontFamily: font.heavy, fontSize: 10.5, color: neutral.ink3, textAlign: 'center' },
   stop: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
   pin: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },

@@ -36,6 +36,9 @@ export const tomares: Tour = {
   category: 'Historia y barrio',
   intro: "Cuatro paradas a pie por Tomares, en el corazón del Aljarafe sevillano. Empiezas en la rotonda y terminas con un kebab.",
   palette: { t: '#B23A2E', t2: '#E8B33A', soft: '#F8E7E2', deep: '#4A1610', on: '#FFFFFF' },
+  // Almagra, azulejo, verde naranjo y ocre: los colores de la iglesia y la plaza
+  stampInks: ['#B23A2E', '#1F4FA8', '#2E7D4F', '#9A6B0E'],
+  emblemStop: 1,
   durationMin: 45,
   price: 'free',
   stops: [

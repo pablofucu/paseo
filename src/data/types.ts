@@ -37,6 +37,8 @@ export interface Stop {
   /** Pictograma del sello: marcado SVG interior en una caja de 60 × 40 */
   pictogram: string;
   photo: ImageSourcePropType;
+  /** Autoría y licencia de la foto (fotos libres de Wikimedia Commons) */
+  photoCredit?: { author: string; license: string };
   coord: LngLat;
   arriveHint: string;
   audioTitle: string;
@@ -52,6 +54,8 @@ export interface OnTheWay {
   afterStop: number;
   name: string;
   text: string;
+  /** Lo que se cuenta al tocarla; si falta, se lee `text` */
+  story?: string;
 }
 
 export interface Tour {
@@ -62,6 +66,10 @@ export interface Tour {
   category: string;
   intro: string;
   palette: TourPalette;
+  /** Tintas de los sellos: cada parada se estampa con un color distinto */
+  stampInks: string[];
+  /** Parada cuyo pictograma sirve de emblema en el visado del tour */
+  emblemStop: number;
   durationMin: number;
   price: 'free' | { eur: number };
   stops: Stop[];

@@ -1,10 +1,10 @@
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DuotoneImage } from '@/components/DuotoneImage';
 import { IconButton } from '@/components/ui';
 import type { LngLat } from '@/data/types';
 import { cumulative, formatDistance, projectOnRoute, walkingMinutes } from '@/lib/geo';
@@ -12,7 +12,7 @@ import { guide, instruction, prepareLeg } from '@/lib/guidance';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { useNarration } from '@/lib/useNarration';
 import { useTourParam } from '@/lib/useTour';
-import { useTourRoute } from '@/lib/useTourRoute';
+import { useApproachRoute, useTourRoute } from '@/lib/useTourRoute';
 import { useWalkPosition, type PositionSource } from '@/lib/useWalkPosition';
 import { usePassport } from '@/store/passport';
 import { useSettings, type SimSpeed } from '@/store/settings';
@@ -45,11 +45,13 @@ export default function Walk() {
   const simOrigin = useMemo(() => approachFrom(stop.coord), [stop]);
   const origin = target !== 0 ? null : source === 'simulated' ? simOrigin : gpsOrigin;
 
-  // Tramo actual: de la parada anterior a esta; para la primera, desde donde estés
+  // Tramo actual: de la parada anterior a esta; para la primera, por calles desde donde estés
+  const approach = useApproachRoute(origin, stop.coord);
   const leg = useMemo(() => {
     if (target > 0) return prepareLeg(route.legs[target - 1].line, route.legs[target - 1].steps);
-    return origin ? prepareLeg([origin, stop.coord]) : null;
-  }, [route, target, origin, stop]);
+    return approach.leg ? prepareLeg(approach.leg.line, approach.leg.steps) : null;
+  }, [route, target, approach.leg]);
+  const quality = target > 0 ? route.quality : approach.quality;
 
   const sim = useMemo(() => ({ speed: simSpeed, paused: paused || !!manual, resumeFrom }), [simSpeed, paused, manual, resumeFrom]);
   const walk = useWalkPosition(source, leg, sim);
@@ -144,8 +146,10 @@ export default function Walk() {
         </View>
 
         <IconButton label="Salir del tour" glyph="×" onPress={() => router.back()} style={{ position: 'absolute', left: 14, bottom: 262 + insets.bottom }} />
-        {route.quality === 'approximate' && (
-          <View style={[s.srcPill, { bottom: 268 + insets.bottom }]}><Text style={s.srcText}>Ruta aproximada</Text></View>
+        {quality !== 'streets' && leg && (
+          <View style={[s.srcPill, { bottom: 268 + insets.bottom }]}>
+            <Text style={s.srcText}>{quality === 'loading' ? 'Calculando la ruta por calles…' : 'Sin conexión: ruta en línea recta'}</Text>
+          </View>
         )}
 
         {/* Modo prueba: controles para recorrer el tour sin moverse */}
@@ -177,7 +181,7 @@ export default function Walk() {
         {/* Hoja inferior */}
         <View style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
           {showWay && (
-            <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(way!.text.replace(/^De camino:\s*/i, '')))} style={[s.way, { backgroundColor: p.soft }]}>
+            <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(way!.story ?? way!.text.replace(/^De camino:\s*/i, '')))} style={[s.way, { backgroundColor: p.soft }]}>
               <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>
               <Text style={[s.wayText, { color: p.deep }]} numberOfLines={1}>{way!.text}</Text>
             </Pressable>
@@ -195,7 +199,7 @@ export default function Walk() {
             ))}
           </View>
           <View style={s.next}>
-            <Image source={stop.photo} style={s.nextPic} contentFit="cover" />
+            <DuotoneImage source={stop.photo} palette={p} style={s.nextPic} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={[s.nextOver, { color: p.t }]}>Siguiente</Text>
               <Text style={s.nextName} numberOfLines={1}>{stop.name}</Text>

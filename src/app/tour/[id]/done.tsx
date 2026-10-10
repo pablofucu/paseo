@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GhostButton } from '@/components/ui';
-import { VisitPage } from '@/components/VisitPage';
+import { PassportPage } from '@/components/PassportPage';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
@@ -42,7 +42,7 @@ export default function Done() {
             </View>
           ))}
         </Animated.View>
-        {visit && <VisitPage tour={tour} visit={visit} animate stampSize={100} />}
+        {visit && <PassportPage tour={tour} visit={visit} pressSeal sealDelay={900} />}
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 30 }}>
           <View style={{ flex: 1 }}><GhostButton light label="Inicio" onPress={() => router.dismissTo('/')} /></View>
           <View style={{ flex: 1 }}><GhostButton label="Mi pasaporte" onPress={() => router.replace('/passport')} /></View>

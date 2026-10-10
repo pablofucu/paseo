@@ -1,58 +1,53 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming, Easing } from 'react-native-reanimated';
 import { SvgXml } from 'react-native-svg';
-import { SHAPE_FOR_KIND, type Stop, type Tour } from '@/data/types';
-import { stampXml } from '@/lib/stamp';
+import { SHAPE_FOR_KIND, type Tour } from '@/data/types';
+import { stampXml, visaXml } from '@/lib/stamp';
 
-interface Props {
+const ROTATIONS = [-8, 6, -5, 9, -3, 7, -10, 4];
+
+/** Tinta del sello de una parada: cada parada de la ruta tiene su color */
+export const inkFor = (tour: Tour, index: number) => tour.stampInks[index % tour.stampInks.length];
+
+interface StopStampProps {
+  tour: Tour;
+  index: number;
+  date: string;
+  ghost?: boolean;
   size: number;
   rotate?: number;
-  /** Anima el golpe del tampón al montarse */
-  slam?: boolean;
-  delay?: number;
+  /** Fuerza otro color (p. ej. la llegada sobre fondo oscuro) */
+  color?: string;
   style?: ViewStyle;
 }
 
-function StampView({ xml, size, rotate = 0, slam, delay = 0, style }: Props & { xml: string }) {
-  const k = useSharedValue(slam ? 0 : 1);
-  useEffect(() => {
-    if (!slam) return;
-    k.value = withDelay(delay, withSequence(
-      withTiming(0.92, { duration: 380, easing: Easing.in(Easing.cubic) }),
-      withSpring(1, { damping: 9, stiffness: 260 }),
-    ));
-  }, [slam, delay, k]);
-  const anim = useAnimatedStyle(() => {
-    const t = k.value;
-    return {
-      opacity: Math.min(1, t * 1.6),
-      transform: [{ scale: 1 + (1 - t) * 1.8 }, { rotate: `${rotate - (1 - t) * 26}deg` }],
-    };
-  });
-  return (
-    <Animated.View style={[{ width: size, height: size }, anim, style]}>
-      <SvgXml xml={xml} width={size} height={size} />
-    </Animated.View>
-  );
-}
-
-const ROTATIONS = [-8, 6, -5, 9, -3, 7];
-
 /** Sello de una parada */
-export function StopStamp({ stop, index, date, ghost, color, ...p }: Props & { stop: Stop; index: number; date: string; ghost?: boolean; color: string }) {
+export function StopStamp({ tour, index, date, ghost, size, rotate, color, style }: StopStampProps) {
+  const stop = tour.stops[index];
   const xml = useMemo(
-    () => stampXml({ shape: SHAPE_FOR_KIND[stop.kind], pictogram: stop.pictogram, name: stop.stampLabel, sub: `PARADA ${index + 1} · ${date}`, color, ghost }),
-    [stop, index, date, color, ghost],
+    () => stampXml({ shape: SHAPE_FOR_KIND[stop.kind], pictogram: stop.pictogram, name: stop.stampLabel, sub: `PARADA ${index + 1} · ${date}`, color: color ?? inkFor(tour, index), ghost }),
+    [stop, index, date, color, ghost, tour],
   );
-  return <StampView xml={xml} rotate={p.rotate ?? (ghost ? 0 : ROTATIONS[index % ROTATIONS.length])} {...p} />;
+  const r = rotate ?? (ghost ? 0 : ROTATIONS[index % ROTATIONS.length]);
+  return <SvgXml xml={xml} width={size} height={size} style={[{ transform: [{ rotate: `${r}deg` }] }, style]} />;
 }
 
-/** Sello grande del tour, al completar todas las paradas */
-export function TourSeal({ tour, date, ghost, ...p }: Props & { tour: Tour; date: string; ghost?: boolean }) {
+interface SealProps {
+  tour: Tour;
+  date: string;
+  collected: boolean[];
+  ghost?: boolean;
+  /** Ancho; el visado es apaisado (170 × 120) */
+  width: number;
+  rotate?: number;
+  style?: ViewStyle;
+}
+
+/** Sello del tour: un visado de pasaporte, distinto de los sellos de parada */
+export function TourSeal({ tour, date, collected, ghost, width, rotate = -6, style }: SealProps) {
   const xml = useMemo(
-    () => stampXml({ shape: 'round', pictogram: tour.stops[1]?.pictogram ?? tour.stops[0].pictogram, name: tour.city.toUpperCase(), sub: `${tour.stops.length} PARADAS · ${date}`, color: tour.palette.t, ghost }),
-    [tour, date, ghost],
+    () => visaXml({ city: tour.city, title: tour.title, date, pictogram: tour.stops[tour.emblemStop].pictogram, stops: collected, color: tour.palette.deep, accent: tour.palette.t, ghost }),
+    [tour, date, collected, ghost],
   );
-  return <StampView xml={xml} rotate={p.rotate ?? -12} {...p} />;
+  return <SvgXml xml={xml} width={width} height={(width * 120) / 170} style={[{ transform: [{ rotate: `${ghost ? 0 : rotate}deg` }] }, style]} />;
 }

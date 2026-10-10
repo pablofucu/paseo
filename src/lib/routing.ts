@@ -65,7 +65,7 @@ export async function fetchWalkingRoute(points: LngLat[], timeoutMs = 10000): Pr
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${ROUTER}/${coords}?overview=false&steps=true&geometries=geojson`, { signal: ctrl.signal });
+    const res = await fetch(`${ROUTER}/${coords}?overview=false&steps=true&geometries=geojson`, { signal: ctrl.signal, headers: { 'User-Agent': 'Paseo app (github.com/pablofucu/paseo)' } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return parseOsrm(await res.json());
   } finally {

@@ -83,3 +83,54 @@ export function stampXml({ shape, pictogram, name, sub, color, ghost }: StampSpe
   }
   return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
 }
+
+export interface VisaSpec {
+  city: string;
+  title: string;
+  date: string;
+  /** Pictograma del emblema del tour (caja 60 × 40) */
+  pictogram: string;
+  /** Una casilla por parada: true si tiene sello */
+  stops: boolean[];
+  color: string;
+  accent: string;
+  ghost?: boolean;
+}
+
+/**
+ * Sello del tour: un visado de pasaporte (170 × 120), distinto de los sellos de
+ * parada: rectangular, con banda de cabecera, nombre del tour, casillas de paradas
+ * y fecha de entrada en un segundo color.
+ */
+export function visaXml({ city, title, date, pictogram, stops, color, accent, ghost }: VisaSpec): string {
+  const ink = ghost ? '#CDBFAD' : color;
+  const acc = ghost ? '#CDBFAD' : accent;
+  const dash = ghost ? ' stroke-dasharray="5 4"' : '';
+  const font = 'font-family="Nunito_900Black" font-weight="900"';
+  const n = stops.length;
+  const step = Math.min(17, 92 / Math.max(1, n));
+  const dots = stops
+    .map((on, i) => {
+      const cx = 22 + i * step;
+      return `<circle cx="${cx}" cy="99" r="6.4" fill="${on && !ghost ? ink : 'none'}" stroke="${ink}" stroke-width="1.4"/>` +
+        `<text x="${cx}" y="102.2" text-anchor="middle" ${font} font-size="8.5" fill="${on && !ghost ? '#FBF6EC' : ink}">${i + 1}</text>`;
+    })
+    .join('');
+  const k = 46 / 60;
+  return `<svg viewBox="0 0 170 120" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="3" width="164" height="114" rx="10" fill="none" stroke="${ink}" stroke-width="3"${dash}/>
+    <rect x="9" y="9" width="152" height="102" rx="6" fill="none" stroke="${ink}" stroke-width="1" stroke-dasharray="2 2.5"/>
+    ${ghost ? '' : `<rect x="9" y="9" width="152" height="20" rx="5" fill="${ink}"/>
+    <text x="85" y="23" text-anchor="middle" ${font} font-size="7.4" letter-spacing="1.6" fill="#FBF6EC">PASEO · VISADO DE RUTA</text>
+    <text x="17" y="52" ${font} font-size="${Math.min(19, 92 / (0.72 * Math.max(1, city.length))).toFixed(2)}" letter-spacing="0.5" fill="${ink}">${esc(city.toUpperCase())}</text>
+    <text x="17" y="66" ${font} font-size="${Math.min(9, 92 / (0.56 * Math.max(1, title.length))).toFixed(2)}" fill="${ink}">${esc(title)}</text>
+    <text x="17" y="83" ${font} font-size="7" letter-spacing="1.4" fill="${ink}">PARADAS</text>`}
+    ${dots}
+    <g transform="translate(${(128 - 23).toFixed(2)} ${(56 - 40 * k / 2).toFixed(2)}) scale(${k.toFixed(4)})" opacity="${ghost ? 0.7 : 1}">${pictogram.replace(/currentColor/g, ink)}</g>
+    <g transform="rotate(-8 128 96)">
+      <rect x="103" y="85" width="52" height="22" rx="4" fill="none" stroke="${acc}" stroke-width="2"${dash}/>
+      ${ghost ? '' : `<text x="129" y="94" text-anchor="middle" ${font} font-size="6.4" letter-spacing="1.2" fill="${acc}">ENTRADA</text>
+      <text x="129" y="103.5" text-anchor="middle" ${font} font-size="9" letter-spacing="0.6" fill="${acc}">${esc(date)}</text>`}
+    </g>
+  </svg>`;
+}
