@@ -1,0 +1,37 @@
+name: Contenido
+
+# Fija en el repositorio lo que la app no puede calcular sola:
+# - la ruta a pie por calles entre paradas (src/data/tours/*.geo.json)
+# - las fotos libres de Wikipedia con su autoría (assets/tours/*, *.credits.json)
+# Lánzalo a mano tras cambiar coordenadas o fotos de un tour.
+on:
+  workflow_dispatch:
+    inputs:
+      force_photos:
+        description: Volver a descargar todas las fotos
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  content:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/build-routes.mjs
+      - run: node scripts/fetch-photos.mjs
+        env:
+          FORCE: ${{ inputs.force_photos && '1' || '0' }}
+      - name: Guardar si ha cambiado
+        run: |
+          git add -A src/data/tours assets/tours
+          if git diff --cached --quiet; then echo "Sin cambios"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Contenido de los tours actualizado (rutas y fotos)"
+          git push

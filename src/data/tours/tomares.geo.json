@@ -1,5 +1,5 @@
 {
-  "_info": "Fuente de verdad de las ubicaciones. 'stops' se edita a mano; 'legs' y 'steps' los genera scripts/build-routes.mjs (workflow 'Rutas').",
+  "_info": "Fuente de verdad de las ubicaciones. 'stops' se edita a mano; 'legs' y 'steps' los genera scripts/build-routes.mjs (workflow «Contenido»).",
   "stops": [
     {
       "id": "rotonda",

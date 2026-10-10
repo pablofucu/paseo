@@ -1,0 +1,18 @@
+{
+  "_info": "Fuente de verdad de las ubicaciones. 'stops' se edita a mano; 'legs' y 'steps' los genera scripts/build-routes.mjs (workflow 'Contenido').",
+  "stops": [
+    { "id": "torre-oro", "coord": [-5.99634, 37.38244] },
+    { "id": "archivo", "coord": [-5.992966, 37.384964] },
+    { "id": "giralda", "coord": [-5.992634, 37.386196] },
+    { "id": "alcazar", "coord": [-5.99143, 37.38387] },
+    { "id": "elvira", "coord": [-5.9906, 37.3847] }
+  ],
+  "legs": [
+    [[-5.99634, 37.38244], [-5.992966, 37.384964]],
+    [[-5.992966, 37.384964], [-5.992634, 37.386196]],
+    [[-5.992634, 37.386196], [-5.99143, 37.38387]],
+    [[-5.99143, 37.38387], [-5.9906, 37.3847]]
+  ],
+  "steps": [[], [], [], []],
+  "generated": null
+}

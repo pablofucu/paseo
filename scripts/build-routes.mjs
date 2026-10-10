@@ -1,6 +1,6 @@
 // Calcula la ruta a pie por calles entre las paradas de cada tour y la guarda
 // en src/data/tours/*.geo.json (legs + steps). Se ejecuta en GitHub Actions
-// (workflow «Rutas») o en local: `node scripts/build-routes.mjs`.
+// (workflow «Contenido») o en local: `node scripts/build-routes.mjs`.
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 

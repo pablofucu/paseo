@@ -1,0 +1,11 @@
+{
+  "_info": "Fotos libres de la imagen principal del artículo de Wikipedia. Las descarga scripts/fetch-photos.mjs (workflow 'Contenido') con su autoría y licencia.",
+  "dir": "assets/tours/sevilla",
+  "photos": [
+    { "id": "torre-oro", "wiki": "es:Torre del Oro" },
+    { "id": "archivo", "wiki": "es:Archivo General de Indias" },
+    { "id": "giralda", "wiki": "es:Giralda" },
+    { "id": "alcazar", "wiki": "es:Real Alcázar de Sevilla" },
+    { "id": "elvira", "wiki": "es:Barrio de Santa Cruz (Sevilla)" }
+  ]
+}
