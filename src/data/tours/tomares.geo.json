@@ -1,0 +1,71 @@
+{
+  "_info": "Fuente de verdad de las ubicaciones. 'stops' se edita a mano; 'legs' y 'steps' los genera scripts/build-routes.mjs (workflow 'Rutas').",
+  "stops": [
+    {
+      "id": "rotonda",
+      "coord": [
+        -6.0376,
+        37.3716
+      ]
+    },
+    {
+      "id": "ayuntamiento",
+      "coord": [
+        -6.045164,
+        37.373994
+      ]
+    },
+    {
+      "id": "iglesia",
+      "coord": [
+        -6.0469047,
+        37.3750253
+      ]
+    },
+    {
+      "id": "kebab",
+      "coord": [
+        -6.04896,
+        37.37514
+      ]
+    }
+  ],
+  "legs": [
+    [
+      [
+        -6.0376,
+        37.3716
+      ],
+      [
+        -6.045164,
+        37.373994
+      ]
+    ],
+    [
+      [
+        -6.045164,
+        37.373994
+      ],
+      [
+        -6.0469047,
+        37.3750253
+      ]
+    ],
+    [
+      [
+        -6.0469047,
+        37.3750253
+      ],
+      [
+        -6.04896,
+        37.37514
+      ]
+    ]
+  ],
+  "steps": [
+    [],
+    [],
+    []
+  ],
+  "generated": null
+}
