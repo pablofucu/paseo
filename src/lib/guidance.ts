@@ -1,5 +1,6 @@
 import type { LngLat } from '@/data/types';
 import { cumulative, distance, maneuvers, projectOnRoute, type Maneuver } from './geo';
+import type { RouteStep } from './routing';
 
 /** A menos de esto de la parada, cuenta como llegada */
 export const ARRIVE_RADIUS_M = 25;
@@ -13,9 +14,13 @@ export interface PreparedLeg {
   turns: Maneuver[];
 }
 
-export function prepareLeg(line: LngLat[]): PreparedLeg {
+/** Prepara un tramo. Con los pasos del router usa sus giros y nombres de calle; sin ellos, los saca de la geometría. */
+export function prepareLeg(line: LngLat[], steps?: RouteStep[]): PreparedLeg {
   const cum = cumulative(line);
-  return { line, cum, length: cum[cum.length - 1], turns: maneuvers(line, cum) };
+  const turns = steps?.length
+    ? steps.map(st => ({ at: projectOnRoute(line, st.location, cum).along, direction: st.direction, point: st.location, street: st.street || undefined })).sort((a, b) => a.at - b.at)
+    : maneuvers(line, cum);
+  return { line, cum, length: cum[cum.length - 1], turns };
 }
 
 export interface Guidance {
@@ -54,7 +59,8 @@ const WORD = { left: 'a la izquierda', right: 'a la derecha', 'slight-left': 'li
 
 export function instruction(g: Guidance, stopName: string): { text: string; then: string } {
   if (g.offRoute) return { text: 'Te has salido de la ruta', then: `Vuelve a la ruta: estás a ${Math.round(g.offRouteBy / 5) * 5} m` };
-  const text = g.next ? `Gira ${WORD[g.next.direction]}` : `Sigue hasta ${stopName}`;
-  const then = g.then ? `Después, gira ${WORD[g.then.direction]}` : g.next ? `Después llegas a ${stopName}` : 'Al llegar se estampa tu sello';
+  const onto = (m: Maneuver) => (m.street ? ` en ${m.street}` : '');
+  const text = g.next ? `Gira ${WORD[g.next.direction]}${onto(g.next)}` : `Sigue hasta ${stopName}`;
+  const then = g.then ? `Después, ${WORD[g.then.direction]}${onto(g.then)}` : g.next ? `Después llegas a ${stopName}` : 'Al llegar se estampa tu sello';
   return { text, then };
 }

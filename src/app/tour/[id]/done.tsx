@@ -7,6 +7,7 @@ import { GhostButton } from '@/components/ui';
 import { VisitPage } from '@/components/VisitPage';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { useTourParam } from '@/lib/useTour';
+import { useTourRoute } from '@/lib/useTourRoute';
 import { usePassport } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { TourThemeProvider } from '@/theme/TourTheme';
@@ -20,7 +21,8 @@ export default function Done() {
   const completeVisit = usePassport(s => s.completeVisit);
   useEffect(() => { if (visit && !visit.completedAt) completeVisit(); }, [visit, completeVisit]);
 
-  const meters = tour.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
+  const route = useTourRoute(tour);
+  const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
   const minutes = visit?.completedAt ? Math.max(1, Math.round((+new Date(visit.completedAt) - +new Date(visit.startedAt)) / 60000)) : null;
   const stats = [[String(tour.stops.length), 'sellos'], [formatDistance(meters), 'recorridos'], [minutes ? `${minutes} min` : '—', 'tiempo']];
 

@@ -26,6 +26,11 @@ npx eas-cli@latest build --profile development --platform all
 
 Después, `npx expo start` y abre la build de desarrollo en el móvil.
 
+### APK para Android
+
+- **GitHub Actions** (`.github/workflows/android-apk.yml`): en cada push a `main` comprueba el código, compila un APK y lo deja en la pestaña *Actions* → la ejecución → *Artifacts* → `paseo-apk`. Se puede lanzar a mano con *Run workflow*. Está firmado con la clave de depuración: sirve para instalarlo en un móvil, no para Google Play.
+- **EAS**: `npx eas-cli@latest build --platform android --profile preview` genera también un APK instalable.
+
 En modo desarrollo el paseo arranca **simulado** (un punto que recorre la ruta 8× más rápido que andando). El botón «Paseo simulado / GPS real» del mapa cambia entre los dos.
 
 ## Comprobaciones
@@ -70,7 +75,8 @@ Un tour es un objeto `Tour` en `src/data/tours/`: paleta de 5 colores, paradas (
 
 ## Pendiente antes de probar en la calle
 
-- [ ] **Coordenadas reales** de las 4 paradas de Tomares y **ruta a pie real** (`legs`). Ahora son aproximadas. La ruta se puede generar con OSRM o GraphHopper en modo peatón.
+- [ ] **Comprobar dos ubicaciones aproximadas**: el portal del kebab (C/ Navarro Caro 83) y el talud de las letras TOMARES (Avda. de la Arboleda). Las del Ayuntamiento y la iglesia salen de fuentes publicadas (ver `src/data/tours/tomares.ts`).
+- [x] **Ruta a pie real**: se calcula en el móvil con OSRM (perfil peatón, datos de OpenStreetMap) y se guarda para usarla sin conexión (`src/lib/routing.ts`). Las indicaciones dicen el nombre de la calle. Para producción, precalcularla al preparar el tour.
 - [ ] **Teselas propias.** En desarrollo se usa OpenFreeMap (gratis, sin clave). Para producción: Protomaps autoalojado o MapTiler, configurado con `EXPO_PUBLIC_MAP_TILES`.
 - [ ] **Tipografía Nunito en el mapa.** Hay que publicar sus glifos (`EXPO_PUBLIC_MAP_GLYPHS`); ahora las calles usan Noto Sans.
 - [ ] **Audios grabados.** Ahora se narra con la voz del sistema (`useNarration`); cambiar a `expo-audio` cuando existan.

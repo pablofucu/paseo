@@ -12,6 +12,7 @@ import { guide, instruction, prepareLeg } from '@/lib/guidance';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { useNarration } from '@/lib/useNarration';
 import { useTourParam } from '@/lib/useTour';
+import { useTourRoute } from '@/lib/useTourRoute';
 import { useWalkPosition, type PositionSource } from '@/lib/useWalkPosition';
 import { usePassport } from '@/store/passport';
 import { font } from '@/theme/fonts';
@@ -34,14 +35,15 @@ export default function Walk() {
   const collectStamp = usePassport(s => s.collectStamp);
   const narration = useNarration();
 
+  const route = useTourRoute(tour);
   const simOrigin = useMemo(() => approachFrom(stop.coord), [stop]);
   const origin = target !== 0 ? null : source === 'simulated' ? simOrigin : gpsOrigin;
 
   // Tramo actual: de la parada anterior a esta; para la primera, desde donde estés
   const leg = useMemo(() => {
-    if (target > 0) return prepareLeg(tour.legs[target - 1]);
+    if (target > 0) return prepareLeg(route.legs[target - 1].line, route.legs[target - 1].steps);
     return origin ? prepareLeg([origin, stop.coord]) : null;
-  }, [tour, target, origin, stop]);
+  }, [route, target, origin, stop]);
 
   const { position, heading, permission } = useWalkPosition(source, leg);
   // La primera posición GPS marca el inicio del camino hacia la primera parada
@@ -69,8 +71,8 @@ export default function Walk() {
     return [...pts, g.snapped];
   }, [leg, g]);
 
-  const totalBefore = tour.legs.slice(0, Math.max(0, target - 1)).reduce((a, l) => a + cumulative(l).at(-1)!, 0);
-  const total = tour.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
+  const totalBefore = route.legs.slice(0, Math.max(0, target - 1)).reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
+  const total = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
   const frac = leg && g ? g.along / leg.length : 0;
   const way = tour.onTheWay.find(w => w.afterStop === target - 1);
   const showWay = !!way && frac > 0.12 && frac < 0.65;
@@ -124,7 +126,7 @@ export default function Walk() {
 
         <IconButton label="Salir del tour" glyph="×" onPress={() => router.back()} style={{ position: 'absolute', left: 14, bottom: 262 + insets.bottom }} />
         <Pressable accessibilityRole="button" onPress={() => setSource(v => (v === 'gps' ? 'simulated' : 'gps'))} style={[s.srcPill, { bottom: 268 + insets.bottom }]}>
-          <Text style={s.srcText}>{source === 'gps' ? 'GPS real' : 'Paseo simulado'}</Text>
+          <Text style={s.srcText}>{source === 'gps' ? 'GPS real' : 'Paseo simulado'}{route.quality === 'approximate' ? ' · ruta aproximada' : ''}</Text>
         </Pressable>
 
         {/* Hoja inferior */}

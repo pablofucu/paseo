@@ -90,6 +90,8 @@ export interface Maneuver {
   at: number;
   direction: TurnDirection;
   point: LngLat;
+  /** Calle a la que se gira, si la conocemos */
+  street?: string;
 }
 
 /** Saca los giros de la geometría: cada vértice donde el rumbo cambia más de 30°. */

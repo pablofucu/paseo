@@ -9,10 +9,18 @@ const PICTOGRAMS = {
 };
 
 /*
- * IMPORTANTE: las coordenadas y la ruta son APROXIMADAS (prototipo).
- * Antes de probar en la calle, sustituye `coord` de cada parada por la real
- * y `legs` por el trazado a pie real (se puede sacar de OSRM o GraphHopper
- * en modo peatón al preparar el tour). El resto de la app no cambia.
+ * Ubicaciones (buscadas en octubre de 2026):
+ * - Ayuntamiento (Hacienda de Santa Ana, C/ de la Fuente 10): coordenadas de
+ *   es.wikipedia.org/wiki/Casa_consistorial_de_Tomares.
+ * - Parroquia de N.ª S.ª de Belén (C/ Navarro Caro 27): coordenadas publicadas
+ *   en directorios de parroquias (37,3750253, −6,0469047).
+ * - Royal King Kebab (C/ Navarro Caro 83): punto de la calle según Waze.
+ *   APROXIMADO: comprobar el portal exacto.
+ * - Letras TOMARES: talud de la Avda. de la Arboleda frente a la Urb. El Carmen
+ *   (tomares.es). APROXIMADO: no hay coordenadas publicadas del letrero.
+ *
+ * La ruta a pie real se calcula en el móvil con OSRM (src/lib/routing.ts).
+ * `legs` es solo la ruta de reserva, en línea recta, si no hay conexión.
  */
 export const tomares: Tour = {
   id: 'tomares-4-paradas',
@@ -32,7 +40,7 @@ export const tomares: Tour = {
     kind: "public",
     pictogram: PICTOGRAMS.rotonda,
     photo: require('../../../assets/tours/tomares/rotonda.jpg'),
-    coord: [-6.0478, 37.3712],
+    coord: [-6.03760, 37.37160],
     arriveHint: "Busca las letras blancas TOMARES sobre el césped.",
     audioTitle: "Bienvenido a Tomares",
     p1: "Estás en la puerta del pueblo. Las letras grandes te dan la bienvenida. Son blancas y se leen desde lejos.",
@@ -48,7 +56,7 @@ export const tomares: Tour = {
     kind: "civic",
     pictogram: PICTOGRAMS.ayuntamiento,
     photo: require('../../../assets/tours/tomares/ayuntamiento.jpg'),
-    coord: [-6.0452, 37.3728],
+    coord: [-6.045164, 37.373994],
     arriveHint: "Mira arriba: la torre mirador con dos arcos.",
     audioTitle: "La Hacienda de Santa Ana",
     p1: "El Ayuntamiento ocupa la antigua Hacienda de Santa Ana. Es un edificio blanco encalado con tejado de teja, como tantas haciendas del Aljarafe.",
@@ -64,7 +72,7 @@ export const tomares: Tour = {
     kind: "religious",
     pictogram: PICTOGRAMS.iglesia,
     photo: require('../../../assets/tours/tomares/iglesia.jpg'),
-    coord: [-6.0441, 37.3739],
+    coord: [-6.0469047, 37.3750253],
     arriveHint: "Localiza la espadaña con campanas y la torre del reloj.",
     audioTitle: "La Virgen de Belén",
     p1: "Esta es la parroquia del pueblo. La fachada es blanca y las molduras rojo almagra la enmarcan. La portada en arco lleva el rótulo con su nombre.",
@@ -80,7 +88,7 @@ export const tomares: Tour = {
     kind: "food",
     pictogram: PICTOGRAMS.kebab,
     photo: require('../../../assets/tours/tomares/kebab.jpg'),
-    coord: [-6.0458, 37.3748],
+    coord: [-6.04896, 37.37514],
     arriveHint: "Busca la ventana con arco de herradura azul.",
     audioTitle: "Parada final: kebab",
     p1: "Final del recorrido. Toca reponer fuerzas, y aquí hay kebab. Es halal y tiene servicio a domicilio, por si el cansancio te pilla en casa.",
@@ -91,9 +99,9 @@ export const tomares: Tour = {
   },
   ],
   legs: [
-    [[-6.0478, 37.3712], [-6.0470, 37.3721], [-6.0452, 37.3728]],
-    [[-6.0452, 37.3728], [-6.0450, 37.3735], [-6.0441, 37.3739]],
-    [[-6.0441, 37.3739], [-6.0449, 37.3746], [-6.0458, 37.3748]],
+    [[-6.0376, 37.3716], [-6.045164, 37.373994]],
+    [[-6.045164, 37.373994], [-6.0469047, 37.3750253]],
+    [[-6.0469047, 37.3750253], [-6.04896, 37.37514]],
   ],
   onTheWay: [
     { afterStop: 0, name: "Aljarafe", text: "De camino: el Aljarafe, junto a Sevilla" },

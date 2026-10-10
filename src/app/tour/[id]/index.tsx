@@ -7,6 +7,7 @@ import { Chip, IconButton, PrimaryButton } from '@/components/ui';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { useTourParam } from '@/lib/useTour';
+import { useTourRoute } from '@/lib/useTourRoute';
 import { stampDate, usePassport } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
@@ -18,7 +19,8 @@ export default function Cover() {
   const insets = useSafeAreaInsets();
   const startVisit = usePassport(s => s.startVisit);
   const lastVisit = usePassport(s => [...s.visits].reverse().find(v => v.tourId === tour.id));
-  const meters = tour.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
+  const route = useTourRoute(tour);
+  const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
   const p = tour.palette;
 
   const start = () => {
