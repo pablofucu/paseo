@@ -2,7 +2,7 @@ import type { LngLat, Tour } from '../types';
 import type { RouteStep } from '@/lib/routing';
 import geo from './tomares.geo.json';
 
-/** Ubicaciones y ruta fija: src/data/tours/tomares.geo.json (la ruta la genera el workflow «Rutas») */
+/** Ubicaciones y ruta fija: src/data/tours/tomares.geo.json (la ruta la genera el workflow «Contenido») */
 const coord = (id: string) => geo.stops.find(s => s.id === id)!.coord as LngLat;
 
 // Pictogramas de los sellos (caja 60 × 40, centrados en ella, solo currentColor)
@@ -25,7 +25,7 @@ const PICTOGRAMS = {
  *   (tomares.es). APROXIMADO: no hay coordenadas publicadas del letrero.
  *
  * La ruta a pie por calles está fijada en tomares.geo.json. Se genera con
- * OSRM (perfil peatón, datos de OpenStreetMap) desde el workflow «Rutas»:
+ * OSRM (perfil peatón, datos de OpenStreetMap) desde el workflow «Contenido»:
  * cambia allí las coordenadas y vuelve a lanzarlo.
  */
 export const tomares: Tour = {

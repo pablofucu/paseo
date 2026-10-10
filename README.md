@@ -85,7 +85,7 @@ Un tour es un objeto `Tour` en `src/data/tours/`: paleta de 5 colores, paradas (
 ## Pendiente antes de probar en la calle
 
 - [ ] **Comprobar dos ubicaciones aproximadas**: el portal del kebab (C/ Navarro Caro 83) y el talud de las letras TOMARES (Avda. de la Arboleda). Las del Ayuntamiento y la iglesia salen de fuentes publicadas (ver `src/data/tours/tomares.ts`).
-- [x] **Ruta a pie fija por calles** en `src/data/tours/tomares.geo.json` (letras → Ayuntamiento 844 m, → iglesia 260 m, → kebab 212 m), con los giros y nombres de calle. Se genera con OSRM (perfil peatón, OpenStreetMap) desde el workflow **Rutas** de GitHub Actions: cambia las coordenadas en ese archivo y lánzalo con *Run workflow*.
+- [x] **Ruta a pie fija por calles** en `src/data/tours/tomares.geo.json` (letras → Ayuntamiento 844 m, → iglesia 260 m, → kebab 212 m), con los giros y nombres de calle. Se genera con OSRM (perfil peatón, OpenStreetMap) desde el workflow **Contenido** de GitHub Actions: cambia las coordenadas en ese archivo y lánzalo con *Run workflow*.
 - [ ] **Teselas propias.** En desarrollo se usa OpenFreeMap (gratis, sin clave). Para producción: Protomaps autoalojado o MapTiler, configurado con `EXPO_PUBLIC_MAP_TILES`.
 - [ ] **Tipografía Nunito en el mapa.** Hay que publicar sus glifos (`EXPO_PUBLIC_MAP_GLYPHS`); ahora las calles usan Noto Sans.
 - [ ] **Audios grabados.** Ahora se narra con la voz del sistema (`useNarration`); cambiar a `expo-audio` cuando existan.
