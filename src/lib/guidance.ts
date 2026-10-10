@@ -37,9 +37,13 @@ export interface Guidance {
   arrived: boolean;
 }
 
-export function guide(leg: PreparedLeg, position: LngLat): Guidance {
+/**
+ * Guía sobre un tramo. `stop` es la ubicación real de la parada: la ruta por
+ * calles puede acabar unos metros antes si la parada no está sobre una calle.
+ */
+export function guide(leg: PreparedLeg, position: LngLat, stop?: LngLat): Guidance {
   const proj = projectOnRoute(leg.line, position, leg.cum);
-  const toStop = distance(position, leg.line[leg.line.length - 1]);
+  const toStop = Math.min(distance(position, leg.line[leg.line.length - 1]), stop ? distance(position, stop) : Infinity);
   const idx = leg.turns.findIndex(t => t.at > proj.along + 3);
   const next = idx >= 0 ? leg.turns[idx] : null;
   return {

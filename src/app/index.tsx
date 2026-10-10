@@ -2,6 +2,7 @@ import { Link, router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { Scrim } from '@/components/Scrim';
 import { TOURS } from '@/data/tours';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { usePassport } from '@/store/passport';
@@ -35,7 +36,7 @@ export default function Home() {
           <Pressable key={t.id} accessibilityRole="button" accessibilityLabel={`Abrir ${t.title}`} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: t.id } })} style={({ pressed }) => [s.card, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
             <View style={s.hero}>
               <DuotoneImage source={t.stops[t.emblemStop].photo} palette={t.palette} style={StyleSheet.absoluteFill} />
-              <View style={s.heroScrim} />
+              <Scrim opacity={0.6} />
               <View style={s.heroText}>
                 <Text style={[type.overline, { color: '#fff' }]}>{t.region}</Text>
                 <Text style={s.city}>{t.city}</Text>
@@ -71,7 +72,6 @@ const s = StyleSheet.create({
   passText: { fontFamily: font.black, fontSize: 13, color: neutral.ink },
   card: { backgroundColor: neutral.surface, borderRadius: 22, overflow: 'hidden', ...shadow[2] },
   hero: { height: 170 },
-  heroScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 90, backgroundColor: 'rgba(0,0,0,0.22)' },
   heroText: { position: 'absolute', left: 16, bottom: 12 },
   city: { fontFamily: font.serif, fontSize: 34, lineHeight: 37, color: '#fff' },
   free: { position: 'absolute', right: 12, top: 12, backgroundColor: brand.sun, borderRadius: radius.pill, paddingHorizontal: 10, height: 26, justifyContent: 'center' },

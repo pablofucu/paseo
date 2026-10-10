@@ -38,7 +38,7 @@ export function Guilloche({ width, height, color }: { width: number; height: num
 }
 
 const mrz = (tour: Tour, visit: Visit) =>
-  `P<ESP${tour.city.toUpperCase().replace(/[^A-Z]/g, '')}<<${tour.title.toUpperCase().normalize('NFD').replace(/[^A-Z0-9]/g, '<')}`.padEnd(44, '<').slice(0, 44) +
+  `P<ESP${tour.city.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '')}<<${tour.title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '<')}`.padEnd(44, '<').slice(0, 44) +
   `\n${visit.id.toUpperCase().replace(/[^A-Z0-9]/g, '').padEnd(10, '<').slice(0, 10)}<${stampDate(visit.startedAt).replace(/·/g, '')}<<<<<<<<<<<<<<<<<<<<<<<<<<<`.slice(0, 44);
 
 interface Props {
@@ -87,7 +87,7 @@ export function PassportPage({ tour, visit, pageNumber, pressSeal, sealDelay = 6
       })}
       <View style={{ position: 'absolute', left: (width - sealW) / 2 + 10, top: 52 + gridH }}>
         {full ? (
-          <StampPress width={sealW} height={sealW * (120 / 170)} ink={tour.palette.deep} delay={sealDelay} still={!pressSeal}>
+          <StampPress width={sealW} height={sealW * (120 / 170)} ink={tour.palette.deep} delay={sealDelay} still={!pressSeal} shape="rect">
             <TourSeal tour={tour} date={stampDate(visit.completedAt ?? visit.startedAt)} collected={collected} width={sealW} rotate={-5} />
           </StampPress>
         ) : (

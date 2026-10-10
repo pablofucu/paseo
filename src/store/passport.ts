@@ -16,6 +16,8 @@ interface PassportState {
   visits: Visit[];
   activeVisitId: string | null;
   startVisit: (tourId: string) => string;
+  /** Retoma una visita a medias */
+  resumeVisit: (id: string) => void;
   collectStamp: (stopId: string) => void;
   completeVisit: () => void;
   reset: () => void;
@@ -33,6 +35,7 @@ export const usePassport = create<PassportState>()(
         set(s => ({ visits: [...s.visits, { id, tourId, startedAt: new Date().toISOString(), stamps: {} }], activeVisitId: id }));
         return id;
       },
+      resumeVisit: id => set({ activeVisitId: id }),
       collectStamp: stopId => {
         const { activeVisitId } = get();
         if (!activeVisitId) return;

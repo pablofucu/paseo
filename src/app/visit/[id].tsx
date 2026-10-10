@@ -15,7 +15,7 @@ export default function VisitScreen() {
   const tour = visit && getTour(visit.tourId);
   return (
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40, paddingHorizontal: 16, gap: 12 }}>
-      <IconButton label="Volver" glyph="‹" onPress={() => router.back()} />
+      <IconButton label="Volver" icon="back" onPress={() => router.back()} />
       {tour && visit ? (
         <>
           <Text style={[type.overline, { color: tour.palette.t }]}>{tour.city} · {new Date(visit.startedAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>

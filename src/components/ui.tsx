@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type PressableProps, type ViewStyle } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { font } from '@/theme/fonts';
 import { neutral, radius, shadow } from '@/theme/tokens';
 import { usePalette } from '@/theme/TourTheme';
@@ -31,10 +32,17 @@ export function Chip({ children }: { children: ReactNode }) {
   );
 }
 
-export function IconButton({ label, glyph, onPress, style }: { label: string; glyph: string; onPress: () => void; style?: ViewStyle }) {
+const ICONS = {
+  back: 'M15 5l-7 7 7 7',
+  close: 'M6 6l12 12M18 6 6 18',
+} as const;
+
+export function IconButton({ label, icon, onPress, style }: { label: string; icon: keyof typeof ICONS; onPress: () => void; style?: ViewStyle }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} style={({ pressed }) => [s.icon, { opacity: pressed ? 0.8 : 1 }, style]}>
-      <Text style={s.iconGlyph}>{glyph}</Text>
+      <Svg width={20} height={20} viewBox="0 0 24 24">
+        <Path d={ICONS[icon]} fill="none" stroke={neutral.ink} strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
     </Pressable>
   );
 }
@@ -48,5 +56,4 @@ const s = StyleSheet.create({
   chip: { height: 34, paddingHorizontal: 12, borderRadius: radius.pill, justifyContent: 'center' },
   chipText: { fontFamily: font.heavy, fontSize: 14 },
   icon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center', ...shadow[2] },
-  iconGlyph: { fontFamily: font.black, fontSize: 20, color: neutral.ink, marginTop: -2 },
 });

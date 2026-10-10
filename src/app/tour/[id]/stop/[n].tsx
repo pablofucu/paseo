@@ -5,10 +5,12 @@ import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DuotoneImage } from '@/components/DuotoneImage';
-import { StopStamp } from '@/components/Stamp';
+import { Scrim } from '@/components/Scrim';
+import { Guilloche } from '@/components/PassportPage';
+import { inkFor, StopStamp } from '@/components/Stamp';
 import { PRESS_MS, StampPress } from '@/components/StampPress';
 import { IconButton, PrimaryButton } from '@/components/ui';
-import { KIND_LABEL } from '@/data/types';
+import { KIND_LABEL, SHAPE_FOR_KIND } from '@/data/types';
 import { useNarrationPlayer } from '@/lib/useNarrationPlayer';
 import { useTourParam } from '@/lib/useTour';
 import { stampDate, useActiveVisit } from '@/store/passport';
@@ -64,11 +66,12 @@ export default function StopScreen() {
       <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
         <Pressable accessibilityRole="button" accessibilityLabel="Siguiente foto" onPress={() => setGal(g => (g + 1) % CROPS.length)} style={s.gallery}>
           <DuotoneImage source={stop.photo} palette={p} duotone={!color} zoom={crop.zoom} focus={crop} style={StyleSheet.absoluteFill} />
-          <View style={s.scrim} />
+          <Scrim opacity={0.55} />
+          <Scrim opacity={0.35} from="top" style={{ height: 110 }} />
           <Text style={s.cap} numberOfLines={1}>{stop.captions[gal] ?? ''}</Text>
           <View style={s.dots}>{CROPS.map((_, i) => <View key={i} style={[s.dot, i === gal && s.dotOn]} />)}</View>
         </Pressable>
-        <IconButton label="Volver al tour" glyph="×" onPress={() => { player.pause(); router.back(); }} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
+        <IconButton label="Volver al tour" icon="close" onPress={() => { player.pause(); router.back(); }} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
         <Pressable accessibilityRole="button" onPress={() => setColor(v => !v)} style={[s.colorBtn, { top: insets.top + 14 }]}>
           <Text style={s.colorText}>{color ? 'Duotono' : 'Ver en color'}</Text>
         </Pressable>
@@ -99,11 +102,16 @@ export default function StopScreen() {
 
       {arriving && (
         <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(350)} style={[StyleSheet.absoluteFill, s.arrive, { backgroundColor: p.deep, paddingTop: insets.top + 56 }]}>
-          <DuotoneImage source={stop.photo} palette={p} style={s.arrivePic} />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: p.deep, opacity: 0.6 }]} />
-          <View style={[s.paper, { borderColor: p.t2 }]}>
-            <StampPress width={STAMP} height={STAMP} ink={p.t2} delay={350}>
-              <StopStamp tour={tour} index={n} date={date} size={STAMP} color={p.t2} />
+          <View style={s.arrivePic}>
+            <DuotoneImage source={stop.photo} palette={p} style={StyleSheet.absoluteFill} />
+            <Scrim color={p.deep} opacity={1} from="top" />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: p.deep, opacity: 0.15 }]} />
+          </View>
+          <View style={s.paper}>
+            <Guilloche width={STAMP + 44} height={STAMP + 44} color={p.deep} />
+            <Text style={s.paperHead}>Pasaporte Paseo · {tour.city}</Text>
+            <StampPress width={STAMP} height={STAMP} ink={inkFor(tour, n)} delay={350} shape={['round', 'oval', 'chapa'].includes(SHAPE_FOR_KIND[stop.kind]) ? 'round' : 'rect'}>
+              <StopStamp tour={tour} index={n} date={date} size={STAMP} />
             </StampPress>
           </View>
           <Animated.Text entering={FadeInDown.delay(350 + PRESS_MS * 0.5)} style={[s.arriveOver, { color: p.t2 }]}>Has llegado · Sello {n + 1} de {tour.stops.length}</Animated.Text>
@@ -121,7 +129,6 @@ export default function StopScreen() {
 
 const s = StyleSheet.create({
   gallery: { height: 310, overflow: 'hidden' },
-  scrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 80, backgroundColor: 'rgba(0,0,0,0.22)' },
   cap: { position: 'absolute', left: 16, right: 16, bottom: 30, color: '#fff', fontFamily: font.heavy, fontSize: 12.5 },
   dots: { position: 'absolute', bottom: 12, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,.55)' },
@@ -136,10 +143,11 @@ const s = StyleSheet.create({
   fact: { borderRadius: 18, padding: 16 },
   factOver: { fontFamily: font.black, fontSize: 11.5, letterSpacing: 1, textTransform: 'uppercase', color: neutral.ink },
   factText: { fontFamily: font.serifBold, fontSize: 18, lineHeight: 24, color: neutral.ink, marginTop: 4 },
-  cta: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 14, backgroundColor: 'rgba(250,246,240,0.96)' },
+  cta: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 14, backgroundColor: neutral.bg, borderTopWidth: 1, borderTopColor: neutral.line },
   arrive: { alignItems: 'center', paddingHorizontal: 24, gap: 10 },
   arrivePic: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '48%' },
-  paper: { padding: 14, borderRadius: 20, borderWidth: 1.5, borderStyle: 'dashed', backgroundColor: 'rgba(255,255,255,0.06)' },
+  paper: { padding: 22, paddingTop: 30, borderRadius: 10, backgroundColor: neutral.paper, overflow: 'hidden', transform: [{ rotate: '-2deg' }], boxShadow: '0px 18px 40px rgba(0,0,0,0.45)' },
+  paperHead: { position: 'absolute', top: 10, left: 14, fontFamily: font.black, fontSize: 9, letterSpacing: 1.6, textTransform: 'uppercase', color: neutral.ink3 },
   arriveOver: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 16 },
   arriveTitle: { fontFamily: font.serif, fontSize: 40, lineHeight: 43, color: '#fff', textAlign: 'center', letterSpacing: -1 },
   arriveHint: { fontFamily: font.bold, fontSize: 15, lineHeight: 21, color: 'rgba(255,255,255,0.92)', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: radius.md, padding: 12, overflow: 'hidden' },

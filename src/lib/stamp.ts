@@ -15,6 +15,49 @@ export interface StampSpec {
 }
 
 let uid = 0;
+/** Generador pseudoaleatorio estable a partir de un texto (misma textura para el mismo sello) */
+function rng(seed: string) {
+  let h = 1779033703 ^ seed.length;
+  for (let i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Máscara de tinta sobre papel: quita tinta donde no llegó (poros y fibras),
+ * deja zonas con menos presión y manchas más claras. Es lo que hace que el
+ * sello no parezca un color plano.
+ */
+export function inkMask(id: string, seed: string, w: number, h: number): string {
+  const r = rng(seed);
+  const a = r() * Math.PI * 2;
+  const x1 = 0.5 + Math.cos(a) * 0.5, y1 = 0.5 + Math.sin(a) * 0.5;
+  const light = Math.round(150 + r() * 40).toString(16);
+  let dots = '';
+  for (let i = 0; i < Math.round((w * h) / 95); i++) {
+    dots += `<circle cx="${(r() * w).toFixed(1)}" cy="${(r() * h).toFixed(1)}" r="${(0.25 + r() ** 2 * 1.1).toFixed(2)}" fill="#000" opacity="${(0.55 + r() * 0.45).toFixed(2)}"/>`;
+  }
+  let fibers = '';
+  for (let i = 0; i < 9; i++) {
+    const x = r() * w, y = r() * h, len = 3 + r() * 9, ang = r() * Math.PI;
+    fibers += `<path d="M${x.toFixed(1)} ${y.toFixed(1)} l${(Math.cos(ang) * len).toFixed(1)} ${(Math.sin(ang) * len).toFixed(1)}" stroke="#000" stroke-width="${(0.25 + r() * 0.35).toFixed(2)}" opacity="${(0.35 + r() * 0.4).toFixed(2)}"/>`;
+  }
+  let blotches = '';
+  for (let i = 0; i < 4; i++) {
+    blotches += `<circle cx="${(r() * w).toFixed(1)}" cy="${(r() * h).toFixed(1)}" r="${(4 + r() * 10).toFixed(1)}" fill="#000" opacity="${(0.1 + r() * 0.14).toFixed(2)}"/>`;
+  }
+  return `<defs>
+    <linearGradient id="${id}p" x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${(1 - x1).toFixed(2)}" y2="${(1 - y1).toFixed(2)}">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.55" stop-color="#f2f2f2"/><stop offset="1" stop-color="#${light}${light}${light}"/>
+    </linearGradient>
+    <mask id="${id}m" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">
+      <rect width="${w}" height="${h}" fill="url(#${id}p)"/>${blotches}${fibers}${dots}
+    </mask>
+  </defs>`;
+}
+
 const fit = (s: string, max: number, w: number, ls = 1.2) => Math.min(max, (w / Math.max(1, s.length) - ls) / 0.7).toFixed(2);
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
@@ -81,7 +124,8 @@ export function stampXml({ shape, pictogram, name, sub, color, ghost }: StampSpe
         ${txt(s, 60, 31, fit(sub, 7, 60, 1), 800, 1)}${txt(n, 60, 88, fit(name, 9.6, 62))}${pict(60, 57, 54)}`;
       break;
   }
-  return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+  if (ghost) return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+  return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${inkMask(id, name + sub, 120, 120)}<g mask="url(#${id}m)" opacity="0.93">${body}</g></svg>`;
 }
 
 export interface VisaSpec {
@@ -117,7 +161,8 @@ export function visaXml({ city, title, date, pictogram, stops, color, accent, gh
     })
     .join('');
   const k = 46 / 60;
-  return `<svg viewBox="0 0 170 120" xmlns="http://www.w3.org/2000/svg">
+  const id = `v${uid++}`;
+  return `<svg viewBox="0 0 170 120" xmlns="http://www.w3.org/2000/svg">${ghost ? '' : inkMask(id, city + title + date, 170, 120)}<g${ghost ? '' : ` mask="url(#${id}m)" opacity="0.94"`}>
     <rect x="3" y="3" width="164" height="114" rx="10" fill="none" stroke="${ink}" stroke-width="3"${dash}/>
     <rect x="9" y="9" width="152" height="102" rx="6" fill="none" stroke="${ink}" stroke-width="1" stroke-dasharray="2 2.5"/>
     ${ghost ? '' : `<rect x="9" y="9" width="152" height="20" rx="5" fill="${ink}"/>
@@ -132,5 +177,5 @@ export function visaXml({ city, title, date, pictogram, stops, color, accent, gh
       ${ghost ? '' : `<text x="129" y="94" text-anchor="middle" ${font} font-size="6.4" letter-spacing="1.2" fill="${acc}">ENTRADA</text>
       <text x="129" y="103.5" text-anchor="middle" ${font} font-size="9" letter-spacing="0.6" fill="${acc}">${esc(date)}</text>`}
     </g>
-  </svg>`;
+  </g></svg>`;
 }

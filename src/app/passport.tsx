@@ -37,7 +37,7 @@ export default function Passport() {
   return (
     <View style={{ flex: 1, backgroundColor: neutral.bg, paddingTop: insets.top + 12 }}>
       <View style={s.top}>
-        <IconButton label="Volver" glyph="‹" onPress={() => router.back()} />
+        <IconButton label="Volver" icon="back" onPress={() => router.back()} />
         <Text style={[type.title, { flex: 1 }]}>Mi pasaporte</Text>
       </View>
       <FlatList
@@ -104,8 +104,8 @@ function Holder({ width, visits }: { width: number; visits: Visit[] }) {
     ['Primer paseo', first ? new Date(first).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'],
   ];
   return (
-    <View style={[s.holder, { width, height: h }]}>
-      <Guilloche width={width} height={h} color="#5A1726" />
+    <View style={[s.holder, { width, minHeight: h }]}>
+      <Guilloche width={width} height={h * 1.4} color="#5A1726" />
       <Text style={s.holderOver}>Datos del viajero</Text>
       {rows.map(([k, v]) => (
         <View key={k} style={s.row}>

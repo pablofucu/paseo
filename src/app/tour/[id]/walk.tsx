@@ -70,7 +70,7 @@ export default function Walk() {
   // La primera posición GPS marca el inicio del camino hacia la primera parada
   if (target === 0 && source === 'gps' && position && !gpsOrigin) setGpsOrigin(position);
 
-  const g = leg && position ? guide(leg, position) : null;
+  const g = leg && position ? guide(leg, position, stop.coord) : null;
   const text = g ? instruction(g, stop.name) : { text: 'Buscando tu posición…', then: 'Necesitas el GPS activado' };
 
   // Llegada: sello, vibración y pantalla de la parada
@@ -145,7 +145,7 @@ export default function Walk() {
           <View style={s.then}><Text style={[s.thenText, g?.offRoute && { color: neutral.ink }]} numberOfLines={1}>{text.then}</Text></View>
         </View>
 
-        <IconButton label="Salir del tour" glyph="×" onPress={() => router.back()} style={{ position: 'absolute', left: 14, bottom: 262 + insets.bottom }} />
+        <IconButton label="Salir del tour" icon="close" onPress={() => router.back()} style={{ position: 'absolute', left: 14, bottom: 262 + insets.bottom }} />
         {quality !== 'streets' && leg && (
           <View style={[s.srcPill, { bottom: 268 + insets.bottom }]}>
             <Text style={s.srcText}>{quality === 'loading' ? 'Calculando la ruta por calles…' : 'Sin conexión: ruta en línea recta'}</Text>

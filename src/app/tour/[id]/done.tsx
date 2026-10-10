@@ -24,7 +24,7 @@ export default function Done() {
   const route = useTourRoute(tour);
   const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
   const minutes = visit?.completedAt ? Math.max(1, Math.round((+new Date(visit.completedAt) - +new Date(visit.startedAt)) / 60000)) : null;
-  const stats = [[String(tour.stops.length), 'sellos'], [formatDistance(meters), 'recorridos'], [minutes ? `${minutes} min` : '—', 'tiempo']];
+  const stats = [[String(tour.stops.length), 'sellos'], [formatDistance(meters), 'recorridos'], [minutes ? (minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`) : '—', 'tiempo']];
 
   return (
     <TourThemeProvider palette={p}>

@@ -72,6 +72,12 @@ describe('guidance', () => {
     expect(guide(leg, [-6.04503, 37.373]).arrived).toBe(true);
   });
 
+  it('cuenta la llegada en la parada aunque la ruta acabe unos metros antes', () => {
+    const stop: LngLat = [-6.0447, 37.373]; // ~26 m más allá del final de la ruta
+    expect(guide(leg, stop).arrived).toBe(false);
+    expect(guide(leg, stop, stop).arrived).toBe(true);
+  });
+
   it('avisa si te sales de la ruta', () => {
     const g = guide(leg, [-6.0452, 37.3722]); // ~70 m al este del primer tramo
     expect(g.offRoute).toBe(true);

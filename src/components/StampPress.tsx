@@ -2,16 +2,18 @@ import * as Haptics from 'expo-haptics';
 import { useEffect, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 /** Duración total del gesto de estampar */
-export const PRESS_MS = 1500;
-/** Momento del golpe dentro del gesto (0–1) */
-const HIT = 0.36;
+export const PRESS_MS = 1700;
+/** Momentos del gesto (0–1): golpe, empieza a levantarse, ya se ha ido */
+const HIT = 0.34;
+const LIFT = 0.56;
+const GONE = 0.82;
 
 const SPLATS = [
-  { x: -0.46, y: -0.32, r: 3.5 }, { x: 0.5, y: -0.18, r: 2.5 }, { x: 0.44, y: 0.42, r: 4 },
-  { x: -0.38, y: 0.47, r: 2.5 }, { x: 0.05, y: -0.53, r: 2 }, { x: -0.55, y: 0.08, r: 3 },
+  { x: -0.5, y: -0.36, r: 2.6 }, { x: 0.53, y: -0.2, r: 1.8 }, { x: 0.47, y: 0.46, r: 3 },
+  { x: -0.42, y: 0.5, r: 1.8 }, { x: 0.08, y: -0.56, r: 1.5 }, { x: -0.58, y: 0.06, r: 2.2 },
 ];
 
 interface Props {
@@ -19,18 +21,22 @@ interface Props {
   children: ReactNode;
   width: number;
   height: number;
-  /** Color de la goma y de las salpicaduras */
+  /** Color de la tinta (salpicaduras y borde de la goma) */
   ink: string;
   delay?: number;
-  /** Sin animación (p. ej. con «reducir movimiento»): solo la impresión */
+  /** Sin animación: solo la impresión */
   still?: boolean;
+  /** Forma del tampón visto desde arriba */
+  shape?: 'round' | 'rect';
 }
 
 /**
- * Un tampón de goma baja, golpea el papel (vibración), se aplasta, deja la
- * impresión con unas salpicaduras de tinta y se levanta.
+ * El tampón visto desde arriba: entra grande (cerca de la cámara) con la sombra
+ * lejos y difusa, baja hasta el papel mientras la sombra se concentra debajo,
+ * golpea (vibración y temblor del papel), se queda apretando un instante y se
+ * levanta descubriendo la impresión.
  */
-export function StampPress({ children, width, height, ink, delay = 0, still }: Props) {
+export function StampPress({ children, width, height, ink, delay = 0, still, shape = 'round' }: Props) {
   const t = useSharedValue(still ? 1 : 0);
 
   useEffect(() => {
@@ -40,49 +46,66 @@ export function StampPress({ children, width, height, ink, delay = 0, still }: P
     return () => clearTimeout(hit);
   }, [delay, still, t]);
 
-  const H = height;
   const tool = useAnimatedStyle(() => {
     const v = t.value;
-    // Baja acelerando (los tramos aproximan una caída), golpea, se aplasta y se va
-    const y = interpolate(v, [0, 0.16, 0.28, HIT, 0.62, 0.86], [-H * 1.9, -H * 1.35, -H * 0.55, 0, 0, -H * 2.2], Extrapolation.CLAMP);
-    const squash = interpolate(v, [HIT, HIT + 0.04, HIT + 0.12, HIT + 0.2], [1, 0.88, 0.97, 1], Extrapolation.CLAMP);
-    const rot = interpolate(v, [0.62, 0.86], [0, 9], Extrapolation.CLAMP);
+    // Altura sobre el papel: 1 = lejos (grande en pantalla), 0 = apoyado
+    const z = v < HIT ? interpolate(v, [0, HIT], [1, 0], Extrapolation.CLAMP) ** 1.8 : v < LIFT ? 0 : interpolate(v, [LIFT, GONE], [0, 1], Extrapolation.CLAMP) ** 0.7;
+    const squash = interpolate(v, [HIT, HIT + 0.03, HIT + 0.08, HIT + 0.13], [1, 0.955, 1.01, 1], Extrapolation.CLAMP);
     return {
-      opacity: interpolate(v, [0, 0.05, 0.7, 0.86], [0, 1, 1, 0], Extrapolation.CLAMP),
-      transform: [{ translateY: y }, { rotate: `${rot}deg` }, { scaleY: squash }, { scale: interpolate(v, [0, HIT], [1.2, 1], Extrapolation.CLAMP) }],
+      opacity: interpolate(v, [0, 0.06, LIFT + 0.12, GONE], [0, 1, 1, 0], Extrapolation.CLAMP),
+      transform: [
+        { translateX: z * width * 0.05 },
+        { translateY: -z * height * 0.08 },
+        { rotate: `${interpolate(v, [0, HIT, LIFT, GONE], [-14, 0, 0, 10], Extrapolation.CLAMP)}deg` },
+        { scale: (1 + z * 0.75) * squash },
+      ],
     };
   });
-  const shadow = useAnimatedStyle(() => ({
-    opacity: interpolate(t.value, [0, HIT, 0.62, 0.8], [0, 0.35, 0.35, 0], Extrapolation.CLAMP),
-    transform: [{ scale: interpolate(t.value, [0, HIT], [1.5, 1], Extrapolation.CLAMP) }],
-  }));
+  // La sombra se aleja y se difumina cuanto más alto está el tampón
+  const shade = useAnimatedStyle(() => {
+    const v = t.value;
+    const z = v < HIT ? interpolate(v, [0, HIT], [1, 0], Extrapolation.CLAMP) : v < LIFT ? 0 : interpolate(v, [LIFT, GONE], [0, 1], Extrapolation.CLAMP);
+    return {
+      opacity: interpolate(v, [0, 0.08, GONE - 0.05, GONE], [0, 0.2 + (1 - z) * 0.32, 0.2 + (1 - z) * 0.32, 0], Extrapolation.CLAMP),
+      transform: [{ translateX: z * width * 0.22 + 3 }, { translateY: z * height * 0.3 + 5 }, { scale: 1 + z * 0.35 }],
+    };
+  });
+  // La impresión aparece al levantar el tampón; la tinta fresca brilla un momento
   const print = useAnimatedStyle(() => ({
-    opacity: interpolate(t.value, [HIT, HIT + 0.05], [0, 1], Extrapolation.CLAMP),
-    transform: [{ scale: interpolate(t.value, [HIT, HIT + 0.14], [1.06, 1], Extrapolation.CLAMP) }],
+    opacity: interpolate(t.value, [HIT, HIT + 0.02], [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: interpolate(t.value, [LIFT, GONE], [1.015, 1], Extrapolation.CLAMP) }],
   }));
+  const wet = useAnimatedStyle(() => ({ opacity: interpolate(t.value, [LIFT, LIFT + 0.08, 1], [0, 0.22, 0], Extrapolation.CLAMP) }));
   const splat = useAnimatedStyle(() => ({
     opacity: interpolate(t.value, [HIT, HIT + 0.04, 1], [0, 0.85, 0.7], Extrapolation.CLAMP),
-    transform: [{ scale: interpolate(t.value, [HIT, HIT + 0.08], [0.2, 1], Extrapolation.CLAMP) }],
+    transform: [{ scale: interpolate(t.value, [HIT, HIT + 0.08], [0.3, 1], Extrapolation.CLAMP) }],
   }));
   const paper = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(t.value, [HIT, HIT + 0.03, HIT + 0.07, HIT + 0.11], [0, 3, -1, 0], Extrapolation.CLAMP) }],
+    transform: [{ translateY: interpolate(t.value, [HIT, HIT + 0.02, HIT + 0.05, HIT + 0.09], [0, 2.5, -1, 0], Extrapolation.CLAMP) }],
   }));
 
-  const toolW = width * 0.94;
-  const toolH = H * 1.25;
+  const pad = shape === 'round' ? 0.1 : 0.07;
+  const toolW = width * (1 + pad);
+  const toolH = height * (1 + pad);
+  const box = { position: 'absolute' as const, left: (width - toolW) / 2, top: (height - toolH) / 2, width: toolW, height: toolH };
+  const radius = shape === 'round' ? toolW / 2 : Math.min(toolW, toolH) * 0.12;
+
   return (
     <Animated.View style={[{ width, height }, paper]}>
       <Animated.View style={[StyleSheet.absoluteFill, splat]} pointerEvents="none">
         {SPLATS.map((s, i) => (
-          <View key={i} style={{ position: 'absolute', left: width / 2 + s.x * width - s.r, top: H / 2 + s.y * H - s.r, width: s.r * 2, height: s.r * 2, borderRadius: s.r, backgroundColor: ink }} />
+          <View key={i} style={{ position: 'absolute', left: width / 2 + s.x * width - s.r, top: height / 2 + s.y * height - s.r, width: s.r * 2, height: s.r * 2, borderRadius: s.r, backgroundColor: ink }} />
         ))}
       </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, print]}>{children}</Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, print]}>
+        {children}
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#fff', borderRadius: radius }, wet]} />
+      </Animated.View>
       {!still && (
         <>
-          <Animated.View pointerEvents="none" style={[s.shadow, { left: width * 0.08, right: width * 0.08, top: H * 0.82, height: H * 0.16 }, shadow]} />
-          <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: (width - toolW) / 2, top: H - toolH, width: toolW, height: toolH, transformOrigin: 'bottom' }, tool]}>
-            <RubberStamp width={toolW} height={toolH} ink={ink} />
+          <Animated.View pointerEvents="none" style={[box, { borderRadius: radius, backgroundColor: 'rgba(0,0,0,0.9)', boxShadow: '0px 0px 28px 14px rgba(0,0,0,0.85)' }, shade]} />
+          <Animated.View pointerEvents="none" style={[box, tool]}>
+            <TopView width={toolW} height={toolH} ink={ink} round={shape === 'round'} />
           </Animated.View>
         </>
       )}
@@ -90,32 +113,41 @@ export function StampPress({ children, width, height, ink, delay = 0, still }: P
   );
 }
 
-/** El tampón visto de frente: pomo, mango, bloque de madera y goma entintada */
-function RubberStamp({ width: w, height: h, ink }: { width: number; height: number; ink: string }) {
-  const cx = w / 2;
+/** El tampón desde arriba: bloque de madera con canto biselado, borde de goma entintada y pomo lacado. */
+function TopView({ width: w, height: h, ink, round }: { width: number; height: number; ink: string; round: boolean }) {
+  const r = round ? w / 2 : Math.min(w, h) * 0.12;
+  const knob = Math.min(w, h) * 0.2;
   return (
     <Svg width={w} height={h}>
       <Defs>
-        <LinearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor="#7A4A24" />
-          <Stop offset="0.45" stopColor="#B07A45" />
-          <Stop offset="1" stopColor="#6B3E1C" />
+        <RadialGradient id="wood" cx="40%" cy="35%" r="75%">
+          <Stop offset="0" stopColor="#C99561" />
+          <Stop offset="0.6" stopColor="#A06B3A" />
+          <Stop offset="1" stopColor="#6E4220" />
+        </RadialGradient>
+        <LinearGradient id="grain" x1="0" y1="0" x2="1" y2="0.25">
+          <Stop offset="0" stopColor="#000" stopOpacity="0" />
+          <Stop offset="0.5" stopColor="#000" stopOpacity="0.08" />
+          <Stop offset="1" stopColor="#000" stopOpacity="0" />
         </LinearGradient>
-        <LinearGradient id="knob" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#3B3F4A" />
-          <Stop offset="1" stopColor="#15171C" />
-        </LinearGradient>
+        <RadialGradient id="knob" cx="35%" cy="30%" r="70%">
+          <Stop offset="0" stopColor="#5A606E" />
+          <Stop offset="0.55" stopColor="#24272F" />
+          <Stop offset="1" stopColor="#0E0F13" />
+        </RadialGradient>
       </Defs>
-      <Circle cx={cx} cy={h * 0.13} r={w * 0.12} fill="url(#knob)" />
-      <Path d={`M${cx - w * 0.06} ${h * 0.2} L${cx + w * 0.06} ${h * 0.2} L${cx + w * 0.09} ${h * 0.52} L${cx - w * 0.09} ${h * 0.52} Z`} fill="url(#knob)" />
-      <Rect x={w * 0.04} y={h * 0.52} width={w * 0.92} height={h * 0.3} rx={w * 0.04} fill="url(#wood)" />
-      <Rect x={w * 0.04} y={h * 0.52} width={w * 0.92} height={h * 0.04} rx={w * 0.02} fill="#FFFFFF" opacity={0.18} />
-      <Rect x={0} y={h * 0.82} width={w} height={h * 0.18} rx={w * 0.03} fill={ink} />
-      <Rect x={0} y={h * 0.82} width={w} height={h * 0.05} fill="#000000" opacity={0.18} />
+      {/* goma entintada que asoma por el borde */}
+      <Rect x={0} y={0} width={w} height={h} rx={r} fill={ink} />
+      {/* bloque de madera */}
+      <Rect x={w * 0.035} y={h * 0.035} width={w * 0.93} height={h * 0.93} rx={Math.max(0, r - w * 0.035)} fill="url(#wood)" />
+      <Rect x={w * 0.035} y={h * 0.035} width={w * 0.93} height={h * 0.93} rx={Math.max(0, r - w * 0.035)} fill="url(#grain)" />
+      {/* bisel del canto */}
+      <Rect x={w * 0.1} y={h * 0.1} width={w * 0.8} height={h * 0.8} rx={Math.max(0, r - w * 0.1)} fill="none" stroke="#FFFFFF" strokeOpacity={0.22} strokeWidth={1.5} />
+      {/* pomo */}
+      <Ellipse cx={w / 2 + knob * 0.12} cy={h / 2 + knob * 0.16} rx={knob * 1.02} ry={knob} fill="#000" opacity={0.3} />
+      <Circle cx={w / 2} cy={h / 2} r={knob} fill="url(#knob)" />
+      <Circle cx={w / 2 - knob * 0.32} cy={h / 2 - knob * 0.36} r={knob * 0.26} fill="#FFFFFF" opacity={0.28} />
+      <Circle cx={w / 2} cy={h / 2} r={knob * 0.42} fill="none" stroke={ink} strokeWidth={2} opacity={0.9} />
     </Svg>
   );
 }
-
-const s = StyleSheet.create({
-  shadow: { position: 'absolute', borderRadius: 999, backgroundColor: '#000' },
-});
