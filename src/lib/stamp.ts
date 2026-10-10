@@ -44,8 +44,12 @@ export function stampXml({ shape, pictogram, name, sub, color, ghost }: StampSpe
   const stroke = (w: number, extra = '') => `fill="none" stroke="${ink}" stroke-width="${w}"${ghost ? ' stroke-dasharray="4 3"' : ''} ${extra}`;
   const txt = (t: string, x: number, y: number, size: string, weight = 900, ls = 1.2) =>
     ghost ? '' : `<text x="${x}" y="${y}" text-anchor="middle" font-family="Nunito_900Black" font-weight="${weight}" font-size="${size}" letter-spacing="${ls}" fill="${ink}">${t}</text>`;
-  const pict = (x: number, y: number, w: number) =>
-    `<svg x="${x}" y="${y}" width="${w}" height="${(w * 2) / 3}" viewBox="0 0 60 40" color="${ink}" opacity="${ghost ? 0.7 : 1}">${pictogram.replace(/currentColor/g, ink)}</svg>`;
+  // El pictograma (caja 60 × 40) se coloca con una transformación: los <svg> anidados
+  // con x/y no se posicionan igual en iOS y Android. Se centra en (cx, cy) con ancho w.
+  const pict = (cx: number, cy: number, w: number) => {
+    const k = w / 60;
+    return `<g transform="translate(${(cx - w / 2).toFixed(2)} ${(cy - (40 * k) / 2).toFixed(2)}) scale(${k.toFixed(4)})" opacity="${ghost ? 0.7 : 1}">${pictogram.replace(/currentColor/g, ink)}</g>`;
+  };
   let body = '';
   switch (shape) {
     case 'round':
@@ -53,28 +57,28 @@ export function stampXml({ shape, pictogram, name, sub, color, ghost }: StampSpe
         <circle cx="60" cy="60" r="56" ${stroke(3)}/><circle cx="60" cy="60" r="37" ${stroke(1.3)}/>
         ${ghost ? '' : `<text font-family="Nunito_900Black" font-size="${fit(name, 10.5, 125, 1.4)}" letter-spacing="1.4" fill="${ink}"><textPath href="#${id}a" startOffset="50%" text-anchor="middle">${n}</textPath></text>
         <text font-family="Nunito_900Black" font-size="${fit(sub, 8.4, 150)}" letter-spacing="1.2" fill="${ink}"><textPath href="#${id}b" startOffset="50%" text-anchor="middle">${s}</textPath></text>`}
-        <g clip-path="url(#${id}c)">${pict(32, 42, 56)}</g>`;
+        <g clip-path="url(#${id}c)">${pict(60, 60, 56)}</g>`;
       break;
     case 'ticket':
       body = `<path d="M12 22 H108 a6 6 0 0 1 6 6 V53 a7 7 0 0 0 0 14 V92 a6 6 0 0 1 -6 6 H12 a6 6 0 0 1 -6 -6 V67 a7 7 0 0 0 0 -14 V28 a6 6 0 0 1 6 -6 Z" ${stroke(3)}/>
         <path d="M15 40 H105 M15 85 H105" ${stroke(1.1, 'stroke-dasharray="3 2.5"')}/>
-        ${txt(n, 60, 35, fit(name, 10, 92))}${txt(s, 60, 94, fit(sub, 7.6, 92, 1), 800, 1)}${pict(31, 43.5, 58)}`;
+        ${txt(n, 60, 35, fit(name, 10, 92))}${txt(s, 60, 94, fit(sub, 7.6, 92, 1), 800, 1)}${pict(60, 62.5, 58)}`;
       break;
     case 'arch':
       body = `<path d="M14 106 V54 A46 46 0 0 1 106 54 V106 Z" ${stroke(3)}/><path d="M21 99 V55 A39 39 0 0 1 99 55 V99 Z" ${stroke(1.2)}/>
-        ${txt(n, 60, 84, fit(name, 9.6, 68))}${txt(s, 60, 94, fit(sub, 7, 66, 1), 800, 1)}${pict(32, 30, 56)}`;
+        ${txt(n, 60, 84, fit(name, 9.6, 68))}${txt(s, 60, 94, fit(sub, 7, 66, 1), 800, 1)}${pict(60, 48.6667, 56)}`;
       break;
     case 'postal':
       body = `<path d="${scallopPath()}" ${stroke(2.4)}/><rect x="20" y="20" width="80" height="80" ${stroke(1.2)}/>
-        ${txt(n, 60, 84, fit(name, 9.6, 72))}${txt(s, 60, 94, fit(sub, 7, 72, 1), 800, 1)}${pict(31, 28, 58)}`;
+        ${txt(n, 60, 84, fit(name, 9.6, 72))}${txt(s, 60, 94, fit(sub, 7, 72, 1), 800, 1)}${pict(60, 47.3333, 58)}`;
       break;
     case 'oval':
       body = `<ellipse cx="60" cy="60" rx="56" ry="42" ${stroke(3)}/><ellipse cx="60" cy="60" rx="48" ry="34" ${stroke(1.2)}/>
-        ${txt(n, 60, 82, fit(name, 9, 76))}${txt(s, 60, 91, fit(sub, 6.8, 68, 1), 800, 1)}${pict(35, 34, 50)}`;
+        ${txt(n, 60, 80, fit(name, 9, 76))}${txt(s, 60, 88.5, fit(sub, 6.8, 64, 1), 800, 1)}${pict(60, 50.6667, 50)}`;
       break;
     case 'chapa':
       body = `<path d="${chapaPath()}" ${stroke(2.6, 'stroke-linejoin="round"')}/><circle cx="60" cy="60" r="44" ${stroke(1.2)}/>
-        ${txt(s, 60, 31, fit(sub, 7, 60, 1), 800, 1)}${txt(n, 60, 88, fit(name, 9.6, 62))}${pict(33, 36, 54)}`;
+        ${txt(s, 60, 31, fit(sub, 7, 60, 1), 800, 1)}${txt(n, 60, 88, fit(name, 9.6, 62))}${pict(60, 57, 54)}`;
       break;
   }
   return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;

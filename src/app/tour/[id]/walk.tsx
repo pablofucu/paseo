@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui';
 import type { LngLat } from '@/data/types';
-import { cumulative, formatDistance, walkingMinutes } from '@/lib/geo';
+import { cumulative, formatDistance, projectOnRoute, walkingMinutes } from '@/lib/geo';
 import { guide, instruction, prepareLeg } from '@/lib/guidance';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { useNarration } from '@/lib/useNarration';
@@ -15,6 +15,7 @@ import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
 import { useWalkPosition, type PositionSource } from '@/lib/useWalkPosition';
 import { usePassport } from '@/store/passport';
+import { useSettings, type SimSpeed } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { functional, neutral, radius, shadow } from '@/theme/tokens';
 import { TourThemeProvider } from '@/theme/TourTheme';
@@ -30,7 +31,12 @@ export default function Walk() {
   const stop = tour.stops[target];
   const p = tour.palette;
   const insets = useSafeAreaInsets();
-  const [source, setSource] = useState<PositionSource>(__DEV__ ? 'simulated' : 'gps');
+  const { testMode, simSpeed, setSimSpeed } = useSettings();
+  const [source, setSource] = useState<PositionSource>(testMode ? 'simulated' : 'gps');
+  const [paused, setPaused] = useState(false);
+  /** Modo prueba: posición puesta a mano tocando el mapa (puede estar fuera de la ruta) */
+  const [manual, setManual] = useState<LngLat | null>(null);
+  const [resumeFrom, setResumeFrom] = useState<{ along: number; key: number } | undefined>(undefined);
   const [gpsOrigin, setGpsOrigin] = useState<LngLat | null>(null);
   const collectStamp = usePassport(s => s.collectStamp);
   const narration = useNarration();
@@ -45,7 +51,20 @@ export default function Walk() {
     return origin ? prepareLeg([origin, stop.coord]) : null;
   }, [route, target, origin, stop]);
 
-  const { position, heading, permission } = useWalkPosition(source, leg);
+  const sim = useMemo(() => ({ speed: simSpeed, paused: paused || !!manual, resumeFrom }), [simSpeed, paused, manual, resumeFrom]);
+  const walk = useWalkPosition(source, leg, sim);
+  const { heading, permission } = walk;
+  const position = manual ?? walk.position;
+
+  // Modo prueba: tocar el mapa te lleva allí; «Seguir» retoma el paseo desde el punto de la ruta más cercano
+  const moveTo = (p: LngLat) => { setSource('simulated'); setManual(p); };
+  const resume = () => {
+    if (manual && leg) setResumeFrom({ along: projectOnRoute(leg.line, manual, leg.cum).along, key: Date.now() });
+    setManual(null);
+    setSource('simulated');
+    setPaused(false);
+  };
+  const arriveNow = () => moveTo(stop.coord);
   // La primera posición GPS marca el inicio del camino hacia la primera parada
   if (target === 0 && source === 'gps' && position && !gpsOrigin) setGpsOrigin(position);
 
@@ -80,7 +99,7 @@ export default function Walk() {
   return (
     <TourThemeProvider palette={p}>
       <View style={{ flex: 1, backgroundColor: c.bg }}>
-        <Map style={StyleSheet.absoluteFill} mapStyle={style} compass={false} logo={false} attribution attributionPosition={{ bottom: 250, right: 8 }}>
+        <Map style={StyleSheet.absoluteFill} mapStyle={style} compass={false} logo={false} attribution attributionPosition={{ bottom: 250, right: 8 }} onPress={testMode ? e => moveTo(e.nativeEvent.lngLat) : undefined}>
           <Camera center={position ?? stop.coord} zoom={17} duration={700} easing="ease" padding={{ top: 160, bottom: 240, left: 0, right: 0 }} />
           {leg && (
             <GeoJSONSource id="route" data={line(leg.line)}>
@@ -125,9 +144,35 @@ export default function Walk() {
         </View>
 
         <IconButton label="Salir del tour" glyph="×" onPress={() => router.back()} style={{ position: 'absolute', left: 14, bottom: 262 + insets.bottom }} />
-        <Pressable accessibilityRole="button" onPress={() => setSource(v => (v === 'gps' ? 'simulated' : 'gps'))} style={[s.srcPill, { bottom: 268 + insets.bottom }]}>
-          <Text style={s.srcText}>{source === 'gps' ? 'GPS real' : 'Paseo simulado'}{route.quality === 'approximate' ? ' · ruta aproximada' : ''}</Text>
-        </Pressable>
+        {route.quality === 'approximate' && (
+          <View style={[s.srcPill, { bottom: 268 + insets.bottom }]}><Text style={s.srcText}>Ruta aproximada</Text></View>
+        )}
+
+        {/* Modo prueba: controles para recorrer el tour sin moverse */}
+        {testMode && (
+          <View style={[s.test, { top: insets.top + 150 }]}>
+            <View style={s.testRow}>
+              <Text style={s.testTitle}>Modo prueba</Text>
+              <Pressable accessibilityRole="button" onPress={() => { setManual(null); setSource(v => (v === 'gps' ? 'simulated' : 'gps')); }} style={s.testChip}>
+                <Text style={s.testChipText}>{source === 'gps' ? 'GPS real' : 'Simulado'}</Text>
+              </Pressable>
+            </View>
+            <View style={s.testRow}>
+              <Pressable accessibilityRole="button" onPress={() => (manual || paused || source === 'gps' ? resume() : setPaused(true))} style={[s.testChip, s.testOn]}>
+                <Text style={[s.testChipText, { color: '#fff' }]}>{manual || paused || source === 'gps' ? '▶ Andar' : 'II Parar'}</Text>
+              </Pressable>
+              {([1, 4, 16] as SimSpeed[]).map(v => (
+                <Pressable key={v} accessibilityRole="button" accessibilityLabel={`Velocidad ${v}x`} onPress={() => setSimSpeed(v)} style={[s.testChip, simSpeed === v && s.testOn]}>
+                  <Text style={[s.testChipText, simSpeed === v && { color: '#fff' }]}>{v}×</Text>
+                </Pressable>
+              ))}
+              <Pressable accessibilityRole="button" onPress={arriveNow} style={s.testChip}>
+                <Text style={s.testChipText}>⚑ Llegar</Text>
+              </Pressable>
+            </View>
+            <Text style={s.testHint}>Toca el mapa para moverte a ese punto (también fuera de la ruta).</Text>
+          </View>
+        )}
 
         {/* Hoja inferior */}
         <View style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
@@ -183,6 +228,13 @@ const s = StyleSheet.create({
   thenText: { fontFamily: font.heavy, fontSize: 13, color: '#fff' },
   srcPill: { position: 'absolute', right: 14, backgroundColor: 'rgba(28,26,23,0.82)', borderRadius: radius.pill, paddingHorizontal: 12, height: 32, justifyContent: 'center' },
   srcText: { fontFamily: font.black, fontSize: 12, color: '#fff' },
+  test: { position: 'absolute', left: 12, right: 12, backgroundColor: 'rgba(28,26,23,0.86)', borderRadius: 18, padding: 10, gap: 8 },
+  testRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  testTitle: { flex: 1, fontFamily: font.black, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: '#FFC53D' },
+  testChip: { height: 34, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.14)', justifyContent: 'center' },
+  testOn: { backgroundColor: '#F25C3B' },
+  testChipText: { fontFamily: font.black, fontSize: 13, color: '#fff' },
+  testHint: { fontFamily: font.bold, fontSize: 11.5, color: 'rgba(255,255,255,0.75)' },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: neutral.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 18, paddingTop: 14, gap: 10, ...shadow[3] },
   way: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.pill, padding: 5, paddingRight: 14, marginTop: -2 },
   wayPlay: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

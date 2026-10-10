@@ -31,7 +31,16 @@ Después, `npx expo start` y abre la build de desarrollo en el móvil.
 - **GitHub Actions** (`.github/workflows/android-apk.yml`): en cada push a `main` comprueba el código, compila un APK y lo deja en la pestaña *Actions* → la ejecución → *Artifacts* → `paseo-apk`. Se puede lanzar a mano con *Run workflow*. Está firmado con la clave de depuración: sirve para instalarlo en un móvil, no para Google Play.
 - **EAS**: `npx eas-cli@latest build --platform android --profile preview` genera también un APK instalable.
 
-En modo desarrollo el paseo arranca **simulado** (un punto que recorre la ruta 8× más rápido que andando). El botón «Paseo simulado / GPS real» del mapa cambia entre los dos.
+### Probar sin salir de casa: modo prueba
+
+Actívalo con el interruptor **Modo prueba** al final de la pantalla de inicio (se guarda en el móvil). En el mapa aparece un panel para:
+
+- **Andar / Parar** el paseo simulado sobre la ruta, a **1×, 4× o 16×** la velocidad de paseo
+- **⚑ Llegar**: te pone en la parada y salta la llegada (sello, vibración y audio)
+- **Tocar el mapa** para moverte a ese punto, también fuera de la ruta (para ver el aviso de «te has salido»); «Andar» sigue desde el punto de la ruta más cercano
+- Cambiar entre **GPS real** y **simulado**
+
+En **Mi pasaporte**, con el modo prueba activo, hay un botón para borrar todos los sellos.
 
 ## Comprobaciones
 
@@ -76,7 +85,7 @@ Un tour es un objeto `Tour` en `src/data/tours/`: paleta de 5 colores, paradas (
 ## Pendiente antes de probar en la calle
 
 - [ ] **Comprobar dos ubicaciones aproximadas**: el portal del kebab (C/ Navarro Caro 83) y el talud de las letras TOMARES (Avda. de la Arboleda). Las del Ayuntamiento y la iglesia salen de fuentes publicadas (ver `src/data/tours/tomares.ts`).
-- [x] **Ruta a pie real**: se calcula en el móvil con OSRM (perfil peatón, datos de OpenStreetMap) y se guarda para usarla sin conexión (`src/lib/routing.ts`). Las indicaciones dicen el nombre de la calle. Para producción, precalcularla al preparar el tour.
+- [x] **Ruta a pie fija por calles** en `src/data/tours/tomares.geo.json` (letras → Ayuntamiento 844 m, → iglesia 260 m, → kebab 212 m), con los giros y nombres de calle. Se genera con OSRM (perfil peatón, OpenStreetMap) desde el workflow **Rutas** de GitHub Actions: cambia las coordenadas en ese archivo y lánzalo con *Run workflow*.
 - [ ] **Teselas propias.** En desarrollo se usa OpenFreeMap (gratis, sin clave). Para producción: Protomaps autoalojado o MapTiler, configurado con `EXPO_PUBLIC_MAP_TILES`.
 - [ ] **Tipografía Nunito en el mapa.** Hay que publicar sus glifos (`EXPO_PUBLIC_MAP_GLYPHS`); ahora las calles usan Noto Sans.
 - [ ] **Audios grabados.** Ahora se narra con la voz del sistema (`useNarration`); cambiar a `expo-audio` cuando existan.

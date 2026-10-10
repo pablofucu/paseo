@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TOURS } from '@/data/tours';
 import { usePassport } from '@/store/passport';
+import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { brand, neutral, radius, shadow } from '@/theme/tokens';
 import { type } from '@/theme/type';
@@ -12,6 +13,7 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const done = usePassport(s => s.visits.filter(v => v.completedAt).length);
   const city = TOURS[0];
+  const { testMode, setTestMode } = useSettings();
   return (
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
       <View style={s.hero}>
@@ -42,6 +44,13 @@ export default function Home() {
             {t.price === 'free' && <View style={s.free}><Text style={s.freeText}>Gratis</Text></View>}
           </Pressable>
         ))}
+        <View style={s.test}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.testTitle}>Modo prueba</Text>
+            <Text style={type.caption}>Recorre los tours sin moverte: paseo simulado, velocidad, llegar a la parada o tocar el mapa para moverte.</Text>
+          </View>
+          <Switch accessibilityLabel="Modo prueba" value={testMode} onValueChange={setTestMode} trackColor={{ true: brand.coral, false: neutral.line }} thumbColor="#fff" />
+        </View>
       </View>
     </ScrollView>
   );
@@ -61,4 +70,6 @@ const s = StyleSheet.create({
   cardTitle: { fontFamily: font.serif, fontSize: 18, lineHeight: 21, color: neutral.ink, marginVertical: 3 },
   free: { position: 'absolute', right: 10, top: 10, backgroundColor: brand.sun, borderRadius: radius.pill, paddingHorizontal: 10, height: 26, justifyContent: 'center' },
   freeText: { fontFamily: font.black, fontSize: 12, color: neutral.ink },
+  test: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, padding: 14, borderRadius: 18, borderWidth: 1.5, borderStyle: 'dashed', borderColor: neutral.line },
+  testTitle: { fontFamily: font.black, fontSize: 15, color: neutral.ink, marginBottom: 2 },
 });

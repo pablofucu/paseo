@@ -1,4 +1,5 @@
 import type { ImageSourcePropType } from 'react-native';
+import type { RouteStep } from '@/lib/routing';
 import type { TourPalette } from '@/theme/tokens';
 
 /** [longitud, latitud], el mismo orden que usa MapLibre y GeoJSON */
@@ -66,5 +67,7 @@ export interface Tour {
   stops: Stop[];
   /** Ruta a pie de cada parada a la siguiente; legs[i] va de stops[i] a stops[i + 1] */
   legs: LngLat[][];
+  /** Giros con nombre de calle de cada tramo, si la ruta está fijada por calles */
+  legSteps?: RouteStep[][];
   onTheWay: OnTheWay[];
 }

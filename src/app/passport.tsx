@@ -5,6 +5,7 @@ import { TourSeal } from '@/components/Stamp';
 import { IconButton } from '@/components/ui';
 import { TOURS } from '@/data/tours';
 import { stampDate, usePassport } from '@/store/passport';
+import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { brand, neutral } from '@/theme/tokens';
 import { type } from '@/theme/type';
@@ -12,6 +13,8 @@ import { type } from '@/theme/type';
 export default function Passport() {
   const insets = useSafeAreaInsets();
   const visits = usePassport(s => s.visits);
+  const reset = usePassport(s => s.reset);
+  const testMode = useSettings(s => s.testMode);
   return (
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32, paddingHorizontal: 18, gap: 14 }}>
       <IconButton label="Volver" glyph="‹" onPress={() => router.back()} />
@@ -44,6 +47,11 @@ export default function Passport() {
         );
       })}
       {visits.length === 0 && <Text style={[type.caption, { textAlign: 'center' }]}>Haz un tour para conseguir tus primeros sellos.</Text>}
+      {testMode && visits.length > 0 && (
+        <Pressable accessibilityRole="button" onPress={reset} style={s.reset}>
+          <Text style={s.resetText}>Modo prueba: borrar todos los sellos</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -56,4 +64,6 @@ const s = StyleSheet.create({
   visit: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderColor: '#E6DDCE' },
   visitDate: { fontFamily: font.bold, fontSize: 15, color: neutral.ink },
   visitCount: { fontFamily: font.black, fontSize: 14, color: neutral.ink2 },
+  reset: { alignSelf: 'center', paddingHorizontal: 16, height: 40, justifyContent: 'center', borderRadius: 999, borderWidth: 1.5, borderColor: neutral.line },
+  resetText: { fontFamily: font.black, fontSize: 13, color: neutral.ink2 },
 });
