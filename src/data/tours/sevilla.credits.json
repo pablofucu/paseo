@@ -1,0 +1,32 @@
+{
+  "torre-oro": {
+    "file": "Torre_del_Oro,_Guadalquivir,_Sevilla.jpg",
+    "author": "Martinvl",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Torre_del_Oro,_Guadalquivir,_Sevilla.jpg"
+  },
+  "archivo": {
+    "file": "Archivo_de_Indias_002.jpg",
+    "author": "Anual",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Archivo_de_Indias_002.jpg"
+  },
+  "giralda": {
+    "file": "La_Giralda_August_2012_Seville_Spain.jpg",
+    "author": "Jebulon",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:La_Giralda_August_2012_Seville_Spain.jpg"
+  },
+  "alcazar": {
+    "file": "Fachada_del_Palacio_del_rey_don_Pedro.jpg",
+    "author": "Alberto.Bravo",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Fachada_del_Palacio_del_rey_don_Pedro.jpg"
+  },
+  "elvira": {
+    "file": "Callejon_del_agua_2023An002.jpg",
+    "author": "Anual",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Callejon_del_agua_2023An002.jpg"
+  }
+}
