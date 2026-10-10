@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paseo · Design System v0.3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ---------- Marca (la app, fuera de los tours) ---------- */
+    --brand: #F25C3B;        /* coral */
+    --brand-dark: #C9401F;
+    --sun: #FFC53D;          /* sol */
+    --sky: #3D8BFD;          /* cielo */
+    --navy: #1D2B4F;         /* tinta */
+    --rose: #F7A7B8;         /* rosa */
+
+    /* ---------- Neutros cálidos ---------- */
+    --ink: #1C1A17;
+    --ink-2: #5A544C;
+    --ink-3: #9A9389;
+    --line: #E8E2D8;
+    --surface: #FFFFFF;
+    --bg: #FAF6F0;
+    --bg-2: #F2EDE4;
+    --map: #F1ECE2;
+    --map-road: #FFFFFF;
+    --map-park: #DCE8CF;
+    --map-water: #C8DFF0;
+
+    /* ---------- Funcionales ---------- */
+    --me: #2D7FF9;           /* tu posición (siempre azul) */
+    --premium: #1D2B4F;      /* bloqueado / de pago */
+    --gold: #F5B731;
+    --warn: #E39B0B;
+    --warn-soft: #FFF3D6;
+
+    /* ---------- Tema de tour (por defecto = marca) ---------- */
+    --t: var(--brand); --t-2: var(--sun); --t-soft: #FDE8E1; --t-deep: #5C1E0E; --t-on: #fff;
+
+    --r-sm: 10px; --r-md: 16px; --r-lg: 24px; --r-pill: 999px;
+    --sh-1: 0 1px 2px rgba(28,26,23,.08);
+    --sh-2: 0 4px 14px rgba(28,26,23,.10), 0 1px 3px rgba(28,26,23,.06);
+    --sh-3: 0 14px 34px rgba(28,26,23,.18), 0 2px 6px rgba(28,26,23,.08);
+
+    --font: "Nunito", ui-rounded, system-ui, sans-serif;
+    --serif: "Fraunces", Georgia, serif;
+  }
+
+  /* ---------- Paletas por tour ---------- */
+  .th-austrias { --t: #1F6F8B; --t-2: #E3A33B; --t-soft: #E2F0F4; --t-deep: #0D3442; --t-on: #fff; }
+  .th-arte     { --t: #2E4FD6; --t-2: #FF7A66; --t-soft: #E8ECFF; --t-deep: #131D63; --t-on: #fff; }
+  .th-tapas    { --t: #D93A2B; --t-2: #F5A524; --t-soft: #FDE7E2; --t-deep: #5A1209; --t-on: #fff; }
+  .th-noche    { --t: #2A2F6E; --t-2: #F2C14E; --t-soft: #E6E7F4; --t-deep: #11143A; --t-on: #fff; }
+  .th-retiro   { --t: #D9466F; --t-2: #8BBF4E; --t-soft: #FCE6EC; --t-deep: #5E1229; --t-on: #fff; }
+  .th-gaudi    { --t: #0E9AAE; --t-2: #F27B2A; --t-soft: #DDF4F6; --t-deep: #053E47; --t-on: #fff; }
+  .th-sevilla  { --t: #E5A823; --t-2: #1F4FA8; --t-soft: #FDF2D6; --t-deep: #4A3200; --t-on: #1C1A17; }
+  .th-granada  { --t: #B5472E; --t-2: #3E8E8A; --t-soft: #F7E4DD; --t-deep: #4A170B; --t-on: #fff; }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px 96px; }
+  .ico { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; flex: none; }
+  .serif { font-family: var(--serif); }
+
+  /* ================== DOCUMENTACIÓN ================== */
+  .hero { background: var(--navy); color: #fff; padding: 64px 0 56px; position: relative; overflow: hidden; }
+  .hero .wrap { padding-bottom: 0; position: relative; z-index: 1; }
+  .hero .eyebrow { color: var(--sun); }
+  .hero h1 { font-family: var(--serif); font-size: 72px; font-weight: 800; margin: 0; letter-spacing: -1.5px; line-height: 1; }
+  .hero p.intro { font-size: 19px; font-weight: 600; opacity: .9; max-width: 600px; margin: 14px 0 0; line-height: 1.45; }
+  .hero .blobs { position: absolute; right: -30px; top: -20px; width: 520px; height: 340px; }
+  @media (max-width: 1100px) { .hero .blobs { opacity: .25; } }
+  .hero .blobs i { position: absolute; border-radius: 50%; }
+  nav.toc { position: sticky; top: 0; z-index: 10; background: rgba(250,246,240,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  nav.toc .wrap { display: flex; gap: 6px; padding: 10px 32px; overflow-x: auto; }
+  nav.toc a { font-weight: 800; font-size: 14px; color: var(--ink-2); text-decoration: none; padding: 6px 12px; border-radius: var(--r-pill); white-space: nowrap; }
+  nav.toc a:hover { background: var(--bg-2); color: var(--ink); }
+  section.doc { padding-top: 60px; }
+  .eyebrow { font-size: 13px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--brand); margin: 0 0 6px; }
+  h2.sec { font-family: var(--serif); font-size: 42px; font-weight: 800; margin: 0 0 8px; letter-spacing: -.6px; }
+  .lead { font-size: 17px; color: var(--ink-2); max-width: 740px; margin: 0 0 26px; line-height: 1.5; }
+  .lead b { color: var(--ink); }
+  .panel { background: var(--surface); border-radius: var(--r-lg); padding: 24px; box-shadow: var(--sh-1); }
+  .grid { display: grid; gap: 16px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) { .g3, .g4 { grid-template-columns: repeat(2, 1fr); } .g2 { grid-template-columns: 1fr; } }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--ink-3); }
+  .comp-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 42px 0 6px; flex-wrap: wrap; }
+  .comp-title h3 { margin: 0; font-size: 22px; font-weight: 900; }
+  .usage { font-size: 15px; color: var(--ink-2); margin: 0 0 14px; max-width: 780px; line-height: 1.5; }
+  .stage { background: var(--surface); border-radius: var(--r-lg); padding: 24px; box-shadow: var(--sh-1); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+  .stage.map-bg { background: var(--map); }
+  .stage.cream { background: var(--bg-2); }
+  .sub-h { font-size: 18px; font-weight: 900; margin: 30px 0 12px; }
+
+  /* Swatches de marca */
+  .bswatch { border-radius: var(--r-md); overflow: hidden; background: var(--surface); box-shadow: var(--sh-1); }
+  .bswatch .c { height: 100px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; font-weight: 900; font-size: 17px; }
+  .bswatch .c code { color: inherit; opacity: .85; }
+  .bswatch .m { padding: 10px 14px; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+  .bswatch .m b { color: var(--ink); }
+
+  /* Paletas de tour */
+  .palette { background: var(--surface); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-1); }
+  .palette .top { background: var(--t); color: var(--t-on); padding: 16px 16px 14px; position: relative; overflow: hidden; height: 116px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .palette .top .sk { position: absolute; right: -8px; bottom: 0; width: 150px; height: 70px; color: var(--t-deep); opacity: .55; }
+  .palette .top .sun-dot { position: absolute; right: 70px; top: 16px; width: 28px; height: 28px; border-radius: 50%; background: var(--t-2); }
+  .palette .top small { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; opacity: .85; position: relative; }
+  .palette .top b { font-family: var(--serif); font-size: 22px; font-weight: 800; position: relative; line-height: 1.1; }
+  .palette .row { display: flex; }
+  .palette .row i { flex: 1; height: 30px; }
+  .palette .meta { padding: 10px 14px 12px; font-size: 11.5px; color: var(--ink-3); line-height: 1.6; }
+  .palette .meta span { font-family: ui-monospace, Consolas, monospace; }
+
+  .token-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .token-table td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .token-table tr:last-child td { border-bottom: 0; }
+  .token-table td:first-child { font-family: ui-monospace, Consolas, monospace; font-size: 13px; font-weight: 700; width: 120px; }
+  .token-table td:nth-child(2) { color: var(--ink-2); }
+
+  .type-row { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .type-row:last-child { border-bottom: 0; }
+  .type-row .spec { font-size: 13px; color: var(--ink-3); line-height: 1.5; }
+  .type-row .spec b { color: var(--ink); font-size: 14px; display: block; font-weight: 800; }
+
+  .t-hero { font-family: var(--serif); font-size: 48px; font-weight: 800; line-height: 1.02; letter-spacing: -1px; }
+  .t-title { font-family: var(--serif); font-size: 28px; font-weight: 800; line-height: 1.1; letter-spacing: -.3px; }
+  .t-display { font-size: 56px; font-weight: 900; line-height: .95; letter-spacing: -2px; }
+  .t-headline { font-size: 19px; font-weight: 900; line-height: 1.25; }
+  .t-body { font-size: 16px; font-weight: 600; line-height: 1.55; }
+  .t-caption { font-size: 13px; font-weight: 700; line-height: 1.35; }
+  .t-overline { font-size: 12px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+
+  .idea { background: var(--surface); border-radius: var(--r-md); padding: 18px; box-shadow: var(--sh-1); border-left: 5px solid var(--c); }
+  .idea h5 { margin: 0 0 6px; font-size: 16px; font-weight: 900; }
+  .idea p { margin: 0; font-size: 14.5px; color: var(--ink-2); line-height: 1.5; }
+
+  /* ================== COMPONENTES ================== */
+  /* Botones */
+  .btn { font-family: var(--font); border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-weight: 900; transition: transform .12s, filter .12s; text-decoration: none; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--t); color: var(--t-on); font-size: 18px; height: 58px; padding: 0 28px; border-radius: var(--r-pill); box-shadow: 0 10px 20px -10px var(--t); }
+  .btn-primary.block { width: 100%; }
+  .btn-dark { background: var(--ink); color: #fff; font-size: 18px; height: 58px; padding: 0 28px; border-radius: var(--r-pill); }
+  .btn-dark.block { width: 100%; }
+  .btn-premium { background: var(--premium); color: #fff; font-size: 18px; height: 58px; padding: 0 26px; border-radius: var(--r-pill); }
+  .btn-premium .ico { color: var(--gold); }
+  .btn-premium.block { width: 100%; }
+  .btn-secondary { background: var(--surface); color: var(--ink); font-size: 16px; height: 50px; padding: 0 20px; border-radius: var(--r-pill); box-shadow: var(--sh-2); }
+  .btn-text { background: none; color: var(--ink-2); font-size: 15px; height: 40px; padding: 0 8px; text-decoration: underline; text-underline-offset: 3px; }
+  .btn-icon { width: 46px; height: 46px; border-radius: 50%; background: var(--surface); box-shadow: var(--sh-2); color: var(--ink); font-size: 20px; padding: 0; }
+  .btn-icon.sm { width: 38px; height: 38px; font-size: 17px; }
+  .btn-icon.glass { background: rgba(255,255,255,.88); backdrop-filter: blur(6px); }
+
+  /* Idioma */
+  .lang-list { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 8px; }
+  .lang { display: flex; align-items: center; gap: 14px; background: var(--surface); border-radius: var(--r-md); padding: 10px 14px 10px 10px; border: 2px solid transparent; box-shadow: var(--sh-1); cursor: pointer; }
+  .lang .code { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 900; font-size: 14px; color: #fff; background: var(--c); flex: none; }
+  .lang .n { flex: 1; } .lang .n b { display: block; font-size: 16px; font-weight: 900; } .lang .n span { font-size: 12.5px; color: var(--ink-3); font-weight: 700; }
+  .lang .chk { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; color: #fff; font-size: 15px; }
+  .lang.sel { border-color: var(--ink); }
+  .lang.sel .chk { background: var(--ink); border-color: var(--ink); }
+  .lang-pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 6px; border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--sh-1); font-weight: 900; font-size: 13px; }
+  .lang-pill i { width: 24px; height: 24px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-style: normal; font-size: 10px; }
+
+  /* Ilustración / foto placeholder */
+  .pic { position: relative; overflow: hidden; background: linear-gradient(165deg, var(--t-2) -10%, var(--t) 70%); color: var(--t-deep); }
+  .pic .sk { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 62%; }
+  .pic .sunc { position: absolute; width: 22%; aspect-ratio: 1; border-radius: 50%; background: var(--t-2); right: 14%; top: 14%; opacity: .95; }
+  .pic.v2 { background: linear-gradient(180deg, var(--t-soft) 0%, var(--t-2) 120%); }
+  .pic.v2 .sunc { background: var(--t); opacity: .25; }
+  .pic.v3 { background: linear-gradient(200deg, var(--t-deep) 0%, var(--t) 100%); color: #000; }
+  .pic.v3 .sunc { background: var(--t-2); width: 12%; }
+  .pic.v4 { background: linear-gradient(180deg, var(--t-2) 0%, var(--t-soft) 100%); }
+  .pic.v4 .sunc { background: #fff; opacity: .7; }
+
+  /* Tarjeta de ciudad */
+  .city { position: relative; border-radius: 22px; overflow: hidden; height: 150px; box-shadow: var(--sh-2); width: 100%; }
+  .city .pic { position: absolute; inset: 0; }
+  .city .lbl { position: absolute; left: 16px; bottom: 14px; color: #fff; text-shadow: 0 1px 10px rgba(0,0,0,.25); }
+  .city .lbl b { font-family: var(--serif); font-size: 28px; font-weight: 800; display: block; line-height: 1; }
+  .city .lbl span { font-size: 13px; font-weight: 800; opacity: .95; }
+  .city .count { position: absolute; right: 12px; top: 12px; background: rgba(255,255,255,.92); color: var(--ink); border-radius: var(--r-pill); font-size: 12px; font-weight: 900; padding: 5px 10px; }
+  .city.sm { height: 120px; } .city.sm .lbl b { font-size: 22px; }
+
+  /* Tarjeta de tour */
+  .tour-card { display: flex; gap: 12px; background: var(--surface); border-radius: 20px; padding: 10px; box-shadow: var(--sh-1); width: 100%; max-width: 380px; position: relative; align-items: stretch; }
+  .tour-card .pic { width: 92px; border-radius: 14px; flex: none; min-height: 100px; }
+  .tour-card .bd { flex: 1; min-width: 0; padding: 4px 4px 2px 0; display: flex; flex-direction: column; }
+  .tour-card .cat { font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: var(--t); line-height: 26px; min-height: 26px; padding-right: 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .th-sevilla .tour-card .cat, .tour-card.th-sevilla .cat { color: #A87500; }
+  .tour-card h4 { font-family: var(--serif); font-size: 18px; font-weight: 800; margin: 2px 0 6px; line-height: 1.15; }
+  .tour-card .mt { font-size: 12.5px; font-weight: 800; color: var(--ink-3); display: flex; gap: 10px; margin-top: auto; }
+  .tour-card .tag { position: absolute; right: 10px; top: 10px; }
+  .tour-card.locked .pic::after { content: ""; position: absolute; inset: 0; background: rgba(29,43,79,.35); }
+  .tour-card.locked .pic .lock-big { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 26px; z-index: 1; }
+  .tour-card .bar { height: 5px; border-radius: 3px; background: var(--t-soft); margin-top: 8px; overflow: hidden; }
+  .tour-card .bar i { display: block; height: 100%; background: var(--t); border-radius: 3px; }
+
+  .tag { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: var(--r-pill); font-size: 12px; font-weight: 900; }
+  .tag.free { background: var(--sun); color: var(--ink); }
+  .tag.price { background: var(--premium); color: #fff; }
+  .tag.price .ico { color: var(--gold); }
+  .tag.prog { background: var(--t-soft); color: var(--t-deep); }
+  .tag.done { background: var(--ink); color: #fff; }
+  .tag.new { background: var(--rose); color: #6B1027; }
+
+  .filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .fchip { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: var(--r-pill); background: var(--surface); box-shadow: var(--sh-1); font-weight: 800; font-size: 14px; white-space: nowrap; border: 2px solid transparent; }
+  .fchip i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+  .fchip.sel { background: var(--ink); color: #fff; }
+
+  .pack { display: flex; align-items: center; gap: 12px; background: var(--premium); color: #fff; border-radius: 20px; padding: 14px 16px; width: 100%; max-width: 380px; position: relative; overflow: hidden; }
+  .pack .stack { display: flex; flex: none; }
+  .pack .stack i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--premium); margin-left: -8px; }
+  .pack .stack i:first-child { margin-left: 0; }
+  .pack .tx { flex: 1; } .pack .tx b { display: block; font-size: 15px; font-weight: 900; } .pack .tx span { font-size: 12.5px; opacity: .8; font-weight: 700; }
+  .pack .pr { background: var(--gold); color: var(--ink); font-weight: 900; border-radius: var(--r-pill); padding: 6px 12px; font-size: 14px; }
+
+  /* Opciones de compra */
+  .plan { display: flex; align-items: center; gap: 12px; border: 2px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; background: var(--surface); width: 100%; max-width: 380px; position: relative; }
+  .plan .rd { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+  .plan.sel { border-color: var(--premium); }
+  .plan.sel .rd { border: 7px solid var(--premium); }
+  .plan .tx { flex: 1; } .plan .tx b { display: block; font-size: 15px; font-weight: 900; } .plan .tx span { font-size: 12.5px; color: var(--ink-3); font-weight: 700; }
+  .plan .pr { font-weight: 900; font-size: 18px; }
+  .plan .best { position: absolute; top: -11px; right: 12px; background: var(--sun); color: var(--ink); font-size: 11px; font-weight: 900; padding: 3px 8px; border-radius: 6px; }
+  .incl { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .incl li { display: flex; gap: 10px; align-items: center; font-size: 14.5px; font-weight: 700; color: var(--ink-2); }
+  .incl li .ico { color: var(--t); font-size: 18px; }
+
+  /* Progreso */
+  .progress { width: 100%; max-width: 380px; }
+  .progress .top { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 800; color: var(--ink-2); margin-bottom: 8px; }
+  .progress .top b { color: var(--ink); font-weight: 900; }
+  .progress .bar { display: flex; gap: 4px; }
+  .progress .bar i { flex: 1; height: 7px; border-radius: 4px; background: var(--line); }
+  .progress .bar i.done { background: var(--t); }
+  .progress .bar i.now { background: linear-gradient(90deg, var(--t-2) 55%, var(--line) 55%); }
+
+  /* Paradas en mapa */
+  .stop-pin { width: 36px; height: 36px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 900; font-size: 16px; box-shadow: var(--sh-2); flex: none; }
+  .stop-pin.pending { background: #fff; color: var(--t); border: 3px solid var(--t); }
+  .stop-pin.done { background: var(--t); color: var(--t-on); opacity: .5; }
+  .stop-pin.current { width: 50px; height: 50px; font-size: 21px; background: var(--t-2); color: var(--ink); border: 4px solid #fff; box-shadow: 0 0 0 8px color-mix(in srgb, var(--t-2) 35%, transparent), var(--sh-2); }
+  .me-dot { width: 22px; height: 22px; border-radius: 50%; background: var(--me); border: 4px solid #fff; box-shadow: 0 0 0 8px rgba(45,127,249,.18), var(--sh-2); }
+  .me-dot.heading { position: relative; }
+  .me-dot.heading::before { content: ""; position: absolute; left: 50%; top: -22px; transform: translateX(-50%); border: 12px solid transparent; border-bottom: 22px solid rgba(45,127,249,.25); border-top: 0; }
+  .poi { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 14px; padding: 6px 10px 6px 6px; box-shadow: var(--sh-2); font-size: 12.5px; font-weight: 800; max-width: 220px; position: relative; }
+  .poi .ph { width: 34px; height: 34px; border-radius: 10px; flex: none; }
+  .poi b { display: block; font-size: 13px; font-weight: 900; }
+  .poi span { color: var(--t); }
+  .poi::after { content: ""; position: absolute; left: 20px; bottom: -7px; border: 7px solid transparent; border-top-color: #fff; border-bottom: 0; }
+
+  /* Tarjeta de indicación */
+  .direction { background: var(--t-deep); color: #fff; border-radius: 24px; box-shadow: var(--sh-3); width: 100%; max-width: 380px; overflow: hidden; }
+  .direction .main { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+  .direction .arrow { width: 60px; height: 60px; border-radius: 18px; background: var(--t-2); color: var(--ink); display: grid; place-items: center; font-size: 34px; flex: none; }
+  .direction .dist { font-size: 38px; font-weight: 900; letter-spacing: -1px; line-height: 1; }
+  .direction .instr { font-size: 16px; font-weight: 700; opacity: .92; margin-top: 4px; line-height: 1.3; }
+  .direction .then { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.22); padding: 9px 18px; font-size: 14px; font-weight: 800; }
+  .direction .then .ico { font-size: 18px; color: var(--t-2); }
+  .direction.off { background: var(--warn); color: var(--ink); }
+  .direction.off .arrow { background: rgba(255,255,255,.55); }
+  .direction.off .then { background: rgba(0,0,0,.08); }
+  .direction.off .then .ico { color: var(--ink); }
+
+  /* Hoja siguiente parada */
+  .next-sheet { background: var(--surface); border-radius: 26px; padding: 16px 18px 18px; box-shadow: var(--sh-3); width: 100%; max-width: 380px; }
+  .next-sheet .row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+  .next-sheet .row .pic { width: 56px; height: 56px; border-radius: 14px; flex: none; }
+  .next-sheet .row .t { flex: 1; min-width: 0; }
+  .next-sheet .row small { display: block; font-size: 11.5px; font-weight: 900; color: var(--t); text-transform: uppercase; letter-spacing: 1px; }
+  .next-sheet .row strong { display: block; font-size: 18px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .next-sheet .row em { font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--ink-3); }
+  .next-sheet .row .eta { text-align: right; font-weight: 900; font-size: 20px; line-height: 1.1; }
+  .next-sheet .row .eta span { display: block; font-size: 12px; color: var(--ink-3); font-weight: 700; }
+
+  /* Mini reproductor (caminando) */
+  .mini-player { display: flex; align-items: center; gap: 10px; background: var(--t-soft); border-radius: var(--r-pill); padding: 5px 14px 5px 5px; font-size: 13px; font-weight: 800; color: var(--t-deep); max-width: 380px; width: 100%; }
+  .mini-player .pl { width: 34px; height: 34px; border-radius: 50%; background: var(--t); color: var(--t-on); display: grid; place-items: center; font-size: 14px; flex: none; }
+  .mini-player .wave { display: flex; gap: 2px; align-items: center; margin-left: auto; }
+  .mini-player .wave i { width: 3px; border-radius: 2px; background: var(--t); }
+
+  /* Reproductor completo */
+  .player { background: var(--t-deep); color: #fff; border-radius: 22px; padding: 16px; width: 100%; max-width: 380px; }
+  .player .hd { display: flex; align-items: center; gap: 10px; }
+  .player .hd .ico { color: var(--t-2); font-size: 18px; }
+  .player .hd b { font-size: 15px; font-weight: 900; flex: 1; }
+  .player .hd .spd { font-size: 12px; font-weight: 900; background: rgba(255,255,255,.15); border-radius: 8px; padding: 4px 8px; }
+  .player .wavebar { display: flex; align-items: center; gap: 2px; height: 34px; margin: 12px 0 4px; }
+  .player .wavebar i { flex: 1; border-radius: 2px; background: rgba(255,255,255,.28); }
+  .player .wavebar i.on { background: var(--t-2); }
+  .player .times { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; opacity: .75; }
+  .player .ctr { display: flex; justify-content: center; align-items: center; gap: 26px; margin-top: 8px; }
+  .player .ctr button { background: none; border: 0; color: #fff; font-size: 22px; cursor: pointer; display: grid; place-items: center; position: relative; font-family: var(--font); }
+  .player .ctr button small { position: absolute; font-size: 8.5px; font-weight: 900; top: 50%; left: 50%; transform: translate(-50%, -40%); }
+  .player .ctr .big { width: 56px; height: 56px; border-radius: 50%; background: var(--t-2); color: var(--ink); font-size: 22px; }
+  .player .tr { display: flex; justify-content: center; margin-top: 10px; }
+  .player .tr span { font-size: 12.5px; font-weight: 800; opacity: .85; display: inline-flex; gap: 6px; align-items: center; }
+
+  /* Galería */
+  .gallery { position: relative; width: 100%; max-width: 380px; }
+  .gallery .main { height: 210px; border-radius: 20px; }
+  .gallery .count { position: absolute; right: 12px; top: 12px; background: rgba(0,0,0,.45); color: #fff; font-size: 12px; font-weight: 900; padding: 4px 9px; border-radius: var(--r-pill); }
+  .gallery .dots { position: absolute; left: 0; right: 0; bottom: 12px; display: flex; justify-content: center; gap: 5px; }
+  .gallery .dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.55); }
+  .gallery .dots i.on { width: 20px; border-radius: 4px; background: #fff; }
+  .gallery .cap { position: absolute; left: 12px; bottom: 30px; color: #fff; font-size: 12px; font-weight: 800; text-shadow: 0 1px 6px rgba(0,0,0,.4); }
+  .thumbs { display: flex; gap: 6px; margin-top: 8px; }
+  .thumbs .pic { flex: 1; height: 52px; border-radius: 10px; }
+  .thumbs .pic.on { outline: 3px solid var(--t-2); outline-offset: -3px; }
+
+  /* Bloques de contenido */
+  .look { display: flex; gap: 12px; background: var(--t-soft); border-radius: 18px; padding: 12px; width: 100%; max-width: 380px; }
+  .look .pic { width: 84px; height: 84px; border-radius: 12px; flex: none; }
+  .look small { font-size: 11.5px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: var(--t-deep); display: flex; align-items: center; gap: 5px; }
+  .look p { margin: 4px 0 0; font-size: 14px; font-weight: 700; line-height: 1.4; color: var(--ink); }
+  .fact { background: var(--t-2); color: var(--ink); border-radius: 18px; padding: 14px 16px; width: 100%; max-width: 380px; position: relative; overflow: hidden; }
+  .fact small { font-size: 11.5px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+  .fact p { margin: 4px 0 0; font-family: var(--serif); font-size: 18px; font-weight: 700; line-height: 1.3; }
+  .fact .q { position: absolute; right: 10px; top: -14px; font-family: var(--serif); font-size: 90px; opacity: .18; font-weight: 800; }
+  .quote { border-left: 4px solid var(--t); padding: 2px 0 2px 14px; font-family: var(--serif); font-size: 17px; font-weight: 600; font-style: italic; color: var(--ink-2); max-width: 380px; }
+
+  /* Lista de paradas */
+  .stop-list { width: 100%; max-width: 380px; }
+  .stop-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; position: relative; }
+  .stop-item:not(:last-child)::after { content: ""; position: absolute; left: 17px; top: 46px; bottom: -10px; width: 3px; background: radial-gradient(circle, var(--t) 1.5px, transparent 2px) 0 0 / 3px 8px repeat-y; opacity: .5; }
+  .stop-item .stop-pin { box-shadow: none; }
+  .stop-item .t { flex: 1; } .stop-item .t b { display: block; font-size: 15.5px; font-weight: 900; } .stop-item .t span { font-size: 13px; font-weight: 700; color: var(--ink-3); }
+  .stop-item .pic { width: 46px; height: 46px; border-radius: 12px; }
+
+  .meta-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: var(--r-pill); background: var(--t-soft); font-size: 14px; font-weight: 800; color: var(--t-deep); }
+  .meta-chip .ico { font-size: 16px; }
+  .notice { display: flex; gap: 10px; align-items: flex-start; background: var(--warn-soft); color: #6B4700; border-radius: var(--r-md); padding: 12px 14px; font-size: 14px; font-weight: 700; line-height: 1.4; max-width: 380px; }
+  .notice .ico { font-size: 19px; color: var(--warn); margin-top: 1px; }
+  .search { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: var(--r-pill); height: 48px; padding: 0 18px; box-shadow: var(--sh-1); color: var(--ink-3); font-weight: 700; font-size: 15px; width: 100%; max-width: 380px; }
+  .search .ico { color: var(--ink); font-size: 18px; }
+
+  /* ================== PANTALLAS ================== */
+  .phones { display: flex; gap: 26px; flex-wrap: wrap; justify-content: center; }
+  .phone { width: 330px; height: 700px; border-radius: 46px; background: #0C0D0F; padding: 10px; box-shadow: var(--sh-3); flex: none; }
+  .screen { width: 100%; height: 100%; border-radius: 37px; overflow: hidden; position: relative; background: var(--bg); }
+  .statusbar { position: absolute; top: 0; left: 0; right: 0; height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 6px 28px 0; font-weight: 900; font-size: 15px; z-index: 8; pointer-events: none; }
+  .statusbar.light { color: #fff; }
+  .statusbar .bat { width: 24px; height: 12px; border-radius: 3px; background: currentColor; display: inline-block; }
+  .scroll { position: absolute; inset: 0; overflow-y: auto; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .abs { position: absolute; }
+  .pad { padding-left: 18px; padding-right: 18px; }
+  .home-ind { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 120px; height: 5px; border-radius: 3px; background: var(--ink); z-index: 9; }
+  .home-ind.light { background: #fff; }
+  .caption { text-align: center; font-weight: 900; color: var(--ink); margin-top: 14px; font-size: 15px; }
+  .caption small { display: block; font-weight: 700; color: var(--ink-3); font-size: 13px; margin-top: 2px; }
+  .bottom-cta { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 18px 26px; background: linear-gradient(rgba(250,246,240,0), var(--bg) 35%); z-index: 6; }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 78px; background: var(--surface); border-top: 1px solid var(--line); display: flex; justify-content: space-around; padding-top: 10px; z-index: 6; }
+  .tabbar a { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; color: var(--ink-3); text-decoration: none; }
+  .tabbar a .ico { font-size: 22px; }
+  .tabbar a.on { color: var(--brand); }
+  .sec-h { display: flex; justify-content: space-between; align-items: baseline; margin: 22px 0 10px; }
+  .sec-h b { font-size: 17px; font-weight: 900; }
+  .sec-h a { font-size: 13px; font-weight: 800; color: var(--brand); text-decoration: none; }
+  .phone .direction .main { padding: 13px 14px; gap: 12px; }
+  .phone .direction .arrow { width: 52px; height: 52px; font-size: 30px; border-radius: 15px; }
+  .phone .direction .dist { font-size: 32px; }
+  .phone .direction .instr { font-size: 14.5px; }
+  .phone .direction .then { padding: 8px 14px; font-size: 13px; }
+  .phone .next-sheet { border-radius: 26px 26px 0 0; padding-bottom: 30px; max-width: none; }
+  .phone .btn-primary, .phone .btn-dark, .phone .btn-premium { height: 54px; font-size: 17px; }
+  .phone .gallery .main { border-radius: 0; height: 270px; }
+  .scrim { position: absolute; inset: 0; background: rgba(28,26,23,.5); z-index: 6; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 28px 28px 0 0; z-index: 7; padding: 10px 18px 26px; }
+  .sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 12px; }
+  .confetti i { position: absolute; width: 10px; height: 16px; border-radius: 3px; }
+  .stars { display: flex; justify-content: center; gap: 6px; font-size: 30px; color: var(--sun); }
+  .stars .off { color: var(--line); }
+
+  footer { text-align: center; color: var(--ink-3); font-size: 13px; font-weight: 700; padding: 40px 0 0; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- Iconos -->
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 20v-6a4 4 0 0 0-4-4H5m4-4L5 10l4 4" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 20v-6a4 4 0 0 1 4-4h6m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-straight" viewBox="0 0 24 24"><path d="M12 21V4m-6 6 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-uturn" viewBox="0 0 24 24"><path d="M7 21V9a4 4 0 0 1 8 0v8m-4-4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.6 7-12.2A7 7 0 0 0 5 9.8C5 15.4 12 22 12 22Z" fill="currentColor"/><circle cx="12" cy="9.8" r="2.6" fill="#fff"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.4-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5Z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.5" fill="currentColor"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.5" fill="currentColor"/></symbol>
+    <symbol id="i-back15" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 3v4h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-fwd15" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 3v4h-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="i-locate" viewBox="0 0 24 24"><path d="M21 3 3 10.5l7.6 2.9L13.5 21z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13.5" cy="4" r="2.2" fill="currentColor"/><path d="M10 21l2.2-6 2.6 2.4V21M8 12l2.5-4.5 3.5.5 2 3.5 2.5 1M12.2 15l1.3-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5" fill="currentColor"/><circle cx="18" cy="6" r="2.5" fill="currentColor"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4m0 0h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 2.5 1.8 20.5h20.4z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 9v5" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.5" fill="#fff"/></symbol>
+    <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="3" y="14" width="5" height="7" rx="2" fill="currentColor"/><rect x="16" y="14" width="5" height="7" rx="2" fill="currentColor"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12m-5-7 5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="11" rx="3" fill="currentColor"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10" fill="none" stroke="currentColor" stroke-width="2.6"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="m15.5 15.5 5 5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 6h16M4 11h16M4 16h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21a8 8 0 0 1 16 0" fill="currentColor"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.4 6.3-.9z" fill="currentColor"/></symbol>
+    <symbol id="i-offline" viewBox="0 0 24 24"><path d="M12 4v11m-4-4 4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+
+    <!-- Siluetas (ilustraciones de placeholder) -->
+    <symbol id="sk-palace" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax slice"><path d="M0 100V60h14V48h10v12h16V40h8V30l6-8 6 8v10h8v12h60V40h8V30l6-8 6 8v10h8v20h16V48h10v12h14v40z" fill="currentColor"/><g fill="#fff" opacity=".35"><rect x="66" y="68" width="6" height="12" rx="3"/><rect x="80" y="68" width="6" height="12" rx="3"/><rect x="94" y="68" width="6" height="12" rx="3"/><rect x="108" y="68" width="6" height="12" rx="3"/><rect x="122" y="68" width="6" height="12" rx="3"/></g></symbol>
+    <symbol id="sk-arches" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax slice"><path d="M0 100V34l10-10 10 10v6h160v-6l10-10 10 10v66z" fill="currentColor"/><g fill="#fff" opacity=".3"><path d="M22 100V78a8 8 0 0 1 16 0v22zM48 100V78a8 8 0 0 1 16 0v22zM74 100V78a8 8 0 0 1 16 0v22zM100 100V78a8 8 0 0 1 16 0v22zM126 100V78a8 8 0 0 1 16 0v22zM152 100V78a8 8 0 0 1 16 0v22z"/><rect x="26" y="52" width="8" height="10" rx="1"/><rect x="52" y="52" width="8" height="10" rx="1"/><rect x="78" y="52" width="8" height="10" rx="1"/><rect x="104" y="52" width="8" height="10" rx="1"/><rect x="130" y="52" width="8" height="10" rx="1"/><rect x="156" y="52" width="8" height="10" rx="1"/></g></symbol>
+    <symbol id="sk-dome" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax slice"><path d="M0 100V70h40V56h20V40a40 40 0 0 1 80 0v16h20v14h40v30z" fill="currentColor"/><rect x="96" y="-6" width="8" height="14" fill="currentColor"/><circle cx="100" cy="-6" r="0"/></symbol>
+    <symbol id="sk-spires" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax slice"><path d="M0 100V72h30V58l10-48 10 48v14h12V40l10-38 10 38v32h12V30l10-30 10 30v42h12V40l10-38 10 38v32h12V58l10-48 10 48v14h30v28z" fill="currentColor"/></symbol>
+    <symbol id="sk-tower" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax slice"><path d="M0 100V74h50V64h30V26h8V12h4V2h4v10h4v14h8v38h30v10h50v26z" fill="currentColor"/><g fill="#fff" opacity=".3"><rect x="86" y="36" width="4" height="8" rx="2"/><rect x="94" y="36" width="4" height="8" rx="2"/><rect x="86" y="50" width="4" height="8" rx="2"/><rect x="94" y="50" width="4" height="8" rx="2"/></g></symbol>
+    <symbol id="sk-alhambra" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax slice"><path d="M0 100V80c30-10 50-14 70-14V48h14v-6h10v6h14v18h20V38h18v28c20 0 34 4 54 14v20z" fill="currentColor"/></symbol>
+    <symbol id="sk-trees" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax slice"><g fill="currentColor"><circle cx="30" cy="62" r="24"/><circle cx="70" cy="54" r="30"/><circle cx="120" cy="64" r="22"/><circle cx="165" cy="56" r="28"/><rect x="0" y="80" width="200" height="20"/></g></symbol>
+    <symbol id="sk-glass" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax slice"><path d="M30 100V70l20-24h10l20 24v30zM120 100V50h12V30h4v20h12v50zM0 100h200v-8H0z" fill="currentColor"/><path d="M88 100V74h24v26z" fill="currentColor" opacity=".7"/><circle cx="100" cy="58" r="10" fill="currentColor"/></symbol>
+
+    <!-- Mapa -->
+    <symbol id="map-tour" viewBox="0 0 330 700" preserveAspectRatio="xMidYMid slice">
+      <rect width="330" height="700" fill="var(--map)"/>
+      <path d="M210 -10 C 270 120, 340 170, 360 190 L360 420 C 300 360, 236 260, 196 140 Z" fill="var(--map-park)"/>
+      <path d="M-10 610 C 70 580, 130 620, 180 600 S 290 640, 360 620 L360 710 L-10 710Z" fill="var(--map-water)"/>
+      <g stroke="var(--map-road)" stroke-width="13" stroke-linecap="round" fill="none">
+        <path d="M-10 190 L 360 310"/><path d="M80 -10 L 150 710"/><path d="M-10 440 L 360 340"/><path d="M255 -10 L 225 710"/><path d="M-10 540 L 360 540"/>
+      </g>
+      <g stroke="#E3DCCF" stroke-width="4" fill="none">
+        <path d="M-10 270 L360 390"/><path d="M30 -10 L 10 710"/><path d="M305 -10 L 305 710"/><path d="M-10 100 L 360 70"/>
+      </g>
+      <g fill="#E8E1D4"><rect x="160" y="220" width="40" height="30" rx="4" transform="rotate(18 180 235)"/><rect x="36" y="300" width="30" height="44" rx="4"/><rect x="170" y="430" width="34" height="50" rx="4"/><rect x="250" y="440" width="40" height="40" rx="4"/></g>
+      <g font-family="Nunito, sans-serif" font-weight="800" font-size="10" fill="#ACA393" letter-spacing="1.5">
+        <text x="14" y="180" transform="rotate(18 14 180)">CALLE MAYOR</text>
+        <text x="96" y="660" fill="#6E9AB8">RÍO MANZANARES</text>
+        <text x="262" y="210" fill="#7FA06A">SABATINI</text>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="hero">
+  <div class="blobs">
+    <i style="width:220px;height:220px;background:var(--brand);right:60px;top:40px"></i>
+    <i style="width:130px;height:130px;background:var(--sun);right:250px;top:20px"></i>
+    <i style="width:150px;height:150px;background:var(--sky);right:-20px;top:190px"></i>
+    <i style="width:80px;height:80px;background:var(--rose);right:270px;top:190px"></i>
+  </div>
+  <div class="wrap">
+    <p class="eyebrow">Design System · v0.3</p>
+    <h1>Paseo</h1>
+    <p class="intro">Tours a pie por ciudades. La app tiene una paleta propia, alegre y cálida, y cada tour lleva su propio color, como la portada de un libro.</p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#color">Color</a><a href="#paletas">Paletas de tour</a><a href="#tipo">Tipografía</a><a href="#componentes">Componentes</a><a href="#caminando">Mejoras «Caminando»</a><a href="#pantallas">Pantallas</a>
+</div></nav>
+
+<div class="wrap">
+
+<!-- ================= COLOR ================= -->
+<section class="doc" id="color">
+  <p class="eyebrow">01 · Color</p>
+  <h2 class="sec">Dos niveles de color</h2>
+  <p class="lead"><b>La app</b> (selector de idioma, ciudades, tienda) usa la paleta de marca: coral, sol, cielo, tinta y rosa sobre fondo crema. <b>Dentro de un tour</b>, todo pasa a usar la paleta de ese tour. Al entrar en un tour, la app «se viste» con sus colores.</p>
+
+  <div class="sub-h">Marca</div>
+  <div class="grid" style="grid-template-columns:repeat(5,1fr)">
+    <div class="bswatch"><div class="c" style="background:var(--brand);color:#fff">Coral<code>#F25C3B</code></div><div class="m"><b>--brand</b><br>Acción principal fuera de los tours, pestaña activa</div></div>
+    <div class="bswatch"><div class="c" style="background:var(--sun);color:var(--ink)">Sol<code>#FFC53D</code></div><div class="m"><b>--sun</b><br>Etiqueta «Gratis», estrellas, destacados</div></div>
+    <div class="bswatch"><div class="c" style="background:var(--sky);color:#fff">Cielo<code>#3D8BFD</code></div><div class="m"><b>--sky</b><br>Enlaces, información, ilustraciones</div></div>
+    <div class="bswatch"><div class="c" style="background:var(--navy);color:#fff">Tinta<code>#1D2B4F</code></div><div class="m"><b>--navy / --premium</b><br>Contenido de pago y candados</div></div>
+    <div class="bswatch"><div class="c" style="background:var(--rose);color:#6B1027">Rosa<code>#F7A7B8</code></div><div class="m"><b>--rose</b><br>Etiqueta «Nuevo», detalles</div></div>
+  </div>
+
+  <div class="sub-h">Neutros cálidos y funcionales</div>
+  <div class="grid g4">
+    <div class="bswatch"><div class="c" style="background:var(--bg);color:var(--ink);height:70px">Crema<code>#FAF6F0</code></div><div class="m"><b>--bg</b> fondo de la app (nunca blanco puro)</div></div>
+    <div class="bswatch"><div class="c" style="background:var(--ink);color:#fff;height:70px">Ink<code>#1C1A17</code></div><div class="m"><b>--ink</b> texto, botón oscuro</div></div>
+    <div class="bswatch"><div class="c" style="background:var(--me);color:#fff;height:70px">Tú<code>#2D7FF9</code></div><div class="m"><b>--me</b> tu posición. No cambia nunca, sea cual sea el tour</div></div>
+    <div class="bswatch"><div class="c" style="background:var(--warn);color:var(--ink);height:70px">Aviso<code>#E39B0B</code></div><div class="m"><b>--warn</b> fuera de ruta, cierres</div></div>
+  </div>
+</section>
+
+<!-- ================= PALETAS ================= -->
+<section class="doc" id="paletas">
+  <p class="eyebrow">02 · Color</p>
+  <h2 class="sec">Paletas de tour</h2>
+  <p class="lead">Cada tour define <b>5 tokens</b>. Los componentes nunca usan colores fijos: leen estos tokens. Para crear un tour nuevo basta con elegir 5 colores y añadir una clase <code>.th-nombre</code>.</p>
+
+  <div class="panel" style="margin-bottom:18px">
+    <table class="token-table">
+      <tr><td>--t</td><td>Principal: botón de acción, ruta, paradas visitadas</td><td><span class="tag prog th-austrias" style="background:var(--t);color:#fff">Ejemplo</span></td></tr>
+      <tr><td>--t-2</td><td>Complementario: parada actual, flecha de giro, «¿Sabías que?»</td><td><span class="tag th-austrias" style="background:var(--t-2)">Ejemplo</span></td></tr>
+      <tr><td>--t-soft</td><td>Fondos suaves: chips, «Fíjate en», mini reproductor</td><td><span class="tag th-austrias" style="background:var(--t-soft);color:var(--t-deep)">Ejemplo</span></td></tr>
+      <tr><td>--t-deep</td><td>Oscuro: tarjeta de indicación, reproductor, siluetas</td><td><span class="tag th-austrias" style="background:var(--t-deep);color:#fff">Ejemplo</span></td></tr>
+      <tr><td>--t-on</td><td>Texto encima de --t (blanco u oscuro según el contraste)</td><td></td></tr>
+    </table>
+  </div>
+
+  <div class="grid g4">
+    <div class="palette th-austrias"><div class="top"><span class="sun-dot"></span><svg class="sk"><use href="#sk-palace"/></svg><small>Historia · Madrid</small><b>Madrid de los Austrias</b></div><div class="row"><i style="background:var(--t)"></i><i style="background:var(--t-2)"></i><i style="background:var(--t-soft)"></i><i style="background:var(--t-deep)"></i></div><div class="meta"><span>#1F6F8B #E3A33B #E2F0F4 #0D3442</span><br>Azul petróleo + ocre</div></div>
+    <div class="palette th-arte"><div class="top"><span class="sun-dot"></span><svg class="sk"><use href="#sk-glass"/></svg><small>Arte · Madrid</small><b>Paseo del Arte</b></div><div class="row"><i style="background:var(--t)"></i><i style="background:var(--t-2)"></i><i style="background:var(--t-soft)"></i><i style="background:var(--t-deep)"></i></div><div class="meta"><span>#2E4FD6 #FF7A66 #E8ECFF #131D63</span><br>Cobalto + coral</div></div>
+    <div class="palette th-tapas"><div class="top"><span class="sun-dot"></span><svg class="sk"><use href="#sk-arches"/></svg><small>Gastronomía · Madrid</small><b>Tapas por La Latina</b></div><div class="row"><i style="background:var(--t)"></i><i style="background:var(--t-2)"></i><i style="background:var(--t-soft)"></i><i style="background:var(--t-deep)"></i></div><div class="meta"><span>#D93A2B #F5A524 #FDE7E2 #5A1209</span><br>Tomate + azafrán</div></div>
+    <div class="palette th-noche"><div class="top"><span class="sun-dot"></span><svg class="sk"><use href="#sk-dome"/></svg><small>Nocturno · Madrid</small><b>Leyendas y fantasmas</b></div><div class="row"><i style="background:var(--t)"></i><i style="background:var(--t-2)"></i><i style="background:var(--t-soft)"></i><i style="background:var(--t-deep)"></i></div><div class="meta"><span>#2A2F6E #F2C14E #E6E7F4 #11143A</span><br>Medianoche + oro</div></div>
+    <div class="palette th-retiro"><div class="top"><span class="sun-dot"></span><svg class="sk"><use href="#sk-trees"/></svg><small>Parques · Madrid</small><b>Secretos del Retiro</b></div><div class="row"><i style="background:var(--t)"></i><i style="background:var(--t-2)"></i><i style="background:var(--t-soft)"></i><i style="background:var(--t-deep)"></i></div><div class="meta"><span>#D9466F #8BBF4E #FCE6EC #5E1229</span><br>Rosa jardín + hoja</div></div>
+    <div class="palette th-gaudi"><div class="top"><span class="sun-dot"></span><svg class="sk"><use href="#sk-spires"/></svg><small>Arquitectura · Barcelona</small><b>La ruta de Gaudí</b></div><div class="row"><i style="background:var(--t)"></i><i style="background:var(--t-2)"></i><i style="background:var(--t-soft)"></i><i style="background:var(--t-deep)"></i></div><div class="meta"><span>#0E9AAE #F27B2A #DDF4F6 #053E47</span><br>Trencadís turquesa + naranja</div></div>
+    <div class="palette th-sevilla"><div class="top"><span class="sun-dot"></span><svg class="sk"><use href="#sk-tower"/></svg><small>Historia · Sevilla</small><b>Sevilla mudéjar</b></div><div class="row"><i style="background:var(--t)"></i><i style="background:var(--t-2)"></i><i style="background:var(--t-soft)"></i><i style="background:var(--t-deep)"></i></div><div class="meta"><span>#E5A823 #1F4FA8 #FDF2D6 #4A3200</span><br>Albero + azulejo · texto oscuro</div></div>
+    <div class="palette th-granada"><div class="top"><span class="sun-dot"></span><svg class="sk"><use href="#sk-alhambra"/></svg><small>Historia · Granada</small><b>El Albaicín</b></div><div class="row"><i style="background:var(--t)"></i><i style="background:var(--t-2)"></i><i style="background:var(--t-soft)"></i><i style="background:var(--t-deep)"></i></div><div class="meta"><span>#B5472E #3E8E8A #F7E4DD #4A170B</span><br>Almagra + celadón</div></div>
+  </div>
+</section>
+
+<!-- ================= TIPOGRAFÍA ================= -->
+<section class="doc" id="tipo">
+  <p class="eyebrow">03 · Tipografía</p>
+  <h2 class="sec">Dos voces</h2>
+  <p class="lead"><b>Fraunces</b> (serif) para los nombres de lugares y tours, con aire de guía de viaje. <b>Nunito</b> (redondeada) para la interfaz, la navegación y la lectura.</p>
+  <div class="panel">
+    <div class="type-row"><div class="spec"><b>Hero</b>Fraunces 48 · 800<br>Ciudad, portada</div><div class="t-hero">Madrid</div></div>
+    <div class="type-row"><div class="spec"><b>Title</b>Fraunces 28 · 800<br>Tour, parada</div><div class="t-title">Plaza de la Villa</div></div>
+    <div class="type-row"><div class="spec"><b>Display</b>Nunito 56 · 900<br>Distancia</div><div class="t-display">120 m</div></div>
+    <div class="type-row"><div class="spec"><b>Headline</b>Nunito 19 · 900</div><div class="t-headline">Gira a la izquierda en Calle Mayor</div></div>
+    <div class="type-row"><div class="spec"><b>Body</b>Nunito 16 · 600 · 1.55</div><div class="t-body" style="max-width:560px">Durante siglos fue el centro del poder municipal. La Torre de los Lujanes, del siglo XV, es uno de los edificios civiles más antiguos de la ciudad.</div></div>
+    <div class="type-row"><div class="spec"><b>Caption</b>Nunito 13 · 700</div><div class="t-caption" style="color:var(--ink-3)">4 min a pie · 300 m</div></div>
+    <div class="type-row"><div class="spec"><b>Overline</b>Nunito 12 · 800 · MAYÚS</div><div class="t-overline" style="color:var(--brand)">Siguiente parada</div></div>
+  </div>
+</section>
+
+<!-- ================= COMPONENTES ================= -->
+<section class="doc" id="componentes">
+  <p class="eyebrow">04 · Componentes</p>
+  <h2 class="sec">Componentes</h2>
+  <p class="lead">Están agrupados por la parte de la app donde aparecen. Los de un tour cambian de color automáticamente según la paleta del tour.</p>
+
+  <div class="comp-title"><h3>Botones</h3><code>.btn-primary · .btn-dark · .btn-premium · .btn-secondary · .btn-text · .btn-icon</code></div>
+  <p class="usage"><b>Primary</b> usa el color del tour, o el coral fuera de los tours. <b>Premium</b> (tinta + candado dorado) se reserva para comprar. <b>Dark</b> es para acciones neutras, como «Continuar».</p>
+  <div class="stage">
+    <button class="btn btn-primary">Explorar</button>
+    <span class="th-austrias"><button class="btn btn-primary">Empezar tour</button></span>
+    <span class="th-gaudi"><button class="btn btn-primary">Siguiente parada <svg class="ico"><use href="#i-arrow-r"/></svg></button></span>
+    <button class="btn btn-dark">Continuar</button>
+    <button class="btn btn-premium"><svg class="ico"><use href="#i-lock"/></svg>Desbloquear · 4,99 €</button>
+    <button class="btn btn-secondary"><svg class="ico"><use href="#i-offline"/></svg>Descargar</button>
+    <button class="btn btn-text">Restaurar compras</button>
+    <button class="btn btn-icon"><svg class="ico"><use href="#i-locate"/></svg></button>
+    <button class="btn btn-icon"><svg class="ico"><use href="#i-close"/></svg></button>
+  </div>
+
+  <div class="comp-title"><h3>Selector de idioma</h3><code>.lang · .lang-pill</code></div>
+  <p class="usage">Aparece en el primer arranque, con un color distinto por idioma. Después queda como una pastilla en la cabecera de Inicio para cambiarlo en cualquier momento. El idioma afecta al texto y al audio.</p>
+  <div class="stage cream">
+    <div class="lang-list">
+      <div class="lang sel"><span class="code" style="--c:var(--brand)">ES</span><div class="n"><b>Español</b><span>Audio disponible</span></div><span class="chk"><svg class="ico"><use href="#i-check"/></svg></span></div>
+      <div class="lang"><span class="code" style="--c:var(--sky)">EN</span><div class="n"><b>English</b><span>Audio available</span></div><span class="chk"></span></div>
+      <div class="lang"><span class="code" style="--c:var(--navy)">FR</span><div class="n"><b>Français</b><span>Audio disponible</span></div><span class="chk"></span></div>
+    </div>
+    <span class="lang-pill"><i>ES</i>Español</span>
+  </div>
+
+  <div class="comp-title"><h3>Tarjeta de ciudad</h3><code>.city</code></div>
+  <p class="usage">Ocupa todo el ancho, con una ilustración o foto y un degradado propio de cada ciudad. El contador indica cuántos tours tiene.</p>
+  <div class="stage cream">
+    <div style="width:340px" class="th-austrias"><div class="city"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-palace"/></svg></div><span class="count">8 tours</span><div class="lbl"><b>Madrid</b><span>2 gratis</span></div></div></div>
+    <div style="width:340px" class="th-gaudi"><div class="city"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-spires"/></svg></div><span class="count">6 tours</span><div class="lbl"><b>Barcelona</b><span>1 gratis</span></div></div></div>
+  </div>
+
+  <div class="comp-title"><h3>Tarjeta de tour</h3><code>.tour-card · .locked</code> + <code>.tag</code></div>
+  <p class="usage">Tiene cuatro estados, que se distinguen por la etiqueta: <b>Gratis</b> (sol), <b>De pago</b> (tinta + candado; la foto se oscurece y muestra un candado), <b>En curso</b> (barra de progreso) y <b>Completado</b>.</p>
+  <div class="stage cream">
+    <div class="tour-card th-austrias"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-palace"/></svg></div><div class="bd"><span class="cat">Historia</span><h4>Madrid de los Austrias</h4><div class="mt"><span>2 h</span><span>2,4 km</span><span>8 paradas</span></div></div><span class="tag free tag">Gratis</span></div>
+    <div class="tour-card th-arte locked"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-glass"/></svg><span class="lock-big"><svg class="ico"><use href="#i-lock"/></svg></span></div><div class="bd"><span class="cat">Arte</span><h4>Paseo del Arte</h4><div class="mt"><span>2 h 30</span><span>3,1 km</span></div></div><span class="tag price tag"><svg class="ico"><use href="#i-lock"/></svg>4,99 €</span></div>
+    <div class="tour-card th-tapas"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-arches"/></svg></div><div class="bd"><span class="cat">Gastronomía</span><h4>Tapas por La Latina</h4><div class="mt"><span>Parada 3 de 6</span></div><div class="bar"><i style="width:45%"></i></div></div><span class="tag prog tag">En curso</span></div>
+    <div class="tour-card th-retiro"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-trees"/></svg></div><div class="bd"><span class="cat">Parques</span><h4>Secretos del Retiro</h4><div class="mt"><span>1 h 30</span><span>2 km</span></div></div><span class="tag done tag"><svg class="ico"><use href="#i-check"/></svg>Hecho</span></div>
+  </div>
+
+  <div class="comp-title"><h3>Filtros, pack y compra</h3><code>.fchip · .pack · .plan · .incl</code></div>
+  <p class="usage">Los filtros temáticos llevan el punto de color de su categoría. El <b>pack de ciudad</b> agrupa todos los tours de pago. En el sheet de compra se puede elegir entre comprar un solo tour o el pack completo.</p>
+  <div class="stage cream">
+    <div class="filters"><span class="fchip sel">Todos</span><span class="fchip" style="--c:#1F6F8B"><i></i>Historia</span><span class="fchip" style="--c:#2E4FD6"><i></i>Arte</span><span class="fchip" style="--c:#D93A2B"><i></i>Gastronomía</span><span class="fchip" style="--c:#2A2F6E"><i></i>Nocturno</span></div>
+    <div class="pack"><div class="stack"><i style="background:#1F6F8B"></i><i style="background:#2E4FD6"></i><i style="background:#D93A2B"></i><i style="background:#D9466F"></i></div><div class="tx"><b>Pase Madrid</b><span>Los 8 tours, para siempre</span></div><span class="pr">12,99 €</span></div>
+    <div style="display:flex;flex-direction:column;gap:14px;width:380px">
+      <div class="plan"><span class="rd"></span><div class="tx"><b>Solo este tour</b><span>Paseo del Arte</span></div><span class="pr">4,99 €</span></div>
+      <div class="plan sel"><span class="best">AHORRA 60 %</span><span class="rd"></span><div class="tx"><b>Pase Madrid</b><span>8 tours · incluye futuros</span></div><span class="pr">12,99 €</span></div>
+    </div>
+  </div>
+
+  <div class="comp-title"><h3>Progreso y paradas</h3><code>.progress · .stop-pin · .me-dot</code></div>
+  <p class="usage">La parada actual usa <b>--t-2</b>, el color complementario, para destacar sobre la ruta pintada en <b>--t</b>. Tu posición siempre es azul y lleva un cono que indica hacia dónde miras.</p>
+  <div class="stage map-bg th-austrias">
+    <div class="progress" style="background:#fff;padding:14px;border-radius:16px"><div class="top"><span><b>Parada 3</b> de 8</span><span>1,1 / 2,4 km</span></div><div class="bar"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <span class="stop-pin done">1</span><span class="stop-pin current">3</span><span class="stop-pin pending">4</span>
+    <span class="me-dot heading" style="display:inline-block;margin-top:20px"></span>
+  </div>
+  <div class="stage map-bg th-gaudi" style="margin-top:10px">
+    <div class="progress" style="background:#fff;padding:14px;border-radius:16px"><div class="top"><span><b>Parada 5</b> de 7</span><span>2,8 / 4 km</span></div><div class="bar"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i></div></div>
+    <span class="stop-pin done">4</span><span class="stop-pin current">5</span><span class="stop-pin pending">6</span>
+    <span style="font-size:13px;font-weight:800;color:var(--ink-3)">← misma pieza, paleta Gaudí</span>
+  </div>
+
+  <div class="comp-title"><h3>Tarjeta de indicación</h3><code>.direction · .off</code></div>
+  <p class="usage">Ahora lleva un paso <b>«Después»</b> para anticipar el siguiente giro. Usa el color oscuro del tour y la flecha en el complementario. Si te sales de la ruta, pasa a ámbar.</p>
+  <div class="stage map-bg">
+    <div class="direction th-austrias"><div class="main"><div class="arrow"><svg class="ico"><use href="#i-left"/></svg></div><div><div class="dist">120 m</div><div class="instr">Gira a la izquierda en Calle Mayor</div></div></div><div class="then"><span>Después</span><svg class="ico"><use href="#i-right"/></svg><span>a la derecha en Pl. de la Villa</span></div></div>
+    <div class="direction th-arte"><div class="main"><div class="arrow"><svg class="ico"><use href="#i-straight"/></svg></div><div><div class="dist">300 m</div><div class="instr">Sigue por el Paseo del Prado</div></div></div><div class="then"><span>Después</span><svg class="ico"><use href="#i-pin"/></svg><span>llegas al Museo del Prado</span></div></div>
+    <div class="direction off"><div class="main"><div class="arrow"><svg class="ico"><use href="#i-uturn"/></svg></div><div><div class="dist" style="font-size:26px">Fuera de ruta</div><div class="instr">Da la vuelta y vuelve a Calle Mayor</div></div></div><div class="then"><svg class="ico"><use href="#i-walk"/></svg><span>40 m hasta la ruta</span></div></div>
+  </div>
+
+  <div class="comp-title"><h3>Durante el paseo</h3><code>.next-sheet · .mini-player · .poi</code></div>
+  <p class="usage">La hoja inferior muestra una miniatura de la siguiente parada, para reconocerla al llegar, y la hora estimada. El <b>mini reproductor</b> narra el trayecto entre paradas. Las <b>curiosidades «De camino»</b> aparecen en el mapa cuando pasas junto a algo interesante.</p>
+  <div class="stage map-bg th-austrias">
+    <div class="next-sheet">
+      <div class="progress" style="max-width:none"><div class="top"><span><b>Parada 3</b> de 8</span><span>1,1 / 2,4 km</span></div><div class="bar"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="row"><div class="pic v2"><span class="sunc"></span><svg class="sk"><use href="#sk-arches"/></svg></div><div class="t"><small>Siguiente</small><strong>Plaza de la Villa</strong><em>Llegada 10:42</em></div><div class="eta">4 min<span>300 m</span></div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="mini-player"><span class="pl"><svg class="ico"><use href="#i-pause"/></svg></span>De camino: el Madrid de Felipe II<span class="wave"><i style="height:8px"></i><i style="height:14px"></i><i style="height:10px"></i><i style="height:16px"></i><i style="height:7px"></i></span></div>
+      <div class="poi"><div class="pic ph v3"><span class="sunc"></span><svg class="sk"><use href="#sk-dome"/></svg></div><div><b>Iglesia de San Ginés</b><span>De camino · 40 s ▸</span></div></div>
+    </div>
+  </div>
+
+  <div class="comp-title"><h3>En la parada</h3><code>.gallery · .player · .look · .fact · .quote</code></div>
+  <p class="usage">Hay una <b>galería</b> con varias imágenes (antes/ahora, detalles), un <b>reproductor completo</b> (velocidad, ±15 s y transcripción) y <b>bloques de contenido</b> para que el texto no sea un muro: «Fíjate en» con una imagen de referencia, «¿Sabías que?» y citas.</p>
+  <div class="stage th-austrias" style="align-items:flex-start">
+    <div style="display:flex;flex-direction:column;gap:0;width:380px">
+      <div class="gallery"><div class="pic main"><span class="sunc"></span><svg class="sk"><use href="#sk-arches"/></svg></div><span class="count">1 / 5</span><span class="cap">La plaza hoy</span><div class="dots"><i class="on"></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="thumbs"><div class="pic on"><svg class="sk"><use href="#sk-arches"/></svg></div><div class="pic v4"><svg class="sk"><use href="#sk-tower"/></svg></div><div class="pic v3"><svg class="sk"><use href="#sk-palace"/></svg></div><div class="pic v2"><svg class="sk"><use href="#sk-dome"/></svg></div></div>
+    </div>
+    <div class="player">
+      <div class="hd"><svg class="ico"><use href="#i-headphones"/></svg><b>La plaza más antigua</b><span class="spd">1×</span></div>
+      <div class="wavebar"><i class="on" style="height:40%"></i><i class="on" style="height:70%"></i><i class="on" style="height:55%"></i><i class="on" style="height:90%"></i><i class="on" style="height:60%"></i><i class="on" style="height:35%"></i><i class="on" style="height:80%"></i><i class="on" style="height:50%"></i><i style="height:65%"></i><i style="height:40%"></i><i style="height:85%"></i><i style="height:55%"></i><i style="height:30%"></i><i style="height:70%"></i><i style="height:45%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:75%"></i><i style="height:50%"></i><i style="height:40%"></i></div>
+      <div class="times"><span>1:12</span><span>3:05</span></div>
+      <div class="ctr"><button><svg class="ico" style="font-size:30px"><use href="#i-back15"/></svg><small>15</small></button><button class="big"><svg class="ico"><use href="#i-pause"/></svg></button><button><svg class="ico" style="font-size:30px"><use href="#i-fwd15"/></svg><small>15</small></button></div>
+      <div class="tr"><span><svg class="ico"><use href="#i-text"/></svg>Ver transcripción</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;width:380px">
+      <div class="look"><div class="pic v4"><span class="sunc"></span><svg class="sk"><use href="#sk-tower"/></svg></div><div><small><svg class="ico"><use href="#i-eye"/></svg>Fíjate en</small><p>La Torre de los Lujanes, a tu derecha. Busca la puerta gótica de ladrillo.</p></div></div>
+      <div class="fact"><span class="q">?</span><small>¿Sabías que…?</small><p>Aquí estuvo preso el rey Francisco I de Francia tras la batalla de Pavía.</p></div>
+      <div class="quote">«La villa más noble y leal de Castilla.»</div>
+    </div>
+  </div>
+
+  <div class="comp-title"><h3>Chips de datos y aviso</h3><code>.meta-chip · .notice · .search</code></div>
+  <div class="stage">
+    <span class="th-austrias" style="display:flex;gap:6px"><span class="meta-chip"><svg class="ico"><use href="#i-clock"/></svg>2 h</span><span class="meta-chip"><svg class="ico"><use href="#i-route"/></svg>2,4 km</span><span class="meta-chip"><svg class="ico"><use href="#i-pin"/></svg>8 paradas</span></span>
+    <span class="th-tapas" style="display:flex;gap:6px"><span class="meta-chip"><svg class="ico"><use href="#i-clock"/></svg>3 h</span><span class="meta-chip"><svg class="ico"><use href="#i-headphones"/></svg>Audio</span></span>
+    <div class="notice"><svg class="ico"><use href="#i-alert"/></svg><span>La Catedral cierra hoy a las 14:00. Puedes saltarte esa parada.</span></div>
+    <div class="search"><svg class="ico"><use href="#i-search"/></svg>Busca una ciudad</div>
+  </div>
+</section>
+
+<!-- ================= MEJORAS CAMINANDO ================= -->
+<section class="doc" id="caminando">
+  <p class="eyebrow">05 · Propuesta</p>
+  <h2 class="sec">Cómo mejora «Caminando»</h2>
+  <p class="lead">Mantengo lo que te gustaba (mapa limpio, una indicación arriba y el progreso abajo) y añado seis mejoras pensadas para no tener que mirar tanto el móvil.</p>
+  <div class="grid g3">
+    <div class="idea" style="--c:var(--brand)"><h5>1 · «Después…»</h5><p>La tarjeta anticipa el siguiente giro. Así sabes lo que viene sin volver a mirar.</p></div>
+    <div class="idea" style="--c:var(--sun)"><h5>2 · Foto de la siguiente parada</h5><p>Una miniatura en la hoja inferior para reconocer el lugar cuando lo tengas delante.</p></div>
+    <div class="idea" style="--c:var(--sky)"><h5>3 · Curiosidades «De camino»</h5><p>Burbujas en el mapa al pasar junto a algo interesante, con un audio de 30–40 s. Convierten el trayecto en parte del tour.</p></div>
+    <div class="idea" style="--c:var(--navy)"><h5>4 · Narración del trayecto</h5><p>El mini reproductor sigue sonando entre paradas, así que puedes caminar con el móvil en el bolsillo.</p></div>
+    <div class="idea" style="--c:var(--rose)"><h5>5 · Fuera de ruta</h5><p>Si te desvías, la tarjeta se vuelve ámbar y te dice cómo volver.</p></div>
+    <div class="idea" style="--c:var(--ink)"><h5>6 · Hacia dónde miras</h5><p>Tu punto tiene un cono de orientación y aparece la hora estimada de llegada a la parada.</p></div>
+  </div>
+</section>
+
+<!-- ================= PANTALLAS ================= -->
+<section class="doc" id="pantallas">
+  <p class="eyebrow">06 · Flujo</p>
+  <h2 class="sec">Pantallas</h2>
+  <p class="lead">Son ocho pantallas. Las cuatro primeras usan la paleta de marca (y la del tour en su ficha); a partir de la portada del tour, todo se viste con la paleta de <b>Madrid de los Austrias</b>.</p>
+
+  <div class="phones">
+
+    <!-- 1 · Idioma -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="bat"></span></div>
+        <div class="abs" style="top:0;left:0;right:0;height:250px;overflow:hidden">
+          <i class="abs" style="width:180px;height:180px;border-radius:50%;background:var(--brand);right:-40px;top:-30px"></i>
+          <i class="abs" style="width:90px;height:90px;border-radius:50%;background:var(--sun);right:120px;top:40px"></i>
+          <i class="abs" style="width:110px;height:110px;border-radius:50%;background:var(--sky);left:-30px;top:120px"></i>
+          <i class="abs" style="width:50px;height:50px;border-radius:50%;background:var(--rose);right:40px;top:170px"></i>
+        </div>
+        <div class="pad abs" style="top:200px;left:0;right:0">
+          <div class="t-hero" style="font-size:44px">Paseo</div>
+          <div class="t-body" style="color:var(--ink-2);margin:4px 0 18px">Elige tu idioma · Choose your language</div>
+          <div class="lang-list">
+            <div class="lang sel"><span class="code" style="--c:var(--brand)">ES</span><div class="n"><b>Español</b></div><span class="chk"><svg class="ico"><use href="#i-check"/></svg></span></div>
+            <div class="lang"><span class="code" style="--c:var(--sky)">EN</span><div class="n"><b>English</b></div><span class="chk"></span></div>
+            <div class="lang"><span class="code" style="--c:var(--navy)">FR</span><div class="n"><b>Français</b></div><span class="chk"></span></div>
+            <div class="lang"><span class="code" style="--c:#E3A33B">DE</span><div class="n"><b>Deutsch</b></div><span class="chk"></span></div>
+            <div class="lang"><span class="code" style="--c:#D9466F">IT</span><div class="n"><b>Italiano</b></div><span class="chk"></span></div>
+          </div>
+        </div>
+        <div class="bottom-cta"><button class="btn btn-dark block">Continuar</button></div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="caption">1 · Idioma<small>Primer arranque</small></div>
+    </div>
+
+    <!-- 2 · Ciudades -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="bat"></span></div>
+        <div class="scroll"><div class="pad" style="padding-top:52px;padding-bottom:100px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="t-overline" style="color:var(--brand)">Hola, Pablo</span><span class="lang-pill"><i>ES</i>Español</span></div>
+          <div class="t-hero" style="font-size:36px;margin:6px 0 14px">¿Dónde paseamos hoy?</div>
+          <div class="search"><svg class="ico"><use href="#i-search"/></svg>Busca una ciudad</div>
+          <div class="sec-h"><b>Continúa</b></div>
+          <div class="tour-card th-tapas" style="max-width:none"><div class="pic" style="width:70px;min-height:76px"><span class="sunc"></span><svg class="sk"><use href="#sk-arches"/></svg></div><div class="bd"><span class="cat">Madrid</span><h4 style="font-size:16px">Tapas por La Latina</h4><div class="mt"><span>Parada 3 de 6</span></div><div class="bar"><i style="width:45%"></i></div></div></div>
+          <div class="sec-h"><b>Ciudades</b><a href="#">Ver mapa</a></div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="th-austrias"><div class="city"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-palace"/></svg></div><span class="count">8 tours</span><div class="lbl"><b>Madrid</b><span>2 gratis</span></div></div></div>
+            <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+              <div class="th-gaudi"><div class="city sm"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-spires"/></svg></div><div class="lbl"><b>Barcelona</b><span>6 tours</span></div></div></div>
+              <div class="th-sevilla"><div class="city sm"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-tower"/></svg></div><div class="lbl"><b>Sevilla</b><span>5 tours</span></div></div></div>
+              <div class="th-granada"><div class="city sm"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-alhambra"/></svg></div><div class="lbl"><b>Granada</b><span>4 tours</span></div></div></div>
+              <div class="th-noche"><div class="city sm"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-dome"/></svg></div><div class="lbl"><b>Toledo</b><span>3 tours</span></div></div></div>
+            </div>
+          </div>
+        </div></div>
+        <nav class="tabbar"><a class="on"><svg class="ico"><use href="#i-home"/></svg>Inicio</a><a><svg class="ico"><use href="#i-bag"/></svg>Mis tours</a><a><svg class="ico"><use href="#i-user"/></svg>Perfil</a></nav>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="caption">2 · Inicio<small>Ciudades</small></div>
+    </div>
+
+    <!-- 3 · Tours de la ciudad -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar light"><span>9:41</span><span class="bat"></span></div>
+        <div class="scroll">
+          <div class="th-austrias"><div class="pic" style="height:200px"><span class="sunc"></span><svg class="sk"><use href="#sk-palace"/></svg>
+            <button class="btn btn-icon sm glass abs" style="left:16px;top:50px"><svg class="ico"><use href="#i-back"/></svg></button>
+            <div class="abs" style="left:18px;bottom:16px;color:#fff"><div class="t-hero" style="font-size:42px">Madrid</div><div class="t-caption" style="opacity:.9">8 tours temáticos · 2 gratis</div></div>
+          </div></div>
+          <div class="pad" style="padding-top:14px;padding-bottom:40px">
+            <div class="filters" style="margin:0 -18px;padding:2px 18px 4px"><span class="fchip sel">Todos</span><span class="fchip" style="--c:#1F6F8B"><i></i>Historia</span><span class="fchip" style="--c:#2E4FD6"><i></i>Arte</span><span class="fchip" style="--c:#D93A2B"><i></i>Comida</span></div>
+            <div class="pack" style="margin-top:14px"><div class="stack"><i style="background:#1F6F8B"></i><i style="background:#2E4FD6"></i><i style="background:#D93A2B"></i></div><div class="tx"><b>Pase Madrid</b><span>Todos los tours</span></div><span class="pr">12,99 €</span></div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+              <div class="tour-card th-austrias"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-palace"/></svg></div><div class="bd"><span class="cat">Historia</span><h4>Madrid de los Austrias</h4><div class="mt"><span>2 h</span><span>8 paradas</span></div></div><span class="tag free">Gratis</span></div>
+              <div class="tour-card th-arte locked"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-glass"/></svg><span class="lock-big"><svg class="ico"><use href="#i-lock"/></svg></span></div><div class="bd"><span class="cat">Arte</span><h4>Paseo del Arte</h4><div class="mt"><span>2 h 30</span><span>7 paradas</span></div></div><span class="tag price"><svg class="ico"><use href="#i-lock"/></svg>4,99 €</span></div>
+              <div class="tour-card th-tapas"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-arches"/></svg></div><div class="bd"><span class="cat">Gastronomía</span><h4>Tapas por La Latina</h4><div class="mt"><span>3 de 6</span></div><div class="bar"><i style="width:45%"></i></div></div><span class="tag prog">En curso</span></div>
+              <div class="tour-card th-noche locked"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-dome"/></svg><span class="lock-big"><svg class="ico"><use href="#i-lock"/></svg></span></div><div class="bd"><span class="cat">Nocturno</span><h4>Leyendas y fantasmas</h4><div class="mt"><span>1 h 45</span></div></div><span class="tag new">Nuevo</span></div>
+              <div class="tour-card th-retiro"><div class="pic"><span class="sunc"></span><svg class="sk"><use href="#sk-trees"/></svg></div><div class="bd"><span class="cat">Parques</span><h4>Secretos del Retiro</h4><div class="mt"><span>1 h 30</span></div></div><span class="tag free">Gratis</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="caption">3 · Ciudad<small>Tours temáticos, gratis y de pago</small></div>
+    </div>
+
+    <!-- 4 · Desbloquear -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="statusbar light"><span>9:41</span><span class="bat"></span></div>
+        <div class="th-austrias"><div class="pic" style="height:200px"><span class="sunc"></span><svg class="sk"><use href="#sk-palace"/></svg></div></div>
+        <div class="scrim"></div>
+        <div class="sheet th-arte">
+          <div class="grab"></div>
+          <div class="pic" style="height:120px;border-radius:18px"><span class="sunc"></span><svg class="sk"><use href="#sk-glass"/></svg><span class="tag price abs" style="left:10px;top:10px"><svg class="ico"><use href="#i-lock"/></svg>Premium</span></div>
+          <div class="t-overline" style="color:var(--t);margin-top:12px">Arte · Madrid</div>
+          <div class="t-title" style="font-size:24px">Paseo del Arte</div>
+          <ul class="incl" style="margin:10px 0 14px">
+            <li><svg class="ico"><use href="#i-headphones"/></svg>7 paradas con audio · 75 min</li>
+            <li><svg class="ico"><use href="#i-eye"/></svg>40 imágenes y detalles para buscar</li>
+            <li><svg class="ico"><use href="#i-offline"/></svg>Funciona sin conexión</li>
+          </ul>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="plan"><span class="rd"></span><div class="tx"><b>Solo este tour</b></div><span class="pr">4,99 €</span></div>
+            <div class="plan sel"><span class="best">AHORRA 60 %</span><span class="rd"></span><div class="tx"><b>Pase Madrid</b><span>8 tours</span></div><span class="pr">12,99 €</span></div>
+          </div>
+          <button class="btn btn-premium block" style="margin-top:14px"><svg class="ico"><use href="#i-lock"/></svg>Desbloquear</button>
+          <div style="text-align:center"><button class="btn btn-text">Restaurar compras</button></div>
+        </div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="caption">4 · Desbloquear<small>Tour de pago o pase de ciudad</small></div>
+    </div>
+
+    <!-- 5 · Portada del tour -->
+    <div>
+      <div class="phone th-austrias"><div class="screen">
+        <div class="statusbar light"><span>9:41</span><span class="bat"></span></div>
+        <div class="scroll">
+          <div class="pic" style="height:250px"><span class="sunc"></span><svg class="sk"><use href="#sk-palace"/></svg>
+            <button class="btn btn-icon sm glass abs" style="left:16px;top:50px"><svg class="ico"><use href="#i-back"/></svg></button>
+            <button class="btn btn-icon sm glass abs" style="right:16px;top:50px"><svg class="ico"><use href="#i-offline"/></svg></button>
+          </div>
+          <div class="pad" style="padding-top:18px;padding-bottom:110px">
+            <div class="t-overline" style="color:var(--t)">Historia · Madrid</div>
+            <div class="t-title" style="margin-top:2px">Madrid de los Austrias</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 14px">
+              <span class="meta-chip"><svg class="ico"><use href="#i-clock"/></svg>2 h</span><span class="meta-chip"><svg class="ico"><use href="#i-route"/></svg>2,4 km</span><span class="meta-chip"><svg class="ico"><use href="#i-pin"/></svg>8</span>
+            </div>
+            <div class="t-body" style="color:var(--ink-2)">El Madrid de los siglos XVI y XVII: plazas, conventos y callejones del casco antiguo.</div>
+            <div class="sec-h" style="margin-top:18px"><b>Lo que verás</b></div>
+            <div class="thumbs" style="margin-top:0"><div class="pic v2" style="height:70px"><svg class="sk"><use href="#sk-arches"/></svg></div><div class="pic v4" style="height:70px"><svg class="sk"><use href="#sk-tower"/></svg></div><div class="pic v3" style="height:70px"><svg class="sk"><use href="#sk-dome"/></svg></div></div>
+            <div class="sec-h"><b>Paradas</b><a href="#" style="color:var(--t)">Ver mapa</a></div>
+            <div class="stop-list">
+              <div class="stop-item"><span class="stop-pin pending">1</span><div class="t"><b>Puerta del Sol</b><span>Inicio</span></div></div>
+              <div class="stop-item"><span class="stop-pin pending">2</span><div class="t"><b>Plaza Mayor</b><span>+5 min</span></div></div>
+              <div class="stop-item"><span class="stop-pin pending">3</span><div class="t"><b>Plaza de la Villa</b><span>+4 min</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="bottom-cta"><button class="btn btn-primary block">Empezar tour</button></div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="caption">5 · Portada del tour<small>La app se viste con la paleta del tour</small></div>
+    </div>
+
+    <!-- 6 · Caminando -->
+    <div>
+      <div class="phone th-austrias"><div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="bat"></span></div>
+        <svg class="abs" style="inset:0;width:100%;height:100%"><use href="#map-tour"/></svg>
+        <svg class="abs" viewBox="0 0 330 700" style="inset:0;width:100%;height:100%">
+          <path d="M90 560 L 110 450" stroke="var(--t)" stroke-width="7" stroke-linecap="round" opacity=".35" fill="none"/>
+          <path d="M110 450 L 128 345 L 190 362" stroke="var(--t)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M190 362 L 248 345 L 252 245" stroke="var(--t)" stroke-width="6" stroke-linecap="round" stroke-dasharray="0.1 12" fill="none"/>
+        </svg>
+        <span class="stop-pin done abs" style="left:72px;top:542px">2</span>
+        <span class="me-dot heading abs" style="left:107px;top:418px"></span>
+        <span class="stop-pin current abs" style="left:165px;top:337px">3</span>
+        <span class="stop-pin pending abs" style="left:234px;top:226px">4</span>
+        <div class="poi abs" style="left:14px;top:260px;z-index:3"><div class="pic ph v3"><span class="sunc"></span><svg class="sk"><use href="#sk-dome"/></svg></div><div><b>San Ginés</b><span>De camino · 40 s ▸</span></div></div>
+        <div class="abs" style="left:12px;right:12px;top:48px;z-index:4">
+          <div class="direction" style="max-width:none"><div class="main"><div class="arrow"><svg class="ico"><use href="#i-left"/></svg></div><div><div class="dist">120 m</div><div class="instr">Gira a la izquierda en Calle Mayor</div></div></div><div class="then"><span>Después</span><svg class="ico"><use href="#i-right"/></svg><span>a la derecha</span></div></div>
+        </div>
+        <button class="btn btn-icon abs" style="right:14px;bottom:250px;z-index:4"><svg class="ico"><use href="#i-locate"/></svg></button>
+        <button class="btn btn-icon abs" style="left:14px;bottom:250px;z-index:4"><svg class="ico"><use href="#i-close"/></svg></button>
+        <div class="abs" style="left:0;right:0;bottom:0;z-index:5">
+          <div style="padding:0 12px 10px"><div class="mini-player" style="box-shadow:var(--sh-2);max-width:none"><span class="pl"><svg class="ico"><use href="#i-pause"/></svg></span>El Madrid de Felipe II<span class="wave"><i style="height:8px"></i><i style="height:14px"></i><i style="height:10px"></i><i style="height:16px"></i></span></div></div>
+          <div class="next-sheet">
+            <div class="progress" style="max-width:none"><div class="top"><span><b>Parada 3</b> de 8</span><span>1,1 / 2,4 km</span></div><div class="bar"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+            <div class="row"><div class="pic v2"><span class="sunc"></span><svg class="sk"><use href="#sk-arches"/></svg></div><div class="t"><small>Siguiente</small><strong>Plaza de la Villa</strong><em>Llegada 10:42</em></div><div class="eta">4 min<span>300 m</span></div></div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="caption">6 · Caminando<small>Después… · foto · curiosidades · audio</small></div>
+    </div>
+
+    <!-- 7 · En la parada -->
+    <div>
+      <div class="phone th-austrias"><div class="screen">
+        <div class="statusbar light"><span>9:41</span><span class="bat"></span></div>
+        <div class="scroll">
+          <div class="gallery" style="max-width:none"><div class="pic main"><span class="sunc"></span><svg class="sk"><use href="#sk-arches"/></svg></div><span class="count" style="top:52px">1 / 5</span><span class="cap">La plaza hoy</span><div class="dots"><i class="on"></i><i></i><i></i><i></i><i></i></div></div>
+          <button class="btn btn-icon sm glass abs" style="left:16px;top:50px;z-index:3"><svg class="ico"><use href="#i-close"/></svg></button>
+          <div class="pad" style="padding-top:16px;padding-bottom:110px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span class="t-overline" style="color:var(--t)">Parada 3 de 8</span><span class="tag" style="background:var(--t-soft);color:var(--t-deep)"><svg class="ico"><use href="#i-check"/></svg>Has llegado</span></div>
+            <div class="t-title" style="margin:4px 0 14px">Plaza de la Villa</div>
+            <div class="player" style="max-width:none">
+              <div class="hd"><svg class="ico"><use href="#i-headphones"/></svg><b>La plaza más antigua</b><span class="spd">1×</span></div>
+              <div class="wavebar"><i class="on" style="height:40%"></i><i class="on" style="height:70%"></i><i class="on" style="height:55%"></i><i class="on" style="height:90%"></i><i class="on" style="height:60%"></i><i class="on" style="height:35%"></i><i class="on" style="height:80%"></i><i style="height:65%"></i><i style="height:40%"></i><i style="height:85%"></i><i style="height:55%"></i><i style="height:30%"></i><i style="height:70%"></i><i style="height:45%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:75%"></i></div>
+              <div class="times"><span>1:12</span><span>3:05</span></div>
+              <div class="ctr"><button><svg class="ico" style="font-size:28px"><use href="#i-back15"/></svg><small>15</small></button><button class="big"><svg class="ico"><use href="#i-pause"/></svg></button><button><svg class="ico" style="font-size:28px"><use href="#i-fwd15"/></svg><small>15</small></button></div>
+            </div>
+            <p class="t-body" style="color:var(--ink-2);margin:16px 0 14px">Durante siglos fue el centro del poder municipal de Madrid. A su alrededor se levantan tres edificios de tres épocas distintas.</p>
+            <div class="look" style="max-width:none"><div class="pic v4" style="width:76px;height:76px"><span class="sunc"></span><svg class="sk"><use href="#sk-tower"/></svg></div><div><small><svg class="ico"><use href="#i-eye"/></svg>Fíjate en</small><p>La Torre de los Lujanes, a tu derecha. Busca la puerta gótica.</p></div></div>
+            <p class="t-body" style="color:var(--ink-2);margin:14px 0">Enfrente, la Casa de la Villa fue el ayuntamiento hasta 2007. Su fachada mezcla el estilo herreriano con el barroco madrileño.</p>
+            <div class="fact" style="max-width:none"><span class="q">?</span><small>¿Sabías que…?</small><p>Aquí estuvo preso el rey Francisco I de Francia tras la batalla de Pavía.</p></div>
+          </div>
+        </div>
+        <div class="bottom-cta"><button class="btn btn-primary block">Siguiente parada <svg class="ico"><use href="#i-arrow-r"/></svg></button></div>
+        <div class="home-ind"></div>
+      </div></div>
+      <div class="caption">7 · En la parada<small>Galería · audio · texto con bloques</small></div>
+    </div>
+
+    <!-- 8 · Final -->
+    <div>
+      <div class="phone th-austrias"><div class="screen" style="background:var(--t)">
+        <div class="statusbar light"><span>9:41</span><span class="bat"></span></div>
+        <div class="confetti">
+          <i class="abs" style="background:var(--t-2);left:40px;top:80px;transform:rotate(20deg)"></i><i class="abs" style="background:#fff;left:120px;top:60px;transform:rotate(-30deg)"></i><i class="abs" style="background:var(--sun);left:250px;top:90px;transform:rotate(45deg)"></i><i class="abs" style="background:var(--rose);left:280px;top:170px;transform:rotate(-10deg)"></i><i class="abs" style="background:var(--t-2);left:20px;top:200px;transform:rotate(60deg)"></i><i class="abs" style="background:#fff;left:200px;top:150px;transform:rotate(15deg)"></i>
+        </div>
+        <div class="pad" style="padding-top:110px;text-align:center;color:#fff">
+          <div style="width:90px;height:90px;border-radius:50%;background:var(--t-2);color:var(--ink);display:grid;place-items:center;font-size:44px;margin:0 auto;box-shadow:0 0 0 12px rgba(255,255,255,.15)"><svg class="ico"><use href="#i-flag"/></svg></div>
+          <div class="t-title" style="margin-top:24px;font-size:30px">¡Tour completado!</div>
+          <div class="t-body" style="opacity:.85">Madrid de los Austrias</div>
+          <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:6px;margin-top:22px">
+            <div><b style="font-size:26px;font-weight:900;display:block">8</b><span class="t-caption" style="opacity:.8">paradas</span></div>
+            <div><b style="font-size:26px;font-weight:900;display:block">2,4</b><span class="t-caption" style="opacity:.8">km</span></div>
+            <div><b style="font-size:26px;font-weight:900;display:block">1 h 52</b><span class="t-caption" style="opacity:.8">tiempo</span></div>
+          </div>
+          <div class="stars" style="margin-top:20px"><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico"><use href="#i-star"/></svg><svg class="ico off" style="color:rgba(255,255,255,.3)"><use href="#i-star"/></svg></div>
+        </div>
+        <div class="abs" style="left:14px;right:14px;bottom:28px">
+          <div class="t-overline" style="color:#fff;opacity:.8;margin:0 0 8px 4px">Tu próximo paseo</div>
+          <div class="tour-card th-arte locked" style="max-width:none"><div class="pic" style="width:70px;min-height:76px"><span class="sunc"></span><svg class="sk"><use href="#sk-glass"/></svg><span class="lock-big"><svg class="ico"><use href="#i-lock"/></svg></span></div><div class="bd"><span class="cat">Arte</span><h4 style="font-size:16px">Paseo del Arte</h4><div class="mt"><span>A 900 m</span></div></div><span class="tag price"><svg class="ico"><use href="#i-lock"/></svg>4,99 €</span></div>
+        </div>
+        <div class="home-ind light"></div>
+      </div></div>
+      <div class="caption">8 · Final<small>Celebración + siguiente tour</small></div>
+    </div>
+
+  </div>
+</section>
+
+<footer>Paseo Design System · v0.3 · Versiones anteriores: design-system-v1.html, design-system-v2.html</footer>
+</div>
+</body>
+</html>
