@@ -1,9 +1,23 @@
 import { forwardRef, type ReactNode } from 'react';
 import { Pressable, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-/** Muelle de la interfaz: rápido, sin rebote exagerado */
-export const SPRING = { damping: 18, stiffness: 260, mass: 0.7 } as const;
+/*
+ * Movimiento de la interfaz: fluido y con cuerpo, pero sin rebotes. Los
+ * elementos de interfaz entran con una curva de salida larga (se frenan
+ * suavemente) y los muelles están amortiguados del todo. Los rebotes se
+ * guardan para lo físico: el sello que cae y la hoja del pasaporte.
+ */
+
+/** Curva de salida suave (tipo «ease-out quint»): arranca con energía y se posa sin pasarse */
+export const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1);
+/** Curva para lo que va y vuelve (cambios de estado, desplazamientos) */
+export const EASE_IN_OUT = Easing.bezier(0.65, 0, 0.35, 1);
+/** Duraciones: rápido para respuestas al toque, normal para entradas, lento para lo grande */
+export const DUR = { fast: 180, base: 360, slow: 520 } as const;
+
+/** Muelle de la interfaz: con cuerpo y sin rebote (amortiguado del todo) */
+export const SPRING = { damping: 30, stiffness: 320, mass: 0.9, overshootClamping: true } as const;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -34,8 +48,12 @@ export const PressableScale = forwardRef<View, Props>(function PressableScale({ 
   );
 });
 
-/** Entrada escalonada: sube y aparece con un muelle, `i` pasos de 70 ms después */
-export const rise = (i = 0) => FadeInDown.delay(i * 70).springify().damping(20).stiffness(180).mass(0.8);
+/** Entrada escalonada: sube 12 px y aparece, `i` pasos de 50 ms después, sin rebote */
+export const rise = (i = 0) =>
+  FadeInDown.delay(i * 50).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 12 }] });
+
+/** Aparición sin desplazamiento, para lo que no debe moverse (overlays, textos sobre fotos) */
+export const appear = (delay = 0) => FadeIn.delay(delay).duration(DUR.base).easing(EASE_OUT);
 
 /** Contenedor con la entrada escalonada */
 export function Rise({ i = 0, style, children }: { i?: number; style?: StyleProp<ViewStyle>; children: ReactNode }) {
