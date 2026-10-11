@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Postcard, postcardHeight } from '@/components/Postcard';
 import { IconButton } from '@/components/ui';
@@ -26,27 +26,31 @@ export default function PostalScreen() {
   const w = Math.min(width - 24, ((height - insets.top - insets.bottom - 200) * 928) / 628, 900);
   const flip = () => {
     const to = back ? 0 : 1;
-    const ms = reduced ? 0 : 520;
+    const ms = reduced ? 0 : 640;
     turn.value = withTiming(to, { duration: ms, easing: Easing.inOut(Easing.cubic) });
     setTimeout(() => setBack(!back), ms / 2);
   };
   const style = useAnimatedStyle(() => {
     const d = turn.value * 180;
     // La cara de atrás se dibuja girada para que no salga en espejo
-    return { transform: [{ perspective: 1400 }, { rotateY: `${d > 90 ? d - 180 : d}deg` }] };
+    // A mitad de giro la postal se acerca un poco, como cuando se le da la vuelta en la mano
+    const lift = Math.sin(turn.value * Math.PI);
+    return { transform: [{ perspective: 1400 }, { scale: 1 + lift * 0.06 }, { rotateY: `${d > 90 ? d - 180 : d}deg` }, { rotateZ: `${lift * -2}deg` }] };
   });
 
   return (
     <View style={[s.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
       <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
       <View style={s.center}>
-        <Text style={s.over}>{tour.city}</Text>
-        <Text style={s.title}>{tour.title}</Text>
+        <Animated.Text entering={FadeIn.delay(120)} style={s.over}>{tour.city}</Animated.Text>
+        <Animated.Text entering={FadeIn.delay(180)} style={s.title}>{tour.title}</Animated.Text>
+        <Animated.View entering={ZoomIn.springify().damping(15).stiffness(150).delay(60).withInitialValues({ transform: [{ scale: 0.82 }] })}>
         <Pressable accessibilityRole="button" accessibilityLabel={back ? 'Ver el anverso' : 'Dar la vuelta a la postal'} onPress={flip} style={{ marginTop: 18 }}>
           <Animated.View ref={card} collapsable={false} style={[{ width: w, height: postcardHeight(w) }, style]}>
             <Postcard tour={tour} route={route} width={w} back={back} />
           </Animated.View>
         </Pressable>
+        </Animated.View>
         <Text style={s.hint}>Toca la postal para darle la vuelta</Text>
       </View>
       <View style={s.row}>

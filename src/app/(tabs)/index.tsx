@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { PressableScale, rise } from '@/components/motion';
 import { Scrim } from '@/components/Scrim';
 import { TOURS } from '@/data/tours';
 import { cumulative, formatDistance } from '@/lib/geo';
@@ -20,14 +22,15 @@ export default function Home() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 18, gap: 14 }}>
-      <Text style={[type.overline, { color: brand.coral }]}>Paseo</Text>
-      <Text style={[type.hero, { fontSize: 38, lineHeight: 42 }]}>¿Dónde paseamos hoy?</Text>
+      <Animated.Text entering={rise(0)} style={[type.overline, { color: brand.coral }]}>Paseo</Animated.Text>
+      <Animated.Text entering={rise(1)} style={[type.hero, { fontSize: 38, lineHeight: 42 }]}>¿Dónde paseamos hoy?</Animated.Text>
 
-      {TOURS.map(t => {
+      {TOURS.map((t, i) => {
         const meters = t.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
         const prog = routeProgress(t.id, routes[t.id]);
         return (
-          <Pressable key={t.id} accessibilityRole="button" accessibilityLabel={`Abrir ${t.title}`} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: t.id } })} style={({ pressed }) => [s.card, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
+          <Animated.View key={t.id} entering={rise(i + 2)}>
+          <PressableScale accessibilityRole="button" accessibilityLabel={`Abrir ${t.title}`} scaleTo={0.975} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: t.id } })} style={s.card}>
             <View style={s.hero}>
               <DuotoneImage source={t.stops[t.emblemStop].photo} palette={t.palette} style={StyleSheet.absoluteFill} />
               <Scrim opacity={0.6} />
@@ -45,17 +48,18 @@ export default function Home() {
                 <Text style={type.caption}>{t.durationMin} min · {formatDistance(meters)} · {prog.completed ? 'Postal ganada' : prog.started ? `${prog.done} de ${prog.total} sellos` : `${t.stops.length} paradas`}</Text>
               </View>
             </View>
-          </Pressable>
+          </PressableScale>
+          </Animated.View>
         );
       })}
 
-      <View style={s.test}>
+      <Animated.View entering={rise(TOURS.length + 2)} style={s.test}>
         <View style={{ flex: 1 }}>
           <Text style={s.testTitle}>Modo prueba</Text>
           <Text style={type.caption}>Recorre los tours sin moverte: paseo simulado, velocidad, llegar a la parada o tocar el mapa para moverte.</Text>
         </View>
         <Switch accessibilityLabel="Modo prueba" value={testMode} onValueChange={setTestMode} trackColor={{ true: brand.coral, false: neutral.line }} thumbColor="#fff" />
-      </View>
+      </Animated.View>
       {testMode && (
         <Pressable accessibilityRole="button" onPress={reset} style={{ alignSelf: 'center', padding: 8 }}>
           <Text style={[type.caption, { textDecorationLine: 'underline' }]}>Borrar el pasaporte (sellos y postales)</Text>

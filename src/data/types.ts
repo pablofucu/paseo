@@ -73,11 +73,15 @@ export interface Tour {
   intro: string;
   palette: TourPalette;
   /**
-   * Color de acento de la ruta: la única tinta de sus sellos y del sello de
-   * ruta completada, y el marco y los títulos de su postal. Se corrige con
+   * Color de acento de la ruta: el marco y los títulos de su postal. Se corrige con
    * tintaDeRuta() si no llega a 4,5:1 sobre el papel.
    */
   accent: string;
+  /**
+   * Tintas de los sellos, una por parada y por turnos: colores de tampón
+   * distintos pero de la misma familia que la ruta. Si falta, todas usan el acento.
+   */
+  inks?: string[];
   /** Postal que se gana al completar la ruta */
   postcard: {
     /** Ilustración 832 × 444 (sitios de la ruta bajo un cielo común, con textura de imprenta) */

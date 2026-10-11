@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Postcard } from '@/components/Postcard';
 import type { Tour } from '@/data/types';
@@ -10,28 +10,39 @@ import type { UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
 /**
- * «Postal desbloqueada»: sube desde abajo con la postal girada −3°
- * (700 ms, cubic-bezier(.2, 1.3, .4, 1)), con «Ver en Postales» y «Compartir».
+ * «Postal desbloqueada»: se oscurece el fondo y la lámina sube con un muelle;
+ * la postal llega un poco después, girando hasta quedarse a −3°. Con «Ver en
+ * Postales» y «Compartir».
  */
 export function PostcardUnlock({ tour, route }: { tour: Tour; route: UserRoute | undefined }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const y = useSharedValue(reduced ? 0 : height);
+  const spin = useSharedValue(reduced ? 1 : 0);
   const card = useRef<View>(null);
   useEffect(() => {
-    y.value = withTiming(0, { duration: reduced ? 0 : 700, easing: Easing.bezier(0.2, 1.3, 0.4, 1) });
-  }, [y, reduced]);
+    y.set(withSpring(0, { damping: 20, stiffness: 140, mass: 0.9 }));
+    spin.set(withDelay(180, withSpring(1, { damping: 11, stiffness: 120 })));
+  }, [y, spin]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, spin.value * 1.6),
+    transform: [{ translateY: (1 - spin.value) * 60 }, { scale: 0.8 + spin.value * 0.2 }, { rotate: `${-3 - (1 - spin.value) * 14}deg` }],
+  }));
   const w = Math.min(width - 48, 520);
 
   return (
+    <>
+    <Animated.View entering={FadeIn.duration(300)} pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10,8,5,0.45)' }]} />
     <Animated.View style={[s.sheet, { paddingBottom: insets.bottom + 18 }, style]}>
       <Text style={s.over}>Postal desbloqueada</Text>
       <Text style={s.title}>{tour.title}</Text>
-      <View ref={card} collapsable={false} style={{ transform: [{ rotate: '-3deg' }], marginVertical: 8 }}>
-        <Postcard tour={tour} route={route} width={w} />
-      </View>
+      <Animated.View style={[{ marginVertical: 8 }, cardStyle]}>
+        <View ref={card} collapsable={false}>
+          <Postcard tour={tour} route={route} width={w} />
+        </View>
+      </Animated.View>
       <View style={s.row}>
         <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/postales', params: { open: tour.id } })} style={[s.btn, s.primary]}>
           <Text style={[s.btnText, { color: '#fff' }]}>Ver en Postales</Text>
@@ -41,6 +52,7 @@ export function PostcardUnlock({ tour, route }: { tour: Tour; route: UserRoute |
         </Pressable>
       </View>
     </Animated.View>
+    </>
   );
 }
 

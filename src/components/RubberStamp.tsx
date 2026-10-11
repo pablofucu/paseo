@@ -1,47 +1,44 @@
-import { useMemo } from 'react';
-import { View, type ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
+import { memo, useMemo } from 'react';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { SvgXml } from 'react-native-svg';
-import { SCENES } from '@/data/stamps/scenes';
+import { STAMP_ART } from '@/data/stamps/images';
 import type { Stop, Tour } from '@/data/types';
-import { tintaDeRuta } from '@/lib/ink';
-import { rubberXml, sealXml } from '@/lib/rubber';
+import { papelDeRuta, tintaDeParada, tintaDeRuta } from '@/lib/ink';
+import { rubberDateXml } from '@/lib/rubber';
 
-/** La tinta de una ruta, ya corregida para leerse sobre el papel */
+/** La tinta de una ruta (su acento), ya corregida para leerse sobre el papel */
 export const inkOf = (tour: Tour) => tintaDeRuta(tour.accent);
+
+/** Papel de la hoja de una ruta */
+export const paperOf = (tour: Tour) => papelDeRuta(tour.palette.soft);
+
+/** Tinta del sello de una parada: cada parada tiene la suya, de la familia de la ruta */
+export function stopInk(tour: Tour, stopId: string) {
+  return tintaDeParada(tour.inks, tour.accent, Math.max(0, tour.stops.findIndex(s => s.id === stopId)), paperOf(tour));
+}
 
 interface StampProps {
   tour: Tour;
   stop: Stop;
   /** Fecha ISO del estampado */
   date: string;
-  seed: number;
   width: number;
   height: number;
   style?: ViewStyle;
 }
 
-/** Sello de goma de una parada: una sola tinta, mezclada con el papel (multiply) */
-export function RubberStamp({ tour, stop, date, seed, width, height, style }: StampProps) {
-  const xml = useMemo(
-    () => rubberXml({ art: stop.rubber, scene: SCENES[stop.id] ?? '', city: tour.city, date, color: inkOf(tour), seed }),
-    [tour, stop, date, seed],
-  );
+/**
+ * Sello de goma de una parada: el dibujo horneado con su textura, teñido con
+ * la tinta de la parada, y la fecha real encima. Mezclado con el papel (multiply).
+ */
+export const RubberStamp = memo(function RubberStamp({ tour, stop, date, width, height, style }: StampProps) {
+  const color = stopInk(tour, stop.id);
+  const xml = useMemo(() => rubberDateXml({ art: stop.rubber, city: tour.city, date, color }), [stop, tour.city, date, color]);
   return (
-    <View pointerEvents="none" style={[{ width, height, mixBlendMode: 'multiply', opacity: 0.94 }, style]}>
-      <SvgXml xml={xml} width={width} height={height} />
+    <View pointerEvents="none" style={[{ width, height, mixBlendMode: 'multiply', opacity: 0.92 }, style]}>
+      <Image source={STAMP_ART[stop.id]} tintColor={color} style={StyleSheet.absoluteFill} contentFit="fill" cachePolicy="memory" transition={0} />
+      <SvgXml xml={xml} width={width} height={height} opacity={0.88} />
     </View>
   );
-}
-
-/** Sello grande de «Ruta completada» */
-export function CompletionSeal({ tour, date, seed, width, height, style }: Omit<StampProps, 'stop'>) {
-  const xml = useMemo(
-    () => sealXml({ title: tour.title, stops: tour.stops.length, date, color: inkOf(tour), seed }),
-    [tour, date, seed],
-  );
-  return (
-    <View pointerEvents="none" style={[{ width, height, mixBlendMode: 'multiply', opacity: 0.94 }, style]}>
-      <SvgXml xml={xml} width={width} height={height} />
-    </View>
-  );
-}
+});

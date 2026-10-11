@@ -34,7 +34,7 @@ export function Postcard({ tour, route, width, back }: Props) {
   const k = width / VB.w;
   const height = postcardHeight(width);
   const accent = tintaDeRuta(tour.accent);
-  const date = route?.finalStamp?.date;
+  const date = route?.postcardUnlockedAt;
   const paper = useMemo(() => postcardPaperXml(id), [id]);
   const face = useMemo(
     () => (date ? postcardFaceXml({ id, title: tour.title, subtitle: tour.postcard.subtitle, value: tour.postcard.value, accent, city: tour.city, date }) : postcardBlankXml({ title: tour.title, accent })),
@@ -75,7 +75,7 @@ function PostcardBack({ tour, route, width, paper, accent }: { tour: Tour; route
   const k = width / VB.w;
   const height = postcardHeight(width);
   const owner = usePassport(s => s.passport.owner);
-  const date = route?.finalStamp?.date ?? new Date().toISOString();
+  const date = route?.postcardUnlockedAt ?? new Date().toISOString();
   const meters = tour.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
   const when = new Date(date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
   const mark = useMemo(() => postmarkXml({ city: tour.city, date }), [tour.city, date]);

@@ -1,7 +1,8 @@
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { rise } from '@/components/motion';
 import { Book, type Leaf } from '@/components/passport/Book';
 import { Cover, Holder, NextRoute, SheetBack } from '@/components/passport/Pages';
 import { RouteSheet } from '@/components/passport/RouteSheet';
@@ -40,13 +41,7 @@ export default function Pasaporte() {
       out.push({
         key: id,
         front: (
-          <RouteSheet
-            tour={tour}
-            route={routes[id]}
-            width={pageW}
-            pageNumber={i + 2}
-            onSealPress={() => router.push({ pathname: '/postal/[id]', params: { id } })}
-          />
+          <RouteSheet tour={tour} route={routes[id]} width={pageW} pageNumber={i + 2} />
         ),
         back: <SheetBack width={pageW} />,
       });
@@ -59,14 +54,17 @@ export default function Pasaporte() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: 24, paddingHorizontal: 16, alignItems: 'center' }}>
-      <View style={s.head}>
+      <Animated.View entering={rise(0)} style={s.head}>
         <Text style={type.overline}>Pasaporte</Text>
         <Text style={s.title}>Mis sellos</Text>
         <Text style={type.caption}>
           {stamps ? `${stamps} ${stamps === 1 ? 'sello' : 'sellos'} en ${passport.pageOrder.length} ${passport.pageOrder.length === 1 ? 'ruta' : 'rutas'} · Pasa las hojas con el dedo` : 'Ábrelo y pasa las hojas con el dedo. Cada ruta tendrá su hoja con el primer sello.'}
         </Text>
-      </View>
+      </Animated.View>
+      {/* La libreta llega desde un poco más pequeña, como si se acercara a la mano */}
+      <Animated.View entering={ZoomIn.springify().damping(20).stiffness(160).delay(80).withInitialValues({ transform: [{ scale: 0.92 }] })}>
       <Book leaves={leaves} width={pageW} spread={spread} index={Math.min(index, leaves.length - 1)} onIndex={setIndex} />
+      </Animated.View>
     </ScrollView>
   );
 }

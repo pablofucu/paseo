@@ -24,6 +24,8 @@ export const sevilla: Tour = {
   palette: { t: '#1F4FA8', t2: '#E5A823', soft: '#E4EAF7', deep: '#0F2650', on: '#FFFFFF' },
   // Azul de los azulejos sevillanos
   accent: '#1f4fa8',
+  // Oro del río, azul de azulejo, terracota, verde de alicatado y añil
+  inks: ['#86600f', '#1f4fa8', '#7a3424', '#2c6152', '#4a3a8c'],
   postcard: {
     art: require('../../../assets/postcards/sevilla.jpg'),
     value: '3,20€',

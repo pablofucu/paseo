@@ -90,7 +90,7 @@ export default function StopScreen() {
           <Text style={type.body}>{stop.p1}</Text>
           <View style={[s.look, { backgroundColor: p.soft }]}>
             <View style={{ width: 84, alignItems: 'center', opacity: mine ? 1 : 0.25 }}>
-              <RubberStamp tour={tour} stop={stop} date={mine?.date ?? new Date().toISOString()} seed={mine?.seed ?? 5} width={stampBox(stop.rubber.shape, 84 / 0.4).w} height={stampBox(stop.rubber.shape, 84 / 0.4).h} />
+              <RubberStamp tour={tour} stop={stop} date={mine?.date ?? new Date().toISOString()} width={stampBox(stop.rubber.shape, 84 / 0.28).w} height={stampBox(stop.rubber.shape, 84 / 0.28).h} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[s.lookOver, { color: p.deep }]}>Fíjate en</Text>

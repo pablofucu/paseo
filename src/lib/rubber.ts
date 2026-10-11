@@ -3,10 +3,13 @@ import type { RubberArt, RubberShape } from '@/data/types';
 /**
  * Sellos de goma de la «Guía de sellos, pasaporte y postales».
  *
- * Una sola tinta (el acento de la ruta), anillos según la forma, textos con el
- * sitio, la ciudad y la fecha real, y la escena dibujada en línea de cada
- * parada (src/data/stamps/scenes.ts). La textura de goma (poros, presión
- * desigual) es una máscara con semilla: cambia en cada estampado.
+ * Cada sello tiene dos partes:
+ * - El dibujo fijo (escena de la parada, anillos, título y estrellas), que
+ *   scripts/build-stamps.mjs hornea en assets/stamps/<parada>.png con la
+ *   textura de goma real de la guía (feTurbulence, que el móvil no tiene). Va
+ *   en negro sobre transparente y la app lo tiñe con la tinta de la parada.
+ * - La fecha real del estampado, que se pinta encima con un SVG mínimo.
+ * Así una hoja con cinco sellos son diez vistas en lugar de miles de nodos SVG.
  */
 
 /** Caja (viewBox) de cada forma, centrada en 0,0 como en la guía */
@@ -16,8 +19,6 @@ export const RUBBER_BOX: Record<RubberShape, { x: number; y: number; w: number; 
   rect: { x: -160, y: -120, w: 320, h: 240 },
   octagon: { x: -160, y: -160, w: 320, h: 320 },
 };
-/** Sello de ruta completada: 400 × 228 */
-export const SEAL_BOX = { x: -200, y: -114, w: 400, h: 228 };
 
 const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 const ROMANOS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
@@ -89,43 +90,50 @@ interface FrameText {
   date: string;
 }
 
-/** Anillos, textos y estrellas de cada forma (medidas de la guía) */
-function frame(shape: RubberShape, t: FrameText, p: string) {
+/**
+ * Anillos, textos y estrellas de cada forma (medidas de la guía). `fixed` es
+ * lo que se hornea en la imagen; `dated` es el texto que lleva la fecha.
+ */
+function frame(shape: RubberShape, t: FrameText, p: string): { fixed: string; dated: string } {
   switch (shape) {
     case 'circle':
-      return (
-        '<circle r="138" stroke-width="5"/><circle r="130" stroke-width="1.2"/><circle r="104" stroke-width="2.6"/>' +
-        `<path id="${p}top" d="M-111,0 A111,111 0 0 1 111,0" stroke="none"/><path id="${p}bot" d="M-124,0 A124,124 0 0 0 124,0" stroke="none"/>` +
-        arcText(`${p}top`, t.title, fit(t.title, 16, 330, 3), 3) +
-        arcText(`${p}bot`, t.bottom, fit(t.bottom, 13, 360, 2.5), 2.5) +
-        star(-117, 0, 6.5) + star(117, 0, 6.5)
-      );
+      return {
+        fixed:
+          '<circle r="138" stroke-width="5"/><circle r="130" stroke-width="1.2"/><circle r="104" stroke-width="2.6"/>' +
+          `<path id="${p}top" d="M-111,0 A111,111 0 0 1 111,0" stroke="none"/>` +
+          arcText(`${p}top`, t.title, fit(t.title, 16, 330, 3), 3) +
+          star(-117, 0, 6.5) + star(117, 0, 6.5),
+        dated: `<path id="${p}bot" d="M-124,0 A124,124 0 0 0 124,0" stroke="none"/>` + arcText(`${p}bot`, t.bottom, fit(t.bottom, 13, 360, 2.5), 2.5),
+      };
     case 'oval':
-      return (
-        '<ellipse rx="148" ry="100" stroke-width="5"/><ellipse rx="140" ry="92" stroke-width="1.2"/><ellipse rx="118" ry="71" stroke-width="2.6"/>' +
-        `<path id="${p}top" d="M-123,0 A123,76 0 0 1 123,0" stroke="none"/><path id="${p}bot" d="M-134,0 A134,87 0 0 0 134,0" stroke="none"/>` +
-        arcText(`${p}top`, t.title, fit(t.title, 13, 290, 3), 3) +
-        arcText(`${p}bot`, t.bottom, fit(t.bottom, 11.5, 330, 2), 2) +
-        star(-129, 0, 5.5) + star(129, 0, 5.5)
-      );
+      return {
+        fixed:
+          '<ellipse rx="148" ry="100" stroke-width="5"/><ellipse rx="140" ry="92" stroke-width="1.2"/><ellipse rx="118" ry="71" stroke-width="2.6"/>' +
+          `<path id="${p}top" d="M-123,0 A123,76 0 0 1 123,0" stroke="none"/>` +
+          arcText(`${p}top`, t.title, fit(t.title, 13, 290, 3), 3) +
+          star(-129, 0, 5.5) + star(129, 0, 5.5),
+        dated: `<path id="${p}bot" d="M-134,0 A134,87 0 0 0 134,0" stroke="none"/>` + arcText(`${p}bot`, t.bottom, fit(t.bottom, 11.5, 330, 2), 2),
+      };
     case 'rect':
-      return (
-        '<rect x="-146" y="-106" width="292" height="212" rx="14" stroke-width="4.5"/><rect x="-138" y="-98" width="276" height="196" rx="8" stroke-width="1.4"/>' +
-        text(0, -74, t.title, fit(t.title, 18.5, 225, 1), 1) +
-        star(-128, -80, 5) + star(128, -80, 5) +
-        '<line x1="-138" y1="-66" x2="138" y2="-66" stroke-width="1.6"/><line x1="-138" y1="68" x2="138" y2="68" stroke-width="1.6"/>' +
-        text(0, 90, t.bottom, fit(t.bottom, 12.5, 262, 1.5), 1.5)
-      );
+      return {
+        fixed:
+          '<rect x="-146" y="-106" width="292" height="212" rx="14" stroke-width="4.5"/><rect x="-138" y="-98" width="276" height="196" rx="8" stroke-width="1.4"/>' +
+          text(0, -74, t.title, fit(t.title, 18.5, 225, 1), 1) +
+          star(-128, -80, 5) + star(128, -80, 5) +
+          '<line x1="-138" y1="-66" x2="138" y2="-66" stroke-width="1.6"/><line x1="-138" y1="68" x2="138" y2="68" stroke-width="1.6"/>',
+        dated: text(0, 90, t.bottom, fit(t.bottom, 12.5, 262, 1.5), 1.5),
+      };
     case 'octagon':
-      return (
-        `<polygon points="${octagon(150)}" stroke-width="5"/><polygon points="${octagon(141)}" stroke-width="1.2"/>` +
-        '<line x1="-88.2" y1="-96" x2="88.2" y2="-96" stroke-width="2.4"/><line x1="-88.2" y1="96" x2="88.2" y2="96" stroke-width="2.4"/>' +
-        text(0, -120, t.kicker ?? '', 8.5, 4, NARROW) +
-        text(0, -104, t.title, fit(t.title, 13, 165, 1.2), 1.2) +
-        text(0, 113, t.label ?? '', fit(t.label ?? '', 10, 160, 2), 2) +
-        text(0, 127, t.date, 9, 2, NARROW) +
-        star(-46, -123, 3.5) + star(46, -123, 3.5)
-      );
+      return {
+        fixed:
+          `<polygon points="${octagon(150)}" stroke-width="5"/><polygon points="${octagon(141)}" stroke-width="1.2"/>` +
+          '<line x1="-88.2" y1="-96" x2="88.2" y2="-96" stroke-width="2.4"/><line x1="-88.2" y1="96" x2="88.2" y2="96" stroke-width="2.4"/>' +
+          text(0, -120, t.kicker ?? '', 8.5, 4, NARROW) +
+          text(0, -104, t.title, fit(t.title, 13, 165, 1.2), 1.2) +
+          text(0, 113, t.label ?? '', fit(t.label ?? '', 10, 160, 2), 2) +
+          star(-46, -123, 3.5) + star(46, -123, 3.5),
+        dated: text(0, 127, t.date, 9, 2, NARROW),
+      };
   }
 }
 
@@ -133,93 +141,44 @@ function frame(shape: RubberShape, t: FrameText, p: string) {
 const scope = (svg: string, p: string) =>
   svg.replace(/\bid="/g, `id="${p}`).replace(/url\(#/g, `url(#${p}`).replace(/href="#/g, `href="#${p}`);
 
-/**
- * Textura de goma con semilla: presión desigual (zonas más claras), poros
- * finos y alguna fibra. Es una máscara: donde es oscura, no llega la tinta.
- */
-export function rubberMask(id: string, seed: number, box: { x: number; y: number; w: number; h: number }, density = 1) {
-  const r = rng(seed);
-  const { x, y, w, h } = box;
-  let grads = '';
-  let press = '';
-  for (let i = 0; i < 5; i++) {
-    const cx = x + r() * w, cy = y + r() * h, rad = 35 + r() * 85, o = 0.3 + r() * 0.4;
-    grads += `<radialGradient id="${id}g${i}" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(rad)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#000" stop-opacity="${o.toFixed(2)}"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>`;
-    press += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${id}g${i})"/>`;
-  }
-  let pores = '';
-  // Poros: muchos pequeños y algunos más grandes (a tamaño de hoja, un sello mide ~120 px para 300 u.)
-  const n = Math.round(((w * h) / 70) * density);
-  for (let i = 0; i < n; i++) {
-    pores += `<circle cx="${f1(x + r() * w)}" cy="${f1(y + r() * h)}" r="${(0.8 + r() ** 3 * 2.2).toFixed(2)}" opacity="${(0.5 + r() * 0.5).toFixed(2)}"/>`;
-  }
-  let fibers = '';
-  for (let i = 0; i < 10; i++) {
-    const fx = x + r() * w, fy = y + r() * h, len = 4 + r() * 12, a = r() * Math.PI;
-    fibers += `<path d="M${f1(fx)} ${f1(fy)} l${f1(Math.cos(a) * len)} ${f1(Math.sin(a) * len)}" stroke-width="${(0.4 + r() * 0.5).toFixed(2)}"/>`;
-  }
-  return (
-    `<defs>${grads}<mask id="${id}" maskUnits="userSpaceOnUse" x="${x}" y="${y}" width="${w}" height="${h}">` +
-    `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>${press}<g fill="#000" stroke="none">${pores}</g><g stroke="#000" fill="none" stroke-linecap="round">${fibers}</g>` +
-    `</mask></defs>`
-  );
-}
-
 let uid = 0;
 const nextId = () => `r${(uid++).toString(36)}_`;
 
-export interface RubberSpec {
-  art: RubberArt;
-  /** Escena dibujada de la parada (SVG interior) */
-  scene: string;
-  city: string;
-  /** Fecha ISO del estampado */
-  date: string;
-  color: string;
-  seed: number;
-}
-
-/** SVG completo del sello de goma de una parada, listo para <SvgXml> */
-export function rubberXml({ art, scene, city, date, color, seed }: RubberSpec): string {
-  const p = nextId();
-  const box = RUBBER_BOX[art.shape];
+function frameText(art: RubberArt, city: string, date: string): FrameText {
   const place = (art.place ?? city).toUpperCase();
-  const t: FrameText = {
+  return {
     title: art.title,
     kicker: art.kicker ?? city.toUpperCase(),
     label: art.label,
     bottom: art.shape === 'rect' && art.place ? `${city.toUpperCase()} · ${fechaSello(date)} · ${place}` : `${place} · ${fechaSello(date)}`,
     date: fechaRomana(date),
   };
+}
+
+const open = (shape: RubberShape) => {
+  const b = RUBBER_BOX[shape];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.x} ${b.y} ${b.w} ${b.h}" width="${b.w}" height="${b.h}">`;
+};
+
+/**
+ * Dibujo fijo del sello (escena, anillos, título, estrellas) en negro, para
+ * hornearlo. `filter` es el id de un filtro de textura ya definido, si lo hay.
+ */
+export function rubberArtXml({ art, scene, city, filter }: { art: RubberArt; scene: string; city: string; filter?: string }) {
+  const p = nextId();
+  const { fixed } = frame(art.shape, frameText(art, city, '2000-01-01T12:00:00Z'), p);
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.x} ${box.y} ${box.w} ${box.h}" width="${box.w}" height="${box.h}">` +
-    rubberMask(`${p}ink`, seed, box) +
-    `<g color="${color}" mask="url(#${p}ink)"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">` +
-    frame(art.shape, t, p) +
-    scope(scene, p) +
+    open(art.shape) +
+    `<g color="#000"${filter ? ` filter="url(#${filter})"` : ''}><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">` +
+    fixed + scope(scene, p) +
     '</g></g></svg>'
   );
 }
 
-/** Sello grande de «Ruta completada» (plantilla 400 × 228 de la guía) */
-export function sealXml({ title, stops, date, color, seed }: { title: string; stops: number; date: string; color: string; seed: number }) {
-  const p = nextId();
-  const name = title.toUpperCase();
-  const size = fit(name, name.length > 14 ? 23 : 32, 360, 0.5);
-  const foot = `${stops} / ${stops} PARADAS · ${fechaSello(date)}`;
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SEAL_BOX.x} ${SEAL_BOX.y} ${SEAL_BOX.w} ${SEAL_BOX.h}" width="${SEAL_BOX.w}" height="${SEAL_BOX.h}">` +
-    rubberMask(`${p}ink`, seed, SEAL_BOX, 0.9) +
-    `<g color="${color}" mask="url(#${p}ink)"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">` +
-    '<rect x="-190" y="-104" width="380" height="208" rx="12" stroke-width="6"/><rect x="-180" y="-94" width="360" height="188" rx="7" stroke-width="1.6"/>' +
-    text(0, -58, 'RUTA COMPLETADA', 20, 3) +
-    star(-160, -65, 6.5) + star(160, -65, 6.5) +
-    '<line x1="-180" y1="-42" x2="180" y2="-42" stroke-width="2"/><line x1="-180" y1="-37" x2="180" y2="-37" stroke-width="0.8"/>' +
-    text(0, 12, name, size, 0.5) +
-    '<line x1="-180" y1="40" x2="180" y2="40" stroke-width="0.8"/><line x1="-180" y1="45" x2="180" y2="45" stroke-width="2"/>' +
-    text(0, 76, foot, fit(foot, 15, 340, 3), 3) +
-    '</g></g></svg>'
-  );
+/** El texto con la fecha real, en la tinta del sello, para pintarlo encima de la imagen horneada */
+export function rubberDateXml({ art, city, date, color }: { art: RubberArt; city: string; date: string; color: string }) {
+  const { dated } = frame(art.shape, frameText(art, city, date), nextId());
+  return `${open(art.shape)}<g color="${color}" fill="none" stroke="none">${dated}</g></svg>`;
 }
 
 /** Matasellos del sello de carta: círculo doble con ciudad y fecha, y ondas a la izquierda */

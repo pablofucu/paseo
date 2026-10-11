@@ -37,6 +37,9 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontFamily: font.black, fontSize: 11.5 },
         tabBarStyle: { backgroundColor: neutral.bg, borderTopColor: neutral.line },
         sceneStyle: { backgroundColor: neutral.bg },
+        // Al cambiar de pestaña la nueva se desliza un poco y aparece; las ocultas se congelan y no se repintan
+        animation: 'shift',
+        freezeOnBlur: true,
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Inicio', tabBarIcon: icon('index') }} />

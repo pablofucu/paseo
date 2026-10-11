@@ -2,11 +2,11 @@ import { useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { CompletionSeal, RubberStamp } from '@/components/RubberStamp';
+import { RubberStamp } from '@/components/RubberStamp';
 import { RouteSheet } from '@/components/passport/RouteSheet';
 import type { Tour } from '@/data/types';
 import { randomSpot, settle } from '@/lib/placement';
-import { placedBoxes, sealBox, sheetFor, stampBox, stampInk } from '@/lib/sheet';
+import { placedBoxes, sheetFor, stampBox, stampInk } from '@/lib/sheet';
 import { newSeed, routeProgress, usePassport, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
@@ -16,7 +16,7 @@ const LIFT = 36;
 interface Props {
   tour: Tour;
   width: number;
-  /** Parada que se sella, o 'final' para el sello de ruta completada */
+  /** Parada que se sella */
   target: string;
   pageNumber: number;
   /** Se llama al soltar, justo antes de guardar el sello */
@@ -35,12 +35,10 @@ interface Props {
 export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped, tone = 'dark' }: Props) {
   const route = useRoute(tour.id);
   const placeStamp = usePassport(s => s.placeStamp);
-  const placeFinal = usePassport(s => s.placeFinal);
   const sheet = sheetFor(width);
-  const isFinal = target === 'final';
-  const stop = tour.stops.find(s => s.id === target);
-  const box = isFinal ? sealBox(width) : stampBox(stop!.rubber.shape, width);
-  const ink = isFinal ? sealBox(width) : stampInk(stop!.rubber.shape, width);
+  const stop = tour.stops.find(s => s.id === target)!;
+  const box = stampBox(stop.rubber.shape, width);
+  const ink = stampInk(stop.rubber.shape, width);
   const [fresh, setFresh] = useState<string | null>(null);
   const done = useRef(false);
   const previewDate = useMemo(() => new Date().toISOString(), []);
@@ -56,16 +54,14 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
     if (done.current) return;
     done.current = true;
     onDrop?.();
-    const drop = { x: spot.x / sheet.w, y: spot.y / sheet.h, rot: (Math.random() * 2 - 1) * (isFinal ? 20 : 12), seed: newSeed() };
-    if (isFinal) placeFinal(tour.id, drop);
-    else placeStamp(tour.id, target, drop);
+    placeStamp(tour.id, target, { x: spot.x / sheet.w, y: spot.y / sheet.h, rot: (Math.random() * 2 - 1) * 12, seed: newSeed() });
     setFresh(target);
-    setTimeout(() => onStamped?.(), isFinal ? 360 : 300);
+    setTimeout(() => onStamped?.(), 300);
   };
 
-  // El sello grande puede cruzar por encima de los demás; los de parada, como mucho un 35 %
-  const release = (x: number, y: number) => stampAt(settle(x, y, ink.w, ink.h, isFinal ? [] : others(), sheet));
-  const auto = () => stampAt(randomSpot(ink.w, ink.h, isFinal ? [] : others(), sheet, Math.random));
+  // Como mucho un 35 % encima de otro sello
+  const release = (x: number, y: number) => stampAt(settle(x, y, ink.w, ink.h, others(), sheet));
+  const auto = () => stampAt(randomSpot(ink.w, ink.h, others(), sheet, Math.random));
 
   const pan = usePanGesture({
     minDistance: 0,
@@ -92,11 +88,7 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
           <RouteSheet tour={tour} route={route} width={width} pageNumber={pageNumber} fresh={fresh}>
             {!fresh && (
               <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: box.w, height: box.h }, ghost]}>
-                {isFinal ? (
-                  <CompletionSeal tour={tour} date={previewDate} seed={11} width={box.w} height={box.h} />
-                ) : (
-                  <RubberStamp tour={tour} stop={stop!} date={previewDate} seed={11} width={box.w} height={box.h} />
-                )}
+                <RubberStamp tour={tour} stop={stop} date={previewDate} width={box.w} height={box.h} />
               </Animated.View>
             )}
           </RouteSheet>
@@ -105,7 +97,7 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
       {!fresh ? (
         <View style={s.row}>
           <Text style={[s.hint, { color: light ? 'rgba(28,26,23,0.7)' : 'rgba(255,255,255,0.85)' }]}>
-            {isFinal ? 'Arrastra el sello de ruta completada y suéltalo donde quieras' : 'Arrastra el sello y suéltalo donde quieras'}
+            Arrastra el sello y suéltalo donde quieras
           </Text>
           <Pressable accessibilityRole="button" onPress={auto} style={[s.auto, { borderColor: light ? 'rgba(28,26,23,0.25)' : 'rgba(255,255,255,0.5)' }]}>
             <Text style={[s.autoText, { color: light ? '#1c1a17' : '#fff' }]}>Colócalo tú</Text>
@@ -113,7 +105,7 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
         </View>
       ) : (
         <Text style={[s.hint, { color: light ? 'rgba(28,26,23,0.7)' : 'rgba(255,255,255,0.85)', textAlign: 'center' }]}>
-          {isFinal ? '¡Ruta completada!' : `Sello ${prog.done} de ${prog.total}`}
+          {prog.allStamped ? '¡Ruta completada! Has ganado la postal' : `Sello ${prog.done} de ${prog.total}`}
         </Text>
       )}
     </View>

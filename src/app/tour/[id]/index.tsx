@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { rise } from '@/components/motion';
 import { Postcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
@@ -42,7 +44,7 @@ export default function Cover() {
           <DuotoneImage source={tour.stops[tour.emblemStop].photo} palette={p} style={StyleSheet.absoluteFill} />
           <IconButton label="Volver" icon="back" onPress={() => router.back()} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
         </View>
-        <View style={s.body}>
+        <Animated.View entering={rise(1)} style={s.body}>
           <Text style={[type.overline, { color: p.t }]}>{tour.category} · {tour.city}</Text>
           <Text style={type.title}>{tour.title}</Text>
           <View style={s.chips}>
@@ -60,11 +62,11 @@ export default function Cover() {
           <View style={s.stamps}>
             {tour.stops.map(st => {
               const got = saved?.stamps.find(x => x.stopId === st.id);
-              const b = stampBox(st.rubber.shape, cell * 2.2);
+              const b = stampBox(st.rubber.shape, cell * 2.9);
               return (
                 <View key={st.id} style={[s.stampCell, { width: `${100 / Math.min(5, tour.stops.length)}%` }]}>
                   <View style={{ height: cell * 0.85, justifyContent: 'center', opacity: got ? 1 : 0.22 }}>
-                    <RubberStamp tour={tour} stop={st} date={got?.date ?? new Date().toISOString()} seed={got?.seed ?? 5} width={b.w} height={b.h} style={{ transform: [{ rotate: `${got ? got.rot / 2 : 0}deg` }] }} />
+                    <RubberStamp tour={tour} stop={st} date={got?.date ?? new Date().toISOString()} width={b.w} height={b.h} style={{ transform: [{ rotate: `${got ? got.rot / 2 : 0}deg` }] }} />
                   </View>
                   <Text style={s.stampName} numberOfLines={2}>{st.name}</Text>
                 </View>
@@ -75,7 +77,7 @@ export default function Cover() {
           <Text style={[type.headline, s.h]}>Tu postal</Text>
           <Pressable accessibilityRole="button" disabled={!prog.completed} onPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} style={{ alignItems: 'center', gap: 6 }}>
             <Postcard tour={tour} route={saved} width={300} />
-            <Text style={type.caption}>{prog.completed ? 'Ganada · tócala para verla' : 'Con todos los sellos y el sello de ruta completada te llevas esta postal'}</Text>
+            <Text style={type.caption}>{prog.completed ? 'Ganada · tócala para verla' : 'Con todos los sellos te llevas esta postal'}</Text>
           </Pressable>
 
           <Text style={[type.headline, s.h]}>Paradas</Text>
@@ -89,7 +91,7 @@ export default function Cover() {
               </View>
             </View>
           ))}
-        </View>
+        </Animated.View>
       </ScrollView>
       <View style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
         {nextStop >= 0 ? (
@@ -100,7 +102,7 @@ export default function Cover() {
             </Pressable>
           </>
         ) : (
-          <PrimaryButton label={prog.completed ? 'Volver a hacer la ruta' : prog.allStamped ? 'Poner el sello de ruta completada' : 'Empezar tour'} onPress={() => (prog.allStamped && !prog.completed ? router.push({ pathname: '/tour/[id]/done', params: { id: tour.id } }) : walkFrom(0))} />
+          <PrimaryButton label={prog.completed ? 'Volver a hacer la ruta' : 'Empezar tour'} onPress={() => walkFrom(0)} />
         )}
       </View>
     </TourThemeProvider>

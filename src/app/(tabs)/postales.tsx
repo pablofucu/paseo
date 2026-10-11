@@ -1,7 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PressableScale, rise, SPRING } from '@/components/motion';
 import { Postcard } from '@/components/Postcard';
 import { PostcardMap } from '@/components/PostcardMap';
 import { TOURS } from '@/data/tours';
@@ -24,6 +26,9 @@ export default function Postales() {
   const routes = usePassport(s => s.routes);
   const [view, setView] = useState<'list' | 'map'>('list');
   const { open } = useLocalSearchParams<{ open?: string }>();
+  const [tabs, setTabs] = useState<Record<string, { x: number; width: number }>>({});
+  const on = tabs[view];
+  const pill = useAnimatedStyle(() => (on ? { opacity: 1, width: withSpring(on.width, SPRING), transform: [{ translateX: withSpring(on.x, SPRING) }] } : { opacity: 0 }));
 
   // «Ver en Postales» desde la tarjeta de postal desbloqueada: abre esa postal
   useEffect(() => {
@@ -38,7 +43,7 @@ export default function Postales() {
   };
 
   const cities = [...new Set(TOURS.map(t => t.city))];
-  const won = TOURS.filter(t => routes[t.id]?.finalStamp).length;
+  const won = TOURS.filter(t => routeProgress(t.id, routes[t.id]).completed).length;
   const cardW = Math.min(width - 32, 560);
 
   return (
@@ -50,8 +55,10 @@ export default function Postales() {
           <Text style={type.caption}>{won} de {TOURS.length} postales ganadas</Text>
         </View>
         <View style={s.toggle} accessibilityRole="tablist">
+          {/* La píldora oscura se desliza de una opción a la otra */}
+          <Animated.View style={[s.tOn, pill]} />
           {(['list', 'map'] as const).map(v => (
-            <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} style={[s.tBtn, view === v && s.tOn]}>
+            <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} onLayout={e => setTabs(t => ({ ...t, [v]: e.nativeEvent.layout }))} style={s.tBtn}>
               <Text style={[s.tText, view === v && { color: '#fff' }]}>{v === 'list' ? 'Tarjetero' : 'Mapa'}</Text>
             </Pressable>
           ))}
@@ -59,32 +66,36 @@ export default function Postales() {
       </View>
 
       {view === 'map' ? (
-        <PostcardMap tours={TOURS} routes={routes} onOpen={openTour} />
+        <Animated.View key="map" entering={FadeIn.duration(260)} exiting={FadeOut.duration(160)}>
+          <PostcardMap tours={TOURS} routes={routes} onOpen={openTour} />
+        </Animated.View>
       ) : (
-        cities.map(city => (
-          <View key={city} style={{ gap: 12, alignItems: 'center' }}>
+        cities.map((city, ci) => (
+          <Animated.View key={city} entering={rise(ci * 2)} style={{ gap: 12, alignItems: 'center' }}>
             <Text style={s.city}>{city.toUpperCase()}</Text>
-            {TOURS.filter(t => t.city === city).map(t => {
+            {TOURS.filter(t => t.city === city).map((t, ti) => {
               const route = routes[t.id];
               const prog = routeProgress(t.id, route);
               const ink = tintaDeRuta(t.accent);
               return (
-                <Pressable key={t.id} accessibilityRole="button" accessibilityLabel={`${t.title}: ${prog.completed ? 'postal ganada' : prog.started ? `${prog.done} de ${prog.total} paradas` : 'sin empezar'}`} onPress={() => openTour(t)} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.98 : 1 }], gap: 6 })}>
+                <Animated.View key={t.id} entering={rise(ci * 2 + ti + 1)}>
+                <PressableScale accessibilityRole="button" accessibilityLabel={`${t.title}: ${prog.completed ? 'postal ganada' : prog.started ? `${prog.done} de ${prog.total} paradas` : 'sin empezar'}`} onPress={() => openTour(t)} scaleTo={0.97} style={{ gap: 6 }}>
                   <Postcard tour={t} route={route} width={cardW} />
                   <View style={s.meta}>
                     <View style={[s.dot, { backgroundColor: ink }]} />
                     <Text style={s.metaTitle} numberOfLines={1}>{t.title}</Text>
                     <Text style={s.metaSub}>
-                      {prog.completed ? fechaSello(route!.finalStamp!.date) : prog.started ? `${prog.done} de ${prog.total} paradas` : 'sin empezar'}
+                      {prog.completed ? fechaSello(prog.completedAt!) : prog.started ? `${prog.done} de ${prog.total} paradas` : 'sin empezar'}
                     </Text>
                   </View>
                   {!prog.completed && prog.started && (
                     <View style={s.bar}><View style={[s.fill, { width: `${(prog.done / prog.total) * 100}%`, backgroundColor: ink }]} /></View>
                   )}
-                </Pressable>
+                </PressableScale>
+                </Animated.View>
               );
             })}
-          </View>
+          </Animated.View>
         ))
       )}
     </ScrollView>
@@ -96,7 +107,7 @@ const s = StyleSheet.create({
   title: { fontFamily: font.serif, fontSize: 30, color: neutral.ink, letterSpacing: -0.5 },
   toggle: { flexDirection: 'row', backgroundColor: neutral.bg2, borderRadius: 999, padding: 3 },
   tBtn: { paddingHorizontal: 12, height: 32, justifyContent: 'center', borderRadius: 999 },
-  tOn: { backgroundColor: neutral.ink },
+  tOn: { position: 'absolute', left: 0, top: 3, height: 32, backgroundColor: neutral.ink, borderRadius: 999 },
   tText: { fontFamily: font.black, fontSize: 12.5, color: neutral.ink2 },
   city: { alignSelf: 'stretch', fontFamily: font.black, fontSize: 12, letterSpacing: 2.4, color: neutral.ink3, marginTop: 6 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 6 },

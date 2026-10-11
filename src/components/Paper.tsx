@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { PAPEL } from '@/lib/ink';
@@ -20,10 +20,10 @@ function guilloche(width: number, height: number) {
 }
 
 /**
- * Papel de las hojas del pasaporte (#f1ead6): guilloche fino, viñeteado ocre
- * y sombra del lomo en el lado interior.
+ * Papel de las hojas del pasaporte (#f1ead6, o el velo de color de una ruta):
+ * guilloche fino, viñeteado ocre y sombra del lomo en el lado interior.
  */
-export function PassportPaper({ width, height, spine = 'left', back }: { width: number; height: number; spine?: 'left' | 'right'; back?: boolean }) {
+export const PassportPaper = memo(function PassportPaper({ width, height, spine = 'left', back, color = PAPEL }: { width: number; height: number; spine?: 'left' | 'right'; back?: boolean; color?: string }) {
   const waves = useMemo(() => guilloche(width, height), [width, height]);
   const left = spine === 'left';
   return (
@@ -39,10 +39,10 @@ export function PassportPaper({ width, height, spine = 'left', back }: { width: 
           <Stop offset="0.16" stopColor="#5a4320" stopOpacity="0" />
         </LinearGradient>
       </Defs>
-      <Rect width={width} height={height} fill={PAPEL} />
+      <Rect width={width} height={height} fill={color} />
       {!back && <Path d={waves} stroke="#9b8a62" strokeWidth={0.6} fill="none" opacity={0.28} />}
       <Rect width={width} height={height} fill="url(#vig)" />
       <Rect width={width} height={height} fill={`url(#spine-${spine})`} />
     </Svg>
   );
-}
+});

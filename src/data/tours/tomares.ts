@@ -30,6 +30,8 @@ export const tomares: Tour = {
   palette: { t: '#B23A2E', t2: '#E8B33A', soft: '#F8E7E2', deep: '#4A1610', on: '#FFFFFF' },
   // Teja de la torre del Ayuntamiento (contraste 5,8:1 con el papel)
   accent: '#9c3a24',
+  // Ladrillo, ocre tostado, vino y verde botella: tampones de la misma familia cálida
+  inks: ['#9c3a24', '#7d5212', '#6e2a4a', '#2f5a48'],
   postcard: {
     art: require('../../../assets/postcards/tomares.jpg'),
     value: '4,50€',

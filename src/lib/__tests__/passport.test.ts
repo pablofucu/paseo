@@ -1,11 +1,11 @@
 import { describe, expect, it } from '@jest/globals';
-import { SCENES } from '@/data/stamps/scenes';
+import { STAMP_ART } from '@/data/stamps/images';
 import { TOURS } from '@/data/tours';
-import { contraste, PAPEL, tintaDeRuta } from '@/lib/ink';
+import { contraste, PAPEL, papelDeRuta, tintaDeParada, tintaDeRuta } from '@/lib/ink';
 import { clampToSafe, overlap, randomSpot, settle } from '@/lib/placement';
-import { fechaRomana, fechaSello, rng, rubberXml, sealXml } from '@/lib/rubber';
+import { fechaRomana, fechaSello, rng, rubberDateXml } from '@/lib/rubber';
 import { sheetFor } from '@/lib/sheet';
-import { migrateVisits } from '@/store/passport';
+import { dropFinalStamps, migrateVisits, routeProgress, type UserRoute } from '@/store/passport';
 
 describe('tinta de la ruta', () => {
   it('deja igual un acento que ya se lee (Tomares, 5,8:1)', () => {
@@ -19,6 +19,14 @@ describe('tinta de la ruta', () => {
   });
   it('todas las rutas tienen tinta legible', () => {
     for (const tour of TOURS) expect(contraste(tintaDeRuta(tour.accent), PAPEL)).toBeGreaterThanOrEqual(4.5);
+  });
+  it('cada parada tiene su tinta, distinta de la anterior y legible sobre el papel de su hoja', () => {
+    for (const tour of TOURS) {
+      const papel = papelDeRuta(tour.palette.soft);
+      const inks = tour.stops.map((_, i) => tintaDeParada(tour.inks, tour.accent, i, papel));
+      for (const ink of inks) expect(contraste(ink, papel)).toBeGreaterThanOrEqual(4.5);
+      expect(new Set(inks).size).toBe(tour.stops.length);
+    }
   });
 });
 
@@ -48,25 +56,17 @@ describe('colocar sellos', () => {
 });
 
 describe('sellos de goma', () => {
-  it('cada parada tiene su escena dibujada', () => {
-    for (const tour of TOURS) for (const st of tour.stops) expect(SCENES[st.id]?.length).toBeGreaterThan(1000);
+  it('cada parada tiene su dibujo horneado', () => {
+    for (const tour of TOURS) for (const st of tour.stops) expect(STAMP_ART[st.id]).toBeTruthy();
   });
-  it('genera el sello con la ciudad, la fecha y una sola tinta', () => {
+  it('pinta la fecha real con la ciudad y la tinta de la parada', () => {
     const tour = TOURS.find(t => t.city === 'Tomares')!;
-    const stop = tour.stops.find(s => s.id === 'kebab')!;
-    const xml = rubberXml({ art: stop.rubber, scene: SCENES.kebab, city: tour.city, date: '2026-10-10T17:00:00Z', color: '#9c3a24', seed: 4 });
-    expect(xml).toContain('ROYAL KING KEBAB');
+    const kebab = tour.stops.find(s => s.id === 'kebab')!;
+    const xml = rubberDateXml({ art: kebab.rubber, city: tour.city, date: '2026-10-10T17:00:00Z', color: '#2f5a48' });
     expect(xml).toContain('TOMARES · 10 OCT 2026 · SEVILLA');
-    expect(xml).toContain('color="#9c3a24"');
-    // ids con prefijo propio, sin choques entre sellos
-    const a = rubberXml({ art: stop.rubber, scene: SCENES.kebab, city: 'Tomares', date: '2026-10-10T17:00:00Z', color: '#9c3a24', seed: 4 });
-    expect(a.match(/id="(r[0-9a-z]+_)/)![1]).not.toBe(xml.match(/id="(r[0-9a-z]+_)/)![1]);
-  });
-  it('el sello de ruta completada sigue la plantilla', () => {
-    const xml = sealXml({ title: 'Tomares en una tarde', stops: 3, date: '2026-10-10T17:00:00Z', color: '#9c3a24', seed: 1 });
-    expect(xml).toContain('RUTA COMPLETADA');
-    expect(xml).toContain('3 / 3 PARADAS · 10 OCT 2026');
-    expect(xml).toContain('font-size="23.00"');
+    expect(xml).toContain('color="#2f5a48"');
+    const ayto = tour.stops.find(s => s.id === 'ayuntamiento')!;
+    expect(rubberDateXml({ art: ayto.rubber, city: tour.city, date: '2026-10-10T17:00:00Z', color: '#000' })).toContain('10 · X · 2026');
   });
   it('formatea las fechas como en la guía', () => {
     expect(fechaSello('2026-10-10T12:00:00Z')).toBe('10 OCT 2026');
@@ -94,15 +94,41 @@ describe('migración del pasaporte', () => {
   });
 });
 
+describe('ruta completada', () => {
+  it('con todos los sellos se gana la postal, sin sello final', () => {
+    const tour = TOURS.find(t => t.city === 'Tomares')!;
+    const stamps = tour.stops.map((st, i) => ({ stopId: st.id, date: `2026-10-0${i + 1}T10:00:00Z`, x: 0.5, y: 0.5, rot: 0, seed: 1 }));
+    const route = { routeId: tour.id, stamps, postcardUnlockedAt: null, history: [] };
+    const p = routeProgress(tour.id, route);
+    expect(p.completed).toBe(true);
+    expect(p.completedAt).toBe('2026-10-04T10:00:00Z');
+    expect(routeProgress(tour.id, { ...route, stamps: stamps.slice(1) }).completed).toBe(false);
+  });
+  it('la versión 2 quita el sello grande y conserva la postal', () => {
+    const tour = TOURS.find(t => t.city === 'Tomares')!;
+    const stamps = tour.stops.map(st => ({ stopId: st.id, date: '2026-10-01T10:00:00Z', x: 0.5, y: 0.5, rot: 0, seed: 1 }));
+    const out = dropFinalStamps({ routes: { [tour.id]: { routeId: tour.id, stamps, finalStamp: { date: '2026-10-02T10:00:00Z', x: 0.5, y: 0.5, rot: 0, seed: 2 }, postcardUnlockedAt: '2026-10-02T10:00:00Z', history: [] } as unknown as UserRoute } });
+    const r = out.routes[tour.id];
+    expect('finalStamp' in r).toBe(false);
+    expect(r.postcardUnlockedAt).toBe('2026-10-02T10:00:00Z');
+    expect(r.postcardSeen).toBe(true);
+  });
+});
+
 describe('SvgXml', () => {
-  it('react-native-svg entiende todos los sellos', () => {
+  it('react-native-svg entiende la fecha de todos los sellos', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { parse } = require('react-native-svg/lib/commonjs/xml');
     for (const tour of TOURS) {
-      for (const st of tour.stops) {
-        const xml = rubberXml({ art: st.rubber, scene: SCENES[st.id], city: tour.city, date: '2026-10-10T17:00:00Z', color: '#9c3a24', seed: 4 });
-        try { parse(xml); } catch (e) { throw new Error(`${st.id}: ${(e as Error).message.slice(0, 120)} … ${xml.slice(Number(/\(0:(\d+)\)/.exec((e as Error).message)?.[1] ?? 0) - 120, Number(/\(0:(\d+)\)/.exec((e as Error).message)?.[1] ?? 0) + 40)}`); }
-      }
+      for (const st of tour.stops) expect(() => parse(rubberDateXml({ art: st.rubber, city: tour.city, date: '2026-10-10T17:00:00Z', color: '#9c3a24' }))).not.toThrow();
     }
+  });
+});
+
+describe('fecha del sello', () => {
+  it('el trazo guía del texto en arco no se rellena', () => {
+    const tour = TOURS.find(t => t.city === 'Tomares')!;
+    const xml = rubberDateXml({ art: tour.stops.find(s => s.rubber.shape === 'circle')!.rubber, city: 'Tomares', date: '2026-10-10T17:00:00Z', color: '#000' });
+    expect(xml).toMatch(/<g [^>]*fill="none"/);
   });
 });

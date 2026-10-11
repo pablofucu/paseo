@@ -9,8 +9,10 @@ import { placedBoxes, sheetFor, stampInk } from '@/lib/sheet';
 /*
  * Modelo de datos de la guía de sellos (§ 10):
  *   UserPassport { owner, issuedAt, pageOrder }
- *   UserRoute { routeId, stamps[{ stopId, date, x, y, rot, seed }], finalStamp | null, postcardUnlockedAt }
- * Cada parada se sella una sola vez; las repeticiones van al historial.
+ *   UserRoute { routeId, stamps[{ stopId, date, x, y, rot, seed }], postcardUnlockedAt }
+ * Cada parada se sella una sola vez; las repeticiones van al historial. Con
+ * el último sello la ruta queda completada y se gana la postal (no hay sello
+ * de ruta completada).
  */
 
 /** Un sello puesto en la hoja: centro en proporción de la hoja (0–1), giro en grados y semilla de la textura */
@@ -23,13 +25,13 @@ export interface PlacedStamp {
   seed: number;
 }
 
-export type FinalStamp = Omit<PlacedStamp, 'stopId'>;
-
 export interface UserRoute {
   routeId: string;
   stamps: PlacedStamp[];
-  finalStamp: FinalStamp | null;
+  /** Fecha del último sello de la ruta, cuando se gana la postal */
   postcardUnlockedAt: string | null;
+  /** Ya se enseñó la tarjeta de «Postal desbloqueada» */
+  postcardSeen?: boolean;
   /** Cada vez que se llega a una parada, aunque ya estuviera sellada */
   history: { stopId: string; date: string }[];
 }
@@ -55,11 +57,11 @@ interface PassportState {
   /** Llegada a una parada: queda en el historial. Devuelve si ya estaba sellada. */
   arrive: (tourId: string, stopId: string) => boolean;
   placeStamp: (tourId: string, stopId: string, drop: Drop) => void;
-  placeFinal: (tourId: string, drop: Drop) => void;
+  markPostcardSeen: (tourId: string) => void;
   reset: () => void;
 }
 
-const emptyRoute = (routeId: string): UserRoute => ({ routeId, stamps: [], finalStamp: null, postcardUnlockedAt: null, history: [] });
+const emptyRoute = (routeId: string): UserRoute => ({ routeId, stamps: [], postcardUnlockedAt: null, history: [] });
 const now = () => new Date().toISOString();
 const freshPassport = (): UserPassport => ({ owner: '', issuedAt: now(), pageOrder: [] });
 
@@ -84,25 +86,23 @@ export const usePassport = create<PassportState>()(
           const route = s.routes[tourId] ?? emptyRoute(tourId);
           if (route.stamps.some(st => st.stopId === stopId)) return s;
           const pageOrder = s.passport.pageOrder.includes(tourId) ? s.passport.pageOrder : [...s.passport.pageOrder, tourId];
+          const date = now();
+          const stamps = [...route.stamps, { stopId, date, ...drop }];
+          const all = getTour(tourId)?.stops.every(st => stamps.some(x => x.stopId === st.id));
           return {
             passport: { ...s.passport, pageOrder },
-            routes: { ...s.routes, [tourId]: { ...route, stamps: [...route.stamps, { stopId, date: now(), ...drop }] } },
+            routes: { ...s.routes, [tourId]: { ...route, stamps, postcardUnlockedAt: route.postcardUnlockedAt ?? (all ? date : null) } },
           };
         }),
-      placeFinal: (tourId, drop) =>
-        set(s => {
-          const route = s.routes[tourId];
-          if (!route || route.finalStamp) return s;
-          const date = now();
-          return { routes: { ...s.routes, [tourId]: { ...route, finalStamp: { date, ...drop }, postcardUnlockedAt: date } } };
-        }),
+      markPostcardSeen: tourId =>
+        set(s => (s.routes[tourId] ? { routes: { ...s.routes, [tourId]: { ...s.routes[tourId], postcardSeen: true } } } : s)),
       reset: () => set({ passport: freshPassport(), routes: {}, activeTourId: null }),
     }),
     {
       name: 'paseo-passport',
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => AsyncStorage),
-      migrate: (old, version) => (version < 1 ? migrateVisits(old as OldState) : old) as PassportState,
+      migrate: (old, version) => dropFinalStamps(version < 1 ? migrateVisits(old as OldState) : (old as PassportState)) as PassportState,
     },
   ),
 );
@@ -133,14 +133,29 @@ export function migrateVisits(old: OldState): Pick<PassportState, 'passport' | '
       const spot = randomSpot(size.w, size.h, others, sheet, r);
       route.stamps.push({ stopId, date, x: spot.x / sheet.w, y: spot.y / sheet.h, rot: (r() - 0.5) * 24, seed: Math.floor(r() * 1e9) });
     }
-    // Una visita terminada con todos los sellos trae su sello de ruta completada (y su postal)
-    if (v.completedAt && !route.finalStamp && route.stamps.length === tour.stops.length) {
-      route.finalStamp = { date: v.completedAt, x: 0.5 + (r() - 0.5) * 0.2, y: 0.58 + (r() - 0.5) * 0.2, rot: (r() - 0.5) * 40, seed: Math.floor(r() * 1e9) };
-      route.postcardUnlockedAt = v.completedAt;
+    if (!route.postcardUnlockedAt && route.stamps.length === tour.stops.length) {
+      route.postcardUnlockedAt = route.stamps.at(-1)!.date;
+      route.postcardSeen = true;
     }
     if (!passport.pageOrder.includes(v.tourId) && route.stamps.length) passport.pageOrder.push(v.tourId);
   }
   return { passport, routes, activeTourId: null };
+}
+
+/**
+ * Versión 2: ya no hay sello de ruta completada. La postal se gana con todos
+ * los sellos; se quita el sello grande de las hojas que lo tenían.
+ */
+export function dropFinalStamps<T extends Pick<PassportState, 'routes'>>(state: T): T {
+  const routes: Record<string, UserRoute> = {};
+  for (const [id, r] of Object.entries(state.routes ?? {})) {
+    const { finalStamp, ...rest } = r as UserRoute & { finalStamp?: { date: string } | null };
+    const tour = getTour(id);
+    const all = !!tour && tour.stops.every(st => rest.stamps.some(x => x.stopId === st.id));
+    const last = rest.stamps.map(x => x.date).sort().at(-1) ?? null;
+    routes[id] = { ...rest, postcardUnlockedAt: all ? (rest.postcardUnlockedAt ?? finalStamp?.date ?? last) : null, postcardSeen: rest.postcardSeen ?? !!finalStamp };
+  }
+  return { ...state, routes };
 }
 
 /** Situación de una ruta para la interfaz */
@@ -153,7 +168,9 @@ export function routeProgress(tourId: string, route: UserRoute | undefined) {
     total: tour.stops.length,
     missing,
     allStamped: missing.length === 0,
-    completed: !!route?.finalStamp,
+    completed: missing.length === 0,
+    /** Cuándo se completó (el último sello) */
+    completedAt: missing.length === 0 ? (route?.postcardUnlockedAt ?? route?.stamps.map(s => s.date).sort().at(-1) ?? null) : null,
     started: stamped.size > 0,
   };
 }

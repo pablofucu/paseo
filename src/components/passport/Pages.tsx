@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { PassportPaper } from '@/components/Paper';
@@ -15,7 +15,7 @@ const GOLD = ['#b8913d', '#f3dc93', '#b8913d'];
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '<');
 
 /** Tapa de piel con el emblema y el rótulo en dorado. Sin escudos ni números reales. */
-export function Cover({ width }: { width: number }) {
+export const Cover = memo(function Cover({ width }: { width: number }) {
   const h = sheetFor(width).h;
   const owner = usePassport(s => s.passport.owner);
   const grain = useMemo(() => {
@@ -65,20 +65,20 @@ export function Cover({ width }: { width: number }) {
       </Svg>
     </View>
   );
-}
+});
 
 /** Reverso de una hoja (y forro de la tapa): papel sin contenido */
-export function SheetBack({ width, lining }: { width: number; lining?: boolean }) {
+export const SheetBack = memo(function SheetBack({ width, lining }: { width: number; lining?: boolean }) {
   const h = sheetFor(width).h;
   return (
     <View style={{ width, height: h, borderRadius: 6, overflow: 'hidden', backgroundColor: lining ? '#e4dcc4' : undefined }}>
       {!lining && <PassportPaper width={width} height={h} spine="right" back />}
     </View>
   );
-}
+});
 
 /** Hoja 1: el titular */
-export function Holder({ width }: { width: number }) {
+export const Holder = memo(function Holder({ width }: { width: number }) {
   const sheet = sheetFor(width);
   const { passport, routes, setOwner } = usePassport();
   const [draft, setDraft] = useState<string | null>(null);
@@ -125,7 +125,7 @@ export function Holder({ width }: { width: number }) {
       <Text style={[h.page, { fontSize: 12 * k }]}>1</Text>
     </View>
   );
-}
+});
 
 function Field({ label, k, children }: { label: string; k: number; children: React.ReactNode }) {
   return (
@@ -137,7 +137,7 @@ function Field({ label, k, children }: { label: string; k: number; children: Rea
 }
 
 /** Hoja en blanco del final */
-export function NextRoute({ width, pageNumber }: { width: number; pageNumber: number }) {
+export const NextRoute = memo(function NextRoute({ width, pageNumber }: { width: number; pageNumber: number }) {
   const sheet = sheetFor(width);
   const k = width / 330;
   return (
@@ -152,7 +152,7 @@ export function NextRoute({ width, pageNumber }: { width: number; pageNumber: nu
       <Text style={[h.page, { fontSize: 12 * k }]}>{pageNumber}</Text>
     </View>
   );
-}
+});
 
 const h = StyleSheet.create({
   over: { fontFamily: font.black, letterSpacing: 2, textTransform: 'uppercase', color: '#7d705a' },

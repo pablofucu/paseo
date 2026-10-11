@@ -4,7 +4,6 @@ import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-n
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteSheet } from '@/components/passport/RouteSheet';
-import { StampPlacer } from '@/components/passport/StampPlacer';
 import { PostcardUnlock } from '@/components/PostcardUnlock';
 import { GhostButton } from '@/components/ui';
 import { cumulative, formatDistance } from '@/lib/geo';
@@ -16,9 +15,8 @@ import { font } from '@/theme/fonts';
 import { TourThemeProvider } from '@/theme/TourTheme';
 
 /**
- * Fin de la ruta: con todas las paradas selladas, el usuario coloca el sello
- * grande de «Ruta completada». 600 ms después del impacto sube la tarjeta de
- * «Postal desbloqueada».
+ * Fin de la ruta: la hoja con los sellos y el resumen. Si es la primera vez
+ * que se completa, sube la tarjeta de «Postal desbloqueada».
  */
 export default function Done() {
   const tour = useTourParam();
@@ -27,13 +25,18 @@ export default function Done() {
   const p = tour.palette;
   const saved = useRoute(tour.id);
   const endWalk = usePassport(s => s.endWalk);
+  const markPostcardSeen = usePassport(s => s.markPostcardSeen);
   const pageNumber = usePassport(s => s.passport.pageOrder.indexOf(tour.id)) + 2;
   const prog = routeProgress(tour.id, saved);
-  // Si el sello grande ya estaba puesto (se vuelve a esta pantalla), la hoja se ve quieta
-  const [placedNow, setPlacedNow] = useState(false);
-  const placing = prog.allStamped && (!prog.completed || placedNow);
   const [unlocked, setUnlocked] = useState(false);
   useEffect(() => { endWalk(); }, [endWalk]);
+  // La tarjeta de la postal sube una sola vez, cuando la hoja ya se ha visto
+  const pending = prog.completed && !saved?.postcardSeen;
+  useEffect(() => {
+    if (!pending) return;
+    const t = setTimeout(() => { setUnlocked(true); markPostcardSeen(tour.id); }, 1100);
+    return () => clearTimeout(t);
+  }, [pending, markPostcardSeen, tour.id]);
 
   const route = useTourRoute(tour);
   const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
@@ -44,7 +47,7 @@ export default function Done() {
 
   return (
     <TourThemeProvider palette={p}>
-      <ScrollView scrollEnabled={!placing || prog.completed} style={{ flex: 1, backgroundColor: p.deep }} contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24, paddingHorizontal: 16, gap: 16, alignItems: 'center' }}>
+      <ScrollView style={{ flex: 1, backgroundColor: p.deep }} contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24, paddingHorizontal: 16, gap: 16, alignItems: 'center' }}>
         <Animated.View entering={FadeInDown} style={{ alignItems: 'center' }}>
           <Text style={[s.over, { color: p.t2 }]}>{prog.allStamped ? 'Todas las paradas selladas' : `${prog.done} de ${prog.total} paradas`}</Text>
           <Text style={s.title}>{prog.allStamped ? '¡Ruta completada!' : 'Ruta a medias'}</Text>
@@ -59,10 +62,13 @@ export default function Done() {
           ))}
         </Animated.View>
 
-        {placing ? (
-          <StampPlacer tour={tour} width={sheetW} target="final" pageNumber={pageNumber} onDrop={() => setPlacedNow(true)} onStamped={() => setTimeout(() => setUnlocked(true), 600)} />
-        ) : (
-          <RouteSheet tour={tour} route={saved} width={sheetW} pageNumber={pageNumber} onSealPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} />
+        <Animated.View entering={FadeInDown.delay(220).springify().damping(18)}>
+          <RouteSheet tour={tour} route={saved} width={sheetW} pageNumber={pageNumber} />
+        </Animated.View>
+        {prog.completed && !unlocked && (
+          <Animated.View entering={FadeInDown.delay(400)} style={{ alignSelf: 'stretch' }}>
+            <GhostButton label="Ver la postal" onPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} />
+          </Animated.View>
         )}
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, alignSelf: 'stretch' }}>

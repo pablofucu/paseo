@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type PressableProps, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type PressableProps, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { PressableScale } from '@/components/motion';
 import { font } from '@/theme/fonts';
 import { neutral, radius, shadow } from '@/theme/tokens';
 import { usePalette } from '@/theme/TourTheme';
@@ -8,18 +9,18 @@ import { usePalette } from '@/theme/TourTheme';
 export function PrimaryButton({ label, icon, style, ...rest }: PressableProps & { label: string; icon?: ReactNode; style?: ViewStyle }) {
   const p = usePalette();
   return (
-    <Pressable accessibilityRole="button" {...rest} style={({ pressed }) => [s.primary, { backgroundColor: p.t, shadowColor: p.t, transform: [{ scale: pressed ? 0.97 : 1 }] }, style]}>
+    <PressableScale accessibilityRole="button" {...rest} style={[s.primary, { backgroundColor: p.t, shadowColor: p.t }, style]}>
       <Text style={[s.primaryText, { color: p.on }]}>{label}</Text>
       {icon}
-    </Pressable>
+    </PressableScale>
   );
 }
 
 export function GhostButton({ label, onPress, light }: { label: string; onPress: () => void; light?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s.ghost, light && s.ghostLight, { opacity: pressed ? 0.7 : 1 }]}>
+    <PressableScale accessibilityRole="button" onPress={onPress} style={[s.ghost, light && s.ghostLight]}>
       <Text style={[s.ghostText, light && { color: '#fff' }]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -39,11 +40,11 @@ const ICONS = {
 
 export function IconButton({ label, icon, onPress, style }: { label: string; icon: keyof typeof ICONS; onPress: () => void; style?: ViewStyle }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} style={({ pressed }) => [s.icon, { opacity: pressed ? 0.8 : 1 }, style]}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={8} scaleTo={0.88} style={[s.icon, style]}>
       <Svg width={20} height={20} viewBox="0 0 24 24">
         <Path d={ICONS[icon]} fill="none" stroke={neutral.ink} strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
-    </Pressable>
+    </PressableScale>
   );
 }
 
