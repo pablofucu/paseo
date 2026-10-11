@@ -23,6 +23,15 @@ export interface Box {
   h: number;
 }
 
+/**
+ * Giro de un sello: entre 4° y 12° hacia un lado o el otro, para que nunca
+ * quede recto (un sello puesto a mano siempre sale algo torcido).
+ */
+export function stampRotation(rand: () => number) {
+  const deg = 4 + rand() * 8;
+  return rand() < 0.5 ? -deg : deg;
+}
+
 export const MAX_OVERLAP = 0.35;
 
 /** Lleva el centro a la zona segura (si el sello no cabe, lo centra en ese eje) */

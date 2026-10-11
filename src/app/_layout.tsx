@@ -34,6 +34,8 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="bienvenida" options={{ animation: 'fade', contentStyle: { backgroundColor: '#1D2B4F' } }} />
+          <Stack.Screen name="ciudad" options={{ animation: 'fade_from_bottom' }} />
           <Stack.Screen name="tour/[id]/walk" options={{ animation: 'fade', animationDuration: 380 }} />
           <Stack.Screen name="tour/[id]/stop/[n]" options={{ animation: 'fade_from_bottom', animationDuration: 420 }} />
           <Stack.Screen name="tour/[id]/done" options={{ animation: 'fade_from_bottom', animationDuration: 480, gestureEnabled: false }} />
@@ -43,3 +45,6 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+/** Un fallo al pintar una pantalla enseña el error en lugar de cerrar la app */
+export { ErrorScreen as ErrorBoundary } from '@/components/ErrorScreen';

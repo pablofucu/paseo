@@ -4,8 +4,8 @@ import { RUBBER_BOX } from '@/lib/rubber';
 
 /** Proporción de las hojas del pasaporte (ancho / alto), la de una libreta de pasaporte */
 export const SHEET_RATIO = 0.7;
-/** Escala de los sellos de goma: el círculo (300 u.) ocupa el 28 % del ancho de la hoja */
-const STAMP_K = 0.28 / 300;
+/** Escala de los sellos de goma: el círculo (300 u.) ocupa el 32,5 % del ancho de la hoja */
+export const STAMP_K = 0.325 / 300;
 
 /** Medida de la tinta de cada forma, sin el margen de su caja (para los choques) */
 const INKED: Record<RubberShape, [number, number]> = {

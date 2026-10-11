@@ -11,7 +11,9 @@ Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales**
 
 - **Tintas de la ruta.** Cada parada sella con su propia tinta, de una familia de colores de la ruta (`inks` en los datos del tour: Tomares en ladrillo, ocre, vino y verde; Sevilla en oro, azul, terracota, verde y añil). `tintaDeRuta()` oscurece cualquier tinta que no llegue a 4,5:1 sobre el papel de su hoja. El acento de la ruta enmarca su postal.
 - **Sellos de goma** dibujados en línea, uno por parada, en cuatro formas (rectángulo, círculo, óvalo y octógono), con el sitio, la ciudad y la fecha real. Cada parada se sella una sola vez; las repeticiones quedan en el historial.
-- **Tú eliges dónde va el sello.** Al llegar se abre la hoja de la ruta con el sello «en la mano» (vista previa al 35 % que sigue al dedo). Al soltar, cae con la animación de la guía (550 ms, impacto a los 300 ms con «clac + pum», vibración y golpe de hoja). Márgenes de 16 px, sin pisar cabecera ni pie y como mucho un 35 % encima de otro sello; «Colócalo tú» busca un hueco libre.
+- **Inicio:** la primera vez, bienvenida con el idioma (solo hay versión en español; el inglés sale como «próximamente») y elección de ciudad (Sevilla, con Tomares, o Madrid). Inicio enseña los tours de la ciudad y, bloqueados, los de pago (solo interfaz: no hay pagos todavía).
+- **El paseo.** Las paradas van en orden. El mapa es la pantalla central del tour: al llegar, la parada se abre encima y al cerrarla se vuelve al mapa; tocando cualquier pin sale su ventana con «Entrar». Al llegar el audio empieza solo y el sello se pone al final, con «Poner el sello»: solo se puede sellar la parada a la que has llegado (GPS o «Llegar» en modo prueba).
+- **Tú eliges dónde va el sello.** Al pulsar «Poner el sello» se abre la hoja de la ruta con el sello «en la mano» (vista previa al 35 % que sigue al dedo). Al soltar, cae con la animación de la guía (550 ms, impacto a los 300 ms con «clac + pum», vibración y golpe de hoja). Márgenes de 16 px, sin pisar cabecera ni pie y como mucho un 35 % encima de otro sello; «Colócalo tú» busca un hueco libre. Cada sello sale girado entre 4° y 12° a un lado o al otro, nunca recto.
 - **Ruta completada.** Con el último sello la ruta queda completada y, al terminar, sube la tarjeta de **postal desbloqueada**. No hay sello de ruta completada.
 - **Hoja de la ruta.** Papel con un velo suave del color de la ruta y, arriba, solo su nombre y su ciudad, discretos.
 - **Pasaporte** (pestaña): portada de piel azul con dorado, hoja del titular, una hoja por ruta en el orden del primer sello y «Próxima ruta». Las hojas giran sobre el lomo arrastrando con el dedo (doble página en pantallas anchas).
@@ -69,13 +71,15 @@ npm test           # lógica de navegación: distancias, giros, llegada, fuera d
 ```
 src/
   app/                       pantallas (Expo Router)
-    (tabs)/index.tsx         Inicio: los tours
+    bienvenida.tsx           bienvenida y elección de idioma
+    ciudad.tsx               elección de ciudad
+    (tabs)/index.tsx         Inicio: los tours de la ciudad y los de pago bloqueados
     (tabs)/pasaporte.tsx     el pasaporte (libreta con hojas que se pasan)
     (tabs)/postales.tsx      tarjetero de postales y mapa
     postal/[id].tsx          postal a pantalla completa (vuelta y compartir)
-    tour/[id]/index.tsx      portada del tour: sellos y postal que puedes conseguir
-    tour/[id]/walk.tsx       mapa, indicaciones y llegada a la parada
-    tour/[id]/stop/[n].tsx   parada: colocar el sello, audio y textos
+    tour/[id]/index.tsx      portada del tour: paradas, sellos y postal
+    tour/[id]/walk.tsx       mapa (pantalla central del tour), indicaciones y llegada
+    tour/[id]/stop/[n].tsx   parada (encima del mapa): audio, textos y sello al final
     tour/[id]/done.tsx       final: resumen, hoja de la ruta y postal desbloqueada
   components/passport/       hoja de ruta, colocar sello, caída del sello, libreta
   components/                sello de goma, papel, postal, botones
@@ -91,7 +95,7 @@ design/postcards/*.svg       ilustración de cada postal (fuente)
 ## Sellos, postales y sonidos
 
 - **Sellos de goma:** cada parada tiene `design/stamps/<parada>.svg`. `NODE_PATH=$(npm root -g) node scripts/build-stamps.mjs` junta la escena (desde el primer `<clipPath>`) con el marco de `src/lib/rubber.ts` y la hornea con la textura de goma de la guía en `assets/stamps/<parada>.png` (negro sobre transparente). La app la tiñe con la tinta de la parada y pinta encima la fecha real. Así cada sello son dos vistas en lugar de miles de nodos SVG, y el pasaporte abre al instante.
-- **Postales:** la ilustración (832 × 444) está en `design/postcards/<tour>.svg`. `node scripts/render-postcards.cjs` (necesita Playwright) le aplica la textura de imprenta de la guía y la guarda en `assets/postcards/`. El marco, los textos y el matasellos los pinta la app.
+- **Postales:** la ilustración (832 × 444) está en `design/postcards/<tour>.svg`. `node scripts/render-postcards.cjs` (necesita Playwright) le aplica la textura de imprenta de la guía y la guarda en `assets/postcards/`. El papel perforado se hornea con `NODE_PATH=$(npm root -g) node scripts/build-postcard-paper.mjs` en `assets/postcards/paper.png` (en el móvil, las máscaras SVG de antes cerraban la app). El marco, los textos y el matasellos los pinta la app.
 - **Sonidos:** `python3 scripts/make-sounds.py` sintetiza `assets/sounds/stamp.wav` y `page.wav` con los parámetros de la guía.
 
 ## Añadir un tour

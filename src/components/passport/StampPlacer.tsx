@@ -5,7 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { RubberStamp } from '@/components/RubberStamp';
 import { RouteSheet } from '@/components/passport/RouteSheet';
 import type { Tour } from '@/data/types';
-import { randomSpot, settle } from '@/lib/placement';
+import { randomSpot, settle, stampRotation } from '@/lib/placement';
 import { placedBoxes, sheetFor, stampBox, stampInk } from '@/lib/sheet';
 import { newSeed, routeProgress, usePassport, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
@@ -54,7 +54,7 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
     if (done.current) return;
     done.current = true;
     onDrop?.();
-    placeStamp(tour.id, target, { x: spot.x / sheet.w, y: spot.y / sheet.h, rot: (Math.random() * 2 - 1) * 12, seed: newSeed() });
+    placeStamp(tour.id, target, { x: spot.x / sheet.w, y: spot.y / sheet.h, rot: stampRotation(Math.random), seed: newSeed() });
     setFresh(target);
     setTimeout(() => onStamped?.(), 300);
   };

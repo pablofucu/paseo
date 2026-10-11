@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { pageTurn } from '@/lib/feedback';
 import { sheetFor } from '@/lib/sheet';
@@ -10,6 +10,8 @@ import { font } from '@/theme/fonts';
 /** Pasar hoja con los botones: rotateY 0 → −180° sobre el lomo en 800 ms; arranca suave, se acelera y se posa */
 const TURN_MS = 800;
 const EASE = Easing.bezier(0.42, 0.05, 0.2, 1);
+/** La pista de «se puede pasar con el dedo» se enseña una vez por sesión */
+let hinted = false;
 
 export interface Leaf {
   key: string;
@@ -42,6 +44,8 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
   const turningSV = useSharedValue(-1);
   const indexSV = useSharedValue(index);
   const countSV = useSharedValue(leaves.length);
+  /** 1 mientras el dedo arrastra una hoja */
+  const dragSV = useSharedValue(0);
   useEffect(() => { indexSV.set(index); }, [index, indexSV]);
   useEffect(() => { countSV.set(leaves.length); }, [leaves.length, countSV]);
 
@@ -67,24 +71,46 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
     }));
   };
 
+  // Pista la primera vez: la esquina de la tapa se levanta un poco y vuelve
+  useEffect(() => {
+    if (hinted || reduced || index !== 0 || leaves.length < 2) return;
+    hinted = true;
+    const t = setTimeout(() => {
+      if (turningSV.value >= 0) return;
+      turningSV.set(0);
+      setTurning(0);
+      deg.set(withSequence(
+        withTiming(-24, { duration: 420, easing: Easing.out(Easing.quad) }),
+        withSpring(0, { damping: 9, stiffness: 140 }),
+      ));
+      // El aviso de fin de una animación dentro de withSequence no siempre llega: se cierra a tiempo fijo
+      end = setTimeout(() => { deg.set(0); settled(0, 1, false); }, 1300);
+    }, 700);
+    let end: ReturnType<typeof setTimeout> | undefined;
+    return () => { clearTimeout(t); clearTimeout(end); };
+    // Solo al montar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const pan = usePanGesture({
     activeOffsetX: [-12, 12],
     failOffsetY: [-24, 24],
-    onActivate: e => {
-      'worklet';
-      if (turningSV.value >= 0) return;
-      const dir = e.translationX < 0 ? 1 : -1;
-      const idx = indexSV.value;
-      if ((dir === 1 && idx >= countSV.value - 1) || (dir === -1 && idx <= 0)) return;
-      const i = dir === 1 ? idx : idx - 1;
-      deg.set(dir === 1 ? 0 : -180);
-      turningSV.set(i);
-      scheduleOnRN(setTurning, i);
-    },
     onUpdate: e => {
       'worklet';
+      // La dirección se decide con el primer movimiento claro (al activarse el gesto aún puede valer 0)
+      if (!dragSV.value) {
+        // Si una hoja está girando con los botones, el dedo espera
+        if (turningSV.value >= 0 || Math.abs(e.translationX) < 8) return;
+        const dir = e.translationX < 0 ? 1 : -1;
+        const idx = indexSV.value;
+        if ((dir === 1 && idx >= countSV.value - 1) || (dir === -1 && idx <= 0)) return;
+        const i = dir === 1 ? idx : idx - 1;
+        deg.set(dir === 1 ? 0 : -180);
+        turningSV.set(i);
+        dragSV.set(1);
+        scheduleOnRN(setTurning, i);
+      }
       const t = turningSV.value;
-      if (t < 0) return;
       // La hoja sigue al dedo; pasado el lomo, se curva un poco más deprisa
       const p = Math.min(1, Math.max(0, (t === indexSV.value ? -e.translationX : e.translationX) / width));
       const q = p < 0.5 ? p * 1.15 : 1 - (1 - p) * 0.85;
@@ -93,7 +119,8 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
     onDeactivate: e => {
       'worklet';
       const t = turningSV.value;
-      if (t < 0) return;
+      if (!dragSV.value || t < 0) return;
+      dragSV.set(0);
       const dir = t === indexSV.value ? 1 : -1;
       const p = (dir === 1 ? -e.translationX : e.translationX) / width;
       const fling = (dir === 1 ? -e.velocityX : e.velocityX) / 1000;

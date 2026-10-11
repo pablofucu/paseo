@@ -1,8 +1,10 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, SlideInDown, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { useHeroMotion } from '@/components/HeroMotion';
+import { Scrim } from '@/components/Scrim';
 import { rise } from '@/components/motion';
 import { Postcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
@@ -18,6 +20,11 @@ import { neutral } from '@/theme/tokens';
 import { TourThemeProvider } from '@/theme/TourTheme';
 import { type } from '@/theme/type';
 
+const HERO = 290;
+
+/** Los sellos se «estampan» uno detrás de otro al abrir la ficha */
+const stampIn = (i: number) => ZoomIn.delay(350 + i * 90).springify().damping(11).stiffness(170).withInitialValues({ transform: [{ scale: 1.6 }] });
+
 export default function Cover() {
   const tour = useTourParam();
   const insets = useSafeAreaInsets();
@@ -32,17 +39,22 @@ export default function Cover() {
   // Cada parada se sella una vez: si la ruta está a medias, se sigue por la primera sin sellar
   const nextStop = prog.started && !prog.allStamped ? tour.stops.findIndex(st => !saved?.stamps.some(x => x.stopId === st.id)) : -1;
   const walkFrom = (target: number) => {
-    startWalk(tour.id);
+    startWalk(tour.id, target);
     router.push({ pathname: '/tour/[id]/walk', params: { id: tour.id, target: String(target) } });
   };
   const cell = tour.stops.length > 4 ? 300 * 0.21 : 300 * 0.25;
+  const { onScroll, photo, veil } = useHeroMotion(HERO);
 
   return (
     <TourThemeProvider palette={p}>
-      <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
-        <View style={{ height: 270 }}>
-          <DuotoneImage source={tour.stops[tour.emblemStop].photo} palette={p} style={StyleSheet.absoluteFill} />
-          <IconButton label="Volver" icon="back" onPress={() => router.back()} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={{ height: HERO, overflow: 'hidden' }}>
+          <Animated.View style={[StyleSheet.absoluteFill, photo]}>
+            <DuotoneImage source={tour.stops[tour.emblemStop].photo} palette={p} style={StyleSheet.absoluteFill} />
+          </Animated.View>
+          <Scrim opacity={0.5} />
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: neutral.bg }, veil]} />
+          <Animated.Text entering={FadeInDown.delay(120).springify().damping(16)} style={s.heroCity}>{tour.city}</Animated.Text>
         </View>
         <Animated.View entering={rise(1)} style={s.body}>
           <Text style={[type.overline, { color: p.t }]}>{tour.category} · {tour.city}</Text>
@@ -54,22 +66,33 @@ export default function Cover() {
           </View>
           <Text style={type.body}>{tour.intro}</Text>
 
+          <Text style={[type.headline, s.h]}>Paradas</Text>
+          {tour.stops.map((st, i) => (
+            <Animated.View key={st.id} entering={rise(i + 3)} style={s.stop}>
+              <View style={[s.pin, { borderColor: p.t }]}><Text style={[s.pinText, { color: p.t }]}>{i + 1}</Text></View>
+              <DuotoneImage source={st.photo} palette={p} style={s.thumb} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.stopName}>{st.name}</Text>
+                <Text style={type.caption}>{i === 0 ? 'Inicio' : KIND_LABEL[st.kind]}</Text>
+              </View>
+            </Animated.View>
+          ))}
           <Text style={[type.headline, s.h]}>Sellos que puedes conseguir</Text>
           <View style={s.progress}>
             <View style={[s.bar, { width: `${(prog.done / prog.total) * 100}%`, backgroundColor: ink }]} />
           </View>
           <Text style={type.caption}>{prog.done} de {prog.total} sellos · cada parada se sella una vez</Text>
           <View style={s.stamps}>
-            {tour.stops.map(st => {
+            {tour.stops.map((st, i) => {
               const got = saved?.stamps.find(x => x.stopId === st.id);
-              const b = stampBox(st.rubber.shape, cell * 2.9);
+              const b = stampBox(st.rubber.shape, cell * 2.5);
               return (
-                <View key={st.id} style={[s.stampCell, { width: `${100 / Math.min(5, tour.stops.length)}%` }]}>
+                <Animated.View key={st.id} entering={stampIn(i)} style={[s.stampCell, { width: `${100 / Math.min(5, tour.stops.length)}%` }]}>
                   <View style={{ height: cell * 0.85, justifyContent: 'center', opacity: got ? 1 : 0.22 }}>
                     <RubberStamp tour={tour} stop={st} date={got?.date ?? new Date().toISOString()} width={b.w} height={b.h} style={{ transform: [{ rotate: `${got ? got.rot / 2 : 0}deg` }] }} />
                   </View>
                   <Text style={s.stampName} numberOfLines={2}>{st.name}</Text>
-                </View>
+                </Animated.View>
               );
             })}
           </View>
@@ -80,20 +103,11 @@ export default function Cover() {
             <Text style={type.caption}>{prog.completed ? 'Ganada · tócala para verla' : 'Con todos los sellos te llevas esta postal'}</Text>
           </Pressable>
 
-          <Text style={[type.headline, s.h]}>Paradas</Text>
-          {tour.stops.map((st, i) => (
-            <View key={st.id} style={s.stop}>
-              <View style={[s.pin, { borderColor: p.t }]}><Text style={[s.pinText, { color: p.t }]}>{i + 1}</Text></View>
-              <DuotoneImage source={st.photo} palette={p} style={s.thumb} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.stopName}>{st.name}</Text>
-                <Text style={type.caption}>{i === 0 ? 'Inicio' : KIND_LABEL[st.kind]}</Text>
-              </View>
-            </View>
-          ))}
         </Animated.View>
-      </ScrollView>
-      <View style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
+      </Animated.ScrollView>
+      <IconButton label="Volver" icon="back" onPress={() => router.back()} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
+      {/* El botón de empezar sube desde abajo cuando la ficha ya está en pantalla */}
+      <Animated.View entering={SlideInDown.delay(300).springify().damping(18)} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
         {nextStop >= 0 ? (
           <>
             <PrimaryButton label={`Continuar · parada ${nextStop + 1} de ${tour.stops.length}`} onPress={() => walkFrom(nextStop)} />
@@ -104,13 +118,14 @@ export default function Cover() {
         ) : (
           <PrimaryButton label={prog.completed ? 'Volver a hacer la ruta' : 'Empezar tour'} onPress={() => walkFrom(0)} />
         )}
-      </View>
+      </Animated.View>
     </TourThemeProvider>
   );
 }
 
 const s = StyleSheet.create({
-  body: { padding: 18, gap: 6 },
+  body: { padding: 18, gap: 6, backgroundColor: neutral.bg },
+  heroCity: { position: 'absolute', left: 18, bottom: 14, fontFamily: font.serif, fontSize: 40, lineHeight: 44, color: '#fff' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 10 },
   h: { marginTop: 18, marginBottom: 8 },
   stamps: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', rowGap: 10 },

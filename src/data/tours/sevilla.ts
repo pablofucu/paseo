@@ -15,6 +15,7 @@ const credit = (id: keyof typeof credits) => ({ author: credits[id].author, lice
  */
 export const sevilla: Tour = {
   id: 'sevilla-centro',
+  area: 'sevilla',
   city: 'Sevilla',
   region: 'Andalucía · Casco antiguo',
   title: 'Del río a la judería',

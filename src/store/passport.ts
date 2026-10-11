@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { getTour } from '@/data/tours';
-import { randomSpot } from '@/lib/placement';
+import { randomSpot, stampRotation } from '@/lib/placement';
 import { rng } from '@/lib/rubber';
 import { placedBoxes, sheetFor, stampInk } from '@/lib/sheet';
 
@@ -43,18 +43,29 @@ export interface UserPassport {
   pageOrder: string[];
 }
 
+export interface ActiveWalk {
+  tourId: string;
+  /** Índice de la parada a la que se va */
+  target: number;
+  /** Parada a la que se ha llegado de verdad (GPS o «Llegar» en modo prueba): solo esa se puede sellar */
+  arrived: string | null;
+}
+
 /** Dónde soltó el usuario el sello (sin la fecha, que la pone la app) */
 export type Drop = Omit<PlacedStamp, 'date' | 'stopId'>;
 
 interface PassportState {
   passport: UserPassport;
   routes: Record<string, UserRoute>;
-  /** Ruta que se está andando ahora */
-  activeTourId: string | null;
+  /** Paseo en curso (no se guarda): la ruta, la parada a la que se va y en cuál se está ya */
+  walk: ActiveWalk | null;
   setOwner: (owner: string) => void;
-  startWalk: (tourId: string) => void;
+  /** Empieza (o retoma) el paseo hacia la parada `target` */
+  startWalk: (tourId: string, target: number) => void;
+  /** Tras la parada actual, a por la siguiente (las paradas van en orden) */
+  advanceWalk: () => void;
   endWalk: () => void;
-  /** Llegada a una parada: queda en el historial. Devuelve si ya estaba sellada. */
+  /** Llegada a una parada: queda en el historial y desde ese momento se puede sellar. Devuelve si ya estaba sellada. */
   arrive: (tourId: string, stopId: string) => boolean;
   placeStamp: (tourId: string, stopId: string, drop: Drop) => void;
   markPostcardSeen: (tourId: string) => void;
@@ -72,13 +83,17 @@ export const usePassport = create<PassportState>()(
     (set, get) => ({
       passport: freshPassport(),
       routes: {},
-      activeTourId: null,
+      walk: null,
       setOwner: owner => set(s => ({ passport: { ...s.passport, owner: owner.slice(0, 24) } })),
-      startWalk: tourId => set({ activeTourId: tourId }),
-      endWalk: () => set({ activeTourId: null }),
+      startWalk: (tourId, target) => set({ walk: { tourId, target, arrived: null } }),
+      advanceWalk: () => set(s => (s.walk ? { walk: { ...s.walk, target: s.walk.target + 1, arrived: null } } : s)),
+      endWalk: () => set({ walk: null }),
       arrive: (tourId, stopId) => {
         const route = get().routes[tourId] ?? emptyRoute(tourId);
-        set(s => ({ routes: { ...s.routes, [tourId]: { ...route, history: [...route.history, { stopId, date: now() }] } } }));
+        set(s => ({
+          routes: { ...s.routes, [tourId]: { ...route, history: [...route.history, { stopId, date: now() }] } },
+          walk: s.walk?.tourId === tourId ? { ...s.walk, arrived: stopId } : s.walk,
+        }));
         return route.stamps.some(st => st.stopId === stopId);
       },
       placeStamp: (tourId, stopId, drop) =>
@@ -96,12 +111,14 @@ export const usePassport = create<PassportState>()(
         }),
       markPostcardSeen: tourId =>
         set(s => (s.routes[tourId] ? { routes: { ...s.routes, [tourId]: { ...s.routes[tourId], postcardSeen: true } } } : s)),
-      reset: () => set({ passport: freshPassport(), routes: {}, activeTourId: null }),
+      reset: () => set({ passport: freshPassport(), routes: {}, walk: null }),
     }),
     {
       name: 'paseo-passport',
       version: 2,
       storage: createJSONStorage(() => AsyncStorage),
+      // El paseo en curso no se guarda: al volver a abrir la app hay que volver a llegar para sellar
+      partialize: s => ({ passport: s.passport, routes: s.routes }),
       migrate: (old, version) => dropFinalStamps(version < 1 ? migrateVisits(old as OldState) : (old as PassportState)) as PassportState,
     },
   ),
@@ -113,7 +130,7 @@ interface OldState {
 }
 
 /** Pasa las visitas antiguas al pasaporte nuevo, colocando sus sellos en huecos libres */
-export function migrateVisits(old: OldState): Pick<PassportState, 'passport' | 'routes' | 'activeTourId'> {
+export function migrateVisits(old: OldState): Pick<PassportState, 'passport' | 'routes'> {
   const visits = [...(old.visits ?? [])].sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   const routes: Record<string, UserRoute> = {};
   const passport: UserPassport = { owner: '', issuedAt: visits[0]?.startedAt ?? now(), pageOrder: [] };
@@ -131,7 +148,7 @@ export function migrateVisits(old: OldState): Pick<PassportState, 'passport' | '
       const others = placedBoxes(route.stamps.map(s => ({ ...s, shape: tour.stops.find(t => t.id === s.stopId)!.rubber.shape })), sheet);
       const size = stampInk(stop.rubber.shape, sheet.w);
       const spot = randomSpot(size.w, size.h, others, sheet, r);
-      route.stamps.push({ stopId, date, x: spot.x / sheet.w, y: spot.y / sheet.h, rot: (r() - 0.5) * 24, seed: Math.floor(r() * 1e9) });
+      route.stamps.push({ stopId, date, x: spot.x / sheet.w, y: spot.y / sheet.h, rot: stampRotation(r), seed: Math.floor(r() * 1e9) });
     }
     if (!route.postcardUnlockedAt && route.stamps.length === tour.stops.length) {
       route.postcardUnlockedAt = route.stamps.at(-1)!.date;
@@ -139,7 +156,7 @@ export function migrateVisits(old: OldState): Pick<PassportState, 'passport' | '
     }
     if (!passport.pageOrder.includes(v.tourId) && route.stamps.length) passport.pageOrder.push(v.tourId);
   }
-  return { passport, routes, activeTourId: null };
+  return { passport, routes };
 }
 
 /**

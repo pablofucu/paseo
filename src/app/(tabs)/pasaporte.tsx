@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { rise } from '@/components/motion';
@@ -26,8 +26,8 @@ export default function Pasaporte() {
   const [index, setIndex] = useState(0);
 
   const spread = width >= 760;
-  // La hoja cabe a lo ancho y a lo alto (dejando sitio a la cabecera, los botones y las pestañas)
-  const maxH = height - insets.top - insets.bottom - 200;
+  // La hoja cabe a lo ancho y a lo alto (dejando sitio a la cabecera, los botones y la barra de pestañas)
+  const maxH = height - insets.top - insets.bottom - 250;
   const pageW = Math.floor(Math.min(spread ? (width - 64) / 2 : width - 32, maxH * SHEET_RATIO, 520));
 
   const leaves = useMemo<Leaf[]>(() => {
@@ -53,7 +53,8 @@ export default function Pasaporte() {
   const stamps = Object.values(routes).reduce((a, r) => a + r.stamps.length, 0);
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: 24, paddingHorizontal: 16, alignItems: 'center' }}>
+    // Sin scroll: la libreta cabe entera y el gesto horizontal de pasar hoja no compite con nada
+    <View style={{ flex: 1, backgroundColor: neutral.bg, paddingTop: insets.top + 14, paddingBottom: 16, paddingHorizontal: 16, alignItems: 'center' }}>
       <Animated.View entering={rise(0)} style={s.head}>
         <Text style={type.overline}>Pasaporte</Text>
         <Text style={s.title}>Mis sellos</Text>
@@ -65,7 +66,7 @@ export default function Pasaporte() {
       <Animated.View entering={ZoomIn.springify().damping(20).stiffness(160).delay(80).withInitialValues({ transform: [{ scale: 0.92 }] })}>
       <Book leaves={leaves} width={pageW} spread={spread} index={Math.min(index, leaves.length - 1)} onIndex={setIndex} />
       </Animated.View>
-    </ScrollView>
+    </View>
   );
 }
 

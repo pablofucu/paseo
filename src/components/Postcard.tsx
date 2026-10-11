@@ -5,7 +5,7 @@ import { SvgXml } from 'react-native-svg';
 import type { Tour } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { tintaDeRuta } from '@/lib/ink';
-import { POSTCARD, postcardBlankXml, postcardFaceXml, postcardPaperXml } from '@/lib/postcard';
+import { POSTCARD, postcardBlankXml, postcardFaceXml } from '@/lib/postcard';
 import { postmarkXml } from '@/lib/rubber';
 import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
@@ -15,6 +15,12 @@ const VB = { x: -14, y: -10, w: 928, h: 628 };
 export const postcardHeight = (width: number) => (width * VB.h) / VB.w;
 
 let uid = 0;
+
+/** Papel perforado con grano y sombra, horneado (scripts/build-postcard-paper.mjs): sin máscaras SVG */
+const PAPER = require('../../assets/postcards/paper.png');
+const Paper = ({ width, height }: { width: number; height: number }) => (
+  <Image source={PAPER} style={{ position: 'absolute', left: 0, top: 0, width, height }} contentFit="fill" cachePolicy="memory" transition={0} />
+);
 
 interface Props {
   tour: Tour;
@@ -35,19 +41,18 @@ export function Postcard({ tour, route, width, back }: Props) {
   const height = postcardHeight(width);
   const accent = tintaDeRuta(tour.accent);
   const date = route?.postcardUnlockedAt;
-  const paper = useMemo(() => postcardPaperXml(id), [id]);
   const face = useMemo(
     () => (date ? postcardFaceXml({ id, title: tour.title, subtitle: tour.postcard.subtitle, value: tour.postcard.value, accent, city: tour.city, date }) : postcardBlankXml({ title: tour.title, accent })),
     [id, date, tour, accent],
   );
   const art = { left: (POSTCARD.art.x - VB.x) * k, top: (POSTCARD.art.y - VB.y) * k, width: POSTCARD.art.w * k, height: POSTCARD.art.h * k };
 
-  if (back) return <PostcardBack tour={tour} route={route} width={width} paper={paper} accent={accent} />;
+  if (back) return <PostcardBack tour={tour} route={route} width={width} accent={accent} />;
 
   const prog = routeProgress(tour.id, route);
   return (
     <View style={{ width, height }}>
-      <SvgXml xml={paper} width={width} height={height} style={StyleSheet.absoluteFill} />
+      <Paper width={width} height={height} />
       {date ? (
         <Image source={tour.postcard.art} style={[s.abs, art]} contentFit="cover" accessibilityLabel={`Ilustración de la postal ${tour.title}`} />
       ) : (
@@ -62,7 +67,7 @@ export function Postcard({ tour, route, width, back }: Props) {
             })}
           </View>
           <Text style={[s.blankText, { fontSize: Math.max(11, 13 * k * 1.6) }]}>
-            {prog.allStamped ? 'Pon el sello de ruta completada para revelarla' : 'Completa la ruta para revelar la postal'}
+            Completa la ruta para revelar la postal
           </Text>
         </View>
       )}
@@ -71,7 +76,7 @@ export function Postcard({ tour, route, width, back }: Props) {
   );
 }
 
-function PostcardBack({ tour, route, width, paper, accent }: { tour: Tour; route: UserRoute | undefined; width: number; paper: string; accent: string }) {
+function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserRoute | undefined; width: number; accent: string }) {
   const k = width / VB.w;
   const height = postcardHeight(width);
   const owner = usePassport(s => s.passport.owner);
@@ -84,7 +89,7 @@ function PostcardBack({ tour, route, width, paper, accent }: { tour: Tour; route
   const stampW = 150 * k, stampH = 190 * k;
   return (
     <View style={{ width, height }}>
-      <SvgXml xml={paper} width={width} height={height} style={StyleSheet.absoluteFill} />
+      <Paper width={width} height={height} />
       <View style={[s.abs, { left: 60 * k, top: 60 * k, width: 420 * k, bottom: 60 * k }]}>
         <Text style={[s.msg, { fontSize: fs(25), lineHeight: fs(38) }]}>
           ¡Hola! Hoy he completado «{tour.title}»: {tour.stops.length} paradas y {formatDistance(meters)} a pie por {tour.city}.

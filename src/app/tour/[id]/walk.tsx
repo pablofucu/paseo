@@ -2,9 +2,12 @@ import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-re
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { MePin, StopPin, StopPopup } from '@/components/MapPins';
+import { PressableScale } from '@/components/motion';
 import { IconButton } from '@/components/ui';
 import type { LngLat } from '@/data/types';
 import { cumulative, formatDistance, projectOnRoute, walkingMinutes } from '@/lib/geo';
@@ -25,10 +28,28 @@ const line = (coords: LngLat[]): GeoJSON.Feature<GeoJSON.LineString> => ({ type:
 /** Punto de partida simulado para ir a la primera parada: ~150 m al suroeste */
 const approachFrom = (c: LngLat): LngLat => [c[0] - 0.0012, c[1] - 0.0009];
 
+/**
+ * El mapa del paseo es la pantalla central del tour: guía hasta la parada a la
+ * que vas (en orden) y al llegar abre la parada encima. Al cerrarla se vuelve
+ * aquí. Tocando cualquier pin se ve esa parada y se puede entrar a leerla.
+ */
 export default function Walk() {
   const tour = useTourParam();
-  const target = Number(useLocalSearchParams<{ target: string }>().target ?? 0);
-  const stop = tour.stops[target];
+  const param = Number(useLocalSearchParams<{ target: string }>().target ?? 0);
+  const walkState = usePassport(s => s.walk);
+  const startWalk = usePassport(s => s.startWalk);
+  const endWalk = usePassport(s => s.endWalk);
+  const saved = usePassport(s => s.routes[tour.id]);
+  const mine = walkState?.tourId === tour.id;
+  const target = mine ? walkState.target : param;
+  const finished = target >= tour.stops.length;
+  const stop = tour.stops[Math.min(target, tour.stops.length - 1)];
+  const [selected, setSelected] = useState<number | null>(null);
+  const [sheetH, setSheetH] = useState(230);
+  // Si se entra directamente (sin pasar por la ficha), el paseo empieza aquí
+  useEffect(() => { if (!mine) startWalk(tour.id, param); }, [mine, startWalk, tour.id, param]);
+  // Pasada la última parada, al resumen final
+  useEffect(() => { if (finished) router.replace({ pathname: '/tour/[id]/done', params: { id: tour.id } }); }, [finished, tour.id]);
   const p = tour.palette;
   const insets = useSafeAreaInsets();
   const { testMode, simSpeed, setSimSpeed } = useSettings();
@@ -67,23 +88,38 @@ export default function Walk() {
     setPaused(false);
   };
   const arriveNow = () => moveTo(stop.coord);
+  // Nueva parada objetivo: el paseo simulado sale de la anterior
+  const lastTarget = useRef(target);
+  useEffect(() => {
+    if (lastTarget.current === target) return;
+    lastTarget.current = target;
+    setManual(null);
+    setResumeFrom(undefined);
+    setPaused(false);
+    setSelected(null);
+  }, [target]);
+  const openStop = (n: number) => {
+    setSelected(null);
+    router.push({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(n) } });
+  };
   // La primera posición GPS marca el inicio del camino hacia la primera parada
   if (target === 0 && source === 'gps' && position && !gpsOrigin) setGpsOrigin(position);
 
   const g = leg && position ? guide(leg, position, stop.coord) : null;
   const text = g ? instruction(g, stop.name) : { text: 'Buscando tu posición…', then: 'Necesitas el GPS activado' };
 
-  // Llegada: vibración y pantalla de la parada, con el sello en la mano
-  const arrivedRef = useRef(false);
+  // Llegada: vibración y la parada se abre encima del mapa. Desde ahora se puede sellar.
+  const arrivedFor = useRef<number | null>(null);
   useEffect(() => {
-    if (!g?.arrived || arrivedRef.current) return;
-    arrivedRef.current = true;
+    if (!g?.arrived || finished || arrivedFor.current === target) return;
+    arrivedFor.current = target;
     // Cada parada se sella una vez; si ya estaba sellada, la llegada solo queda en el historial
     const repeat = arrive(tour.id, stop.id);
     narration.stop();
+    setSelected(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    router.replace({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(target), arrived: repeat ? 'repeat' : '1' } });
-  }, [g?.arrived, arrive, stop.id, tour.id, target, narration]);
+    router.push({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(target), arrived: repeat ? 'repeat' : '1' } });
+  }, [g?.arrived, arrive, stop.id, tour.id, target, narration, finished]);
 
   const style = useMemo(() => buildMapStyle(p), [p]);
   const c = mapColors(p);
@@ -103,7 +139,8 @@ export default function Walk() {
     <TourThemeProvider palette={p}>
       <View style={{ flex: 1, backgroundColor: c.bg }}>
         <Map style={StyleSheet.absoluteFill} mapStyle={style} compass={false} logo={false} attribution attributionPosition={{ bottom: 250, right: 8 }} onPress={testMode ? e => moveTo(e.nativeEvent.lngLat) : undefined}>
-          <Camera center={position ?? stop.coord} zoom={17} duration={700} easing="ease" padding={{ top: 160, bottom: 240, left: 0, right: 0 }} />
+          {/* Con una parada elegida, el mapa vuela hasta ella; si no, sigue tu posición */}
+          <Camera center={selected != null ? tour.stops[selected].coord : position ?? stop.coord} zoom={selected != null ? 17.3 : 17} duration={selected != null ? 900 : 700} easing={selected != null ? 'fly' : 'ease'} padding={{ top: 160, bottom: selected != null ? 330 : 240, left: 0, right: 0 }} />
           {leg && (
             <GeoJSONSource id="route" data={line(leg.line)}>
               <Layer id="route-dots" type="line" layout={{ 'line-cap': 'round' }} paint={{ 'line-color': c.route, 'line-width': 5, 'line-dasharray': [0.1, 2] }} />
@@ -117,17 +154,12 @@ export default function Walk() {
           )}
           {tour.stops.map((st, i) => (
             <Marker key={st.id} id={`stop-${st.id}`} lngLat={st.coord} anchor="center">
-              <View style={[s.pin, i < target && { backgroundColor: p.t, opacity: 0.55, borderColor: p.t }, i === target && [s.pinNow, { backgroundColor: p.t2 }], i > target && { borderColor: p.t }]}>
-                <Text style={[s.pinText, { color: i < target ? p.on : i === target ? neutral.ink : p.t }]}>{i + 1}</Text>
-              </View>
+              <StopPin index={i} state={i < target ? 'done' : i === target ? 'now' : 'next'} selected={selected === i} palette={p} onPress={() => setSelected(v => (v === i ? null : i))} />
             </Marker>
           ))}
           {position && (
             <Marker id="me" lngLat={position} anchor="center">
-              <View style={s.meWrap}>
-                {heading != null && <View style={[s.cone, { transform: [{ rotate: `${heading}deg` }] }]} />}
-                <View style={s.me} />
-              </View>
+              <MePin heading={heading} />
             </Marker>
           )}
         </Map>
@@ -146,7 +178,7 @@ export default function Walk() {
           <View style={s.then}><Text style={[s.thenText, g?.offRoute && { color: neutral.ink }]} numberOfLines={1}>{text.then}</Text></View>
         </View>
 
-        <IconButton label="Salir del tour" icon="close" onPress={() => router.back()} style={{ position: 'absolute', left: 14, bottom: 262 + insets.bottom }} />
+        <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: 262 + insets.bottom }} />
         {quality !== 'streets' && leg && (
           <View style={[s.srcPill, { bottom: 268 + insets.bottom }]}>
             <Text style={s.srcText}>{quality === 'loading' ? 'Calculando la ruta por calles…' : 'Sin conexión: ruta en línea recta'}</Text>
@@ -179,8 +211,8 @@ export default function Walk() {
           </View>
         )}
 
-        {/* Hoja inferior */}
-        <View style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
+        {/* Hoja inferior (y, después, encima de ella la ventana de la parada elegida en el mapa) */}
+        <Animated.View entering={FadeInDown.delay(150).springify().damping(18)} onLayout={e => setSheetH(e.nativeEvent.layout.height)} style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
           {showWay && (
             <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(way!.story ?? way!.text.replace(/^De camino:\s*/i, '')))} style={[s.way, { backgroundColor: p.soft }]}>
               <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>
@@ -199,7 +231,7 @@ export default function Walk() {
               </View>
             ))}
           </View>
-          <View style={s.next}>
+          <PressableScale accessibilityRole="button" accessibilityLabel={`Abrir ${stop.name}`} onPress={() => openStop(target)} scaleTo={0.98} style={s.next}>
             <DuotoneImage source={stop.photo} palette={p} style={s.nextPic} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={[s.nextOver, { color: p.t }]}>Siguiente</Text>
@@ -209,20 +241,34 @@ export default function Walk() {
               <Text style={s.eta}>{g ? `${walkingMinutes(g.remaining)} min` : '—'}</Text>
               <Text style={s.etaSub}>{g ? formatDistance(g.remaining) : ''}</Text>
             </View>
+          </PressableScale>
+        </Animated.View>
+        {selected != null && (
+          <View style={[s.popWrap, { bottom: sheetH + 12 }]}>
+            <StopPopup
+              key={selected}
+              stop={tour.stops[selected]}
+              index={selected}
+              total={tour.stops.length}
+              palette={p}
+              status={
+                saved?.stamps.some(x => x.stopId === tour.stops[selected].id)
+                  ? 'Sellada · puedes volver a leerla'
+                  : selected === target
+                    ? `Vas aquí${g ? ` · ${walkingMinutes(g.remaining)} min` : ''}`
+                    : selected < target ? 'Ya pasaste por aquí' : 'Más adelante en la ruta'
+              }
+              action={{ label: 'Entrar', onPress: () => openStop(selected) }}
+              onClose={() => setSelected(null)}
+            />
           </View>
-        </View>
+        )}
       </View>
     </TourThemeProvider>
   );
 }
 
 const s = StyleSheet.create({
-  pin: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, borderColor: '#fff', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadow[2] },
-  pinNow: { width: 48, height: 48, borderRadius: 24, borderWidth: 4, borderColor: '#fff' },
-  pinText: { fontFamily: font.black, fontSize: 16 },
-  meWrap: { width: 70, height: 70, alignItems: 'center', justifyContent: 'center' },
-  cone: { position: 'absolute', width: 0, height: 0, top: 2, borderLeftWidth: 14, borderRightWidth: 14, borderBottomWidth: 32, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: 'rgba(45,127,249,0.25)', transformOrigin: 'center 33px' },
-  me: { width: 22, height: 22, borderRadius: 11, backgroundColor: functional.me, borderWidth: 4, borderColor: '#fff', ...shadow[2] },
   dir: { position: 'absolute', left: 12, right: 12, borderRadius: 24, overflow: 'hidden', ...shadow[3] },
   dirMain: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   arrow: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
@@ -240,6 +286,7 @@ const s = StyleSheet.create({
   testOn: { backgroundColor: '#F25C3B' },
   testChipText: { fontFamily: font.black, fontSize: 13, color: '#fff' },
   testHint: { fontFamily: font.bold, fontSize: 11.5, color: 'rgba(255,255,255,0.75)' },
+  popWrap: { position: 'absolute', left: 12, right: 12 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: neutral.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 18, paddingTop: 14, gap: 10, ...shadow[3] },
   way: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.pill, padding: 5, paddingRight: 14, marginTop: -2 },
   wayPlay: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },

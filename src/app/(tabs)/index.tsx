@@ -1,11 +1,14 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { LockedTourCard, LockedTourSheet } from '@/components/LockedTour';
 import { PressableScale, rise } from '@/components/motion';
 import { Scrim } from '@/components/Scrim';
-import { TOURS } from '@/data/tours';
+import { CITIES, toursIn } from '@/data/tours';
+import type { LockedTour } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { tintaDeRuta } from '@/lib/ink';
 import { routeProgress, usePassport } from '@/store/passport';
@@ -18,14 +21,27 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const routes = usePassport(s => s.routes);
   const reset = usePassport(s => s.reset);
-  const { testMode, setTestMode } = useSettings();
+  const { testMode, setTestMode, language } = useSettings();
+  const city = useSettings(s => s.city) ?? 'sevilla';
+  const { open, locked } = toursIn(city);
+  const [sheet, setSheet] = useState<LockedTour | null>(null);
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 18, gap: 14 }}>
-      <Animated.Text entering={rise(0)} style={[type.overline, { color: brand.coral }]}>Paseo</Animated.Text>
+      <Animated.View entering={rise(0)} style={s.top}>
+        <Text style={[type.overline, { color: brand.coral, flex: 1 }]}>Paseo</Text>
+        {/* Ciudad e idioma: se cambian desde aquí */}
+        <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de ciudad" onPress={() => router.push({ pathname: '/ciudad', params: { change: '1' } })} style={s.chip}>
+          <Text style={s.chipText}>{CITIES.find(c => c.id === city)?.name} ▾</Text>
+        </PressableScale>
+        <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de idioma" onPress={() => router.push({ pathname: '/bienvenida', params: { change: '1' } })} style={s.chip}>
+          <Text style={s.chipText}>{(language ?? 'es').toUpperCase()}</Text>
+        </PressableScale>
+      </Animated.View>
       <Animated.Text entering={rise(1)} style={[type.hero, { fontSize: 38, lineHeight: 42 }]}>¿Dónde paseamos hoy?</Animated.Text>
 
-      {TOURS.map((t, i) => {
+      {open.map((t, i) => {
         const meters = t.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
         const prog = routeProgress(t.id, routes[t.id]);
         return (
@@ -53,7 +69,18 @@ export default function Home() {
         );
       })}
 
-      <Animated.View entering={rise(TOURS.length + 2)} style={s.test}>
+      {locked.length > 0 && (
+        <Animated.Text entering={rise(open.length + 2)} style={[type.headline, { marginTop: 8 }]}>
+          {open.length ? 'Próximamente, de pago' : 'Tours de pago'}
+        </Animated.Text>
+      )}
+      {locked.map((t, i) => (
+        <Animated.View key={t.id} entering={rise(open.length + 3 + i)}>
+          <LockedTourCard tour={t} onPress={() => setSheet(t)} />
+        </Animated.View>
+      ))}
+
+      <Animated.View entering={rise(open.length + locked.length + 3)} style={s.test}>
         <View style={{ flex: 1 }}>
           <Text style={s.testTitle}>Modo prueba</Text>
           <Text style={type.caption}>Recorre los tours sin moverte: paseo simulado, velocidad, llegar a la parada o tocar el mapa para moverte.</Text>
@@ -66,10 +93,15 @@ export default function Home() {
         </Pressable>
       )}
     </ScrollView>
+    {sheet && <LockedTourSheet tour={sheet} onClose={() => setSheet(null)} />}
+    </View>
   );
 }
 
 const s = StyleSheet.create({
+  top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  chip: { height: 34, paddingHorizontal: 12, borderRadius: 999, backgroundColor: neutral.bg2, justifyContent: 'center' },
+  chipText: { fontFamily: font.black, fontSize: 13, color: neutral.ink },
   card: { backgroundColor: neutral.surface, borderRadius: 22, overflow: 'hidden', ...shadow[2] },
   hero: { height: 170 },
   heroText: { position: 'absolute', left: 16, bottom: 12 },

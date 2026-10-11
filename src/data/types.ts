@@ -1,5 +1,6 @@
 import type { ImageSourcePropType } from 'react-native';
 import type { RouteStep } from '@/lib/routing';
+import type { CityId } from '@/store/settings';
 import type { TourPalette } from '@/theme/tokens';
 
 /** [longitud, latitud], el mismo orden que usa MapLibre y GeoJSON */
@@ -66,6 +67,8 @@ export interface OnTheWay {
 
 export interface Tour {
   id: string;
+  /** Ciudad del selector de Inicio a la que pertenece (Tomares está en el área de Sevilla) */
+  area: CityId;
   city: string;
   region: string;
   title: string;
@@ -101,4 +104,25 @@ export interface Tour {
   /** Giros con nombre de calle de cada tramo, si la ruta está fijada por calles */
   legSteps?: RouteStep[][];
   onTheWay: OnTheWay[];
+}
+
+/**
+ * Tour de pago que todavía no se puede hacer: solo se enseña en la interfaz,
+ * bloqueado, con su precio. No tiene paradas ni contenido.
+ */
+export interface LockedTour {
+  id: string;
+  area: CityId;
+  city: string;
+  region: string;
+  title: string;
+  category: string;
+  intro: string;
+  palette: TourPalette;
+  durationMin: number;
+  stops: number;
+  /** Precio en euros */
+  eur: number;
+  /** Foto de portada, si hay; si no, la tarjeta se pinta con la paleta */
+  cover?: ImageSourcePropType;
 }

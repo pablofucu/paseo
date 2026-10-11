@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,17 +25,10 @@ export default function Postales() {
   const { width } = useWindowDimensions();
   const routes = usePassport(s => s.routes);
   const [view, setView] = useState<'list' | 'map'>('list');
-  const { open } = useLocalSearchParams<{ open?: string }>();
   const [tabs, setTabs] = useState<Record<string, { x: number; width: number }>>({});
   const on = tabs[view];
   const pill = useAnimatedStyle(() => (on ? { opacity: 1, width: withSpring(on.width, SPRING), transform: [{ translateX: withSpring(on.x, SPRING) }] } : { opacity: 0 }));
 
-  // «Ver en Postales» desde la tarjeta de postal desbloqueada: abre esa postal
-  useEffect(() => {
-    if (!open) return;
-    router.setParams({ open: undefined });
-    router.push({ pathname: '/postal/[id]', params: { id: open } });
-  }, [open]);
 
   const openTour = (t: Tour) => {
     if (routeProgress(t.id, routes[t.id]).completed) router.push({ pathname: '/postal/[id]', params: { id: t.id } });

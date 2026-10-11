@@ -1,7 +1,9 @@
+import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 import type { ColorValue } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { font } from '@/theme/fonts';
+import { useSettings, useSettingsHydrated } from '@/store/settings';
 import { neutral } from '@/theme/tokens';
 
 const ICONS = {
@@ -28,6 +30,13 @@ const icon = (name: keyof typeof ICONS) =>
   };
 
 export default function TabsLayout() {
+  const hydrated = useSettingsHydrated();
+  const language = useSettings(s => s.language);
+  const city = useSettings(s => s.city);
+  // La primera vez: bienvenida (idioma) y ciudad antes de nada
+  if (!hydrated) return null;
+  if (!language) return <Redirect href="/bienvenida" />;
+  if (!city) return <Redirect href="/ciudad" />;
   return (
     <Tabs
       screenOptions={{
@@ -48,3 +57,6 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+/** Un fallo al pintar una pantalla enseña el error en lugar de cerrar la app */
+export { ErrorScreen as ErrorBoundary } from '@/components/ErrorScreen';

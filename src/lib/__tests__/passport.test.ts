@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { STAMP_ART } from '@/data/stamps/images';
 import { TOURS } from '@/data/tours';
 import { contraste, PAPEL, papelDeRuta, tintaDeParada, tintaDeRuta } from '@/lib/ink';
-import { clampToSafe, overlap, randomSpot, settle } from '@/lib/placement';
+import { clampToSafe, overlap, randomSpot, settle, stampRotation } from '@/lib/placement';
 import { fechaRomana, fechaSello, rng, rubberDateXml } from '@/lib/rubber';
 import { sheetFor } from '@/lib/sheet';
 import { dropFinalStamps, migrateVisits, routeProgress, type UserRoute } from '@/store/passport';
@@ -90,6 +90,7 @@ describe('migración del pasaporte', () => {
       expect(s.x).toBeGreaterThan(0);
       expect(s.x).toBeLessThan(1);
       expect(Math.abs(s.rot)).toBeLessThanOrEqual(12);
+      expect(Math.abs(s.rot)).toBeGreaterThanOrEqual(4);
     }
   });
 });
@@ -130,5 +131,39 @@ describe('fecha del sello', () => {
     const tour = TOURS.find(t => t.city === 'Tomares')!;
     const xml = rubberDateXml({ art: tour.stops.find(s => s.rubber.shape === 'circle')!.rubber, city: 'Tomares', date: '2026-10-10T17:00:00Z', color: '#000' });
     expect(xml).toMatch(/<g [^>]*fill="none"/);
+  });
+});
+
+describe('giro del sello', () => {
+  it('nunca queda recto: entre 4° y 12° a cada lado', () => {
+    const r = rng(9);
+    const rots = Array.from({ length: 400 }, () => stampRotation(r));
+    for (const d of rots) expect(Math.abs(d)).toBeGreaterThanOrEqual(4);
+    for (const d of rots) expect(Math.abs(d)).toBeLessThanOrEqual(12);
+    expect(rots.some(d => d < 0) && rots.some(d => d > 0)).toBe(true);
+  });
+});
+
+describe('ciudades y tours bloqueados', () => {
+  it('Sevilla tiene sus tours (con Tomares) y Madrid solo tours de pago', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { toursIn } = require('@/data/tours') as typeof import('@/data/tours');
+    expect(toursIn('sevilla').open.map(t => t.city).sort()).toEqual(['Sevilla', 'Tomares']);
+    expect(toursIn('madrid').open).toHaveLength(0);
+    expect(toursIn('madrid').locked.length).toBeGreaterThan(0);
+    for (const c of ['sevilla', 'madrid'] as const) for (const t of toursIn(c).locked) expect(t.eur).toBeGreaterThan(0);
+  });
+});
+
+describe('paseo en curso', () => {
+  it('solo se puede sellar tras llegar, y la siguiente parada empieza sin llegada', () => {
+    const { usePassport } = require('@/store/passport') as typeof import('@/store/passport'); // eslint-disable-line @typescript-eslint/no-require-imports
+    const tour = TOURS.find(t => t.city === 'Tomares')!;
+    usePassport.getState().startWalk(tour.id, 0);
+    expect(usePassport.getState().walk).toEqual({ tourId: tour.id, target: 0, arrived: null });
+    usePassport.getState().arrive(tour.id, tour.stops[0].id);
+    expect(usePassport.getState().walk?.arrived).toBe(tour.stops[0].id);
+    usePassport.getState().advanceWalk();
+    expect(usePassport.getState().walk).toEqual({ tourId: tour.id, target: 1, arrived: null });
   });
 });

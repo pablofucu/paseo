@@ -22,6 +22,7 @@ const coord = (id: string) => geo.stops.find(s => s.id === id)!.coord as LngLat;
  */
 export const tomares: Tour = {
   id: 'tomares-4-paradas',
+  area: 'sevilla',
   city: 'Tomares',
   region: 'Sevilla · Aljarafe',
   title: 'Tomares en 4 paradas',

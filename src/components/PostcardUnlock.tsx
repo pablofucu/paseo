@@ -44,8 +44,8 @@ export function PostcardUnlock({ tour, route }: { tour: Tour; route: UserRoute |
         </View>
       </Animated.View>
       <View style={s.row}>
-        <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/postales', params: { open: tour.id } })} style={[s.btn, s.primary]}>
-          <Text style={[s.btnText, { color: '#fff' }]}>Ver en Postales</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} style={[s.btn, s.primary]}>
+          <Text style={[s.btnText, { color: '#fff' }]}>Ver la postal</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => sharePostcard(card, tour.title)} style={[s.btn, s.secondary]}>
           <Text style={s.btnText}>Compartir</Text>
