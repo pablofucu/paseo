@@ -1,13 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInUp, SlideOutUp, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeOut, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { GuideButton } from '@/components/GuideButton';
 import { useHeroMotion } from '@/components/HeroMotion';
-import { rise } from '@/components/motion';
+import { DUR, EASE_OUT, rise } from '@/components/motion';
 import { StampPlacer } from '@/components/passport/StampPlacer';
 import { RubberStamp } from '@/components/RubberStamp';
 import { Scrim } from '@/components/Scrim';
@@ -100,7 +100,7 @@ export default function StopScreen() {
           <Scrim opacity={0.55} />
           <Scrim opacity={0.35} from="top" style={{ height: 110 }} />
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: neutral.bg }, heroShade]} />
-          <Animated.Text key={gal} entering={FadeIn.duration(300)} style={s.cap} numberOfLines={1}>{stop.captions[gal] ?? ''}</Animated.Text>
+          <Animated.Text key={gal} entering={FadeIn.duration(DUR.base).easing(EASE_OUT)} style={s.cap} numberOfLines={1}>{stop.captions[gal] ?? ''}</Animated.Text>
           <View style={s.dots}>{CROPS.map((_, i) => <View key={i} style={[s.dot, i === gal && s.dotOn]} />)}</View>
         </Pressable>
         {stop.photoCredit && <Text style={s.credit}>Foto: {stop.photoCredit.author} · {stop.photoCredit.license} · Wikimedia Commons</Text>}
@@ -133,14 +133,14 @@ export default function StopScreen() {
       </Pressable>
 
       {banner && (
-        <Animated.View entering={reduced ? FadeIn : SlideInUp.springify().damping(16)} exiting={reduced ? FadeOut : SlideOutUp.duration(260)} pointerEvents="none" style={[s.banner, { top: insets.top + 64, backgroundColor: p.deep }]}>
+        <Animated.View entering={reduced ? FadeIn : FadeInDown.duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: -12 }] })} exiting={FadeOut.duration(DUR.base)} pointerEvents="none" style={[s.banner, { top: insets.top + 64, backgroundColor: p.deep }]}>
           <Text style={[s.bannerOver, { color: p.t2 }]}>{params.arrived === 'repeat' ? 'Ya tenías este sello' : `Has llegado · parada ${n + 1} de ${tour.stops.length}`}</Text>
           <Text style={s.bannerText}>El audio empieza ahora{canStamp ? '. Al terminar, pon tu sello.' : ''}</Text>
         </Animated.View>
       )}
 
       {/* Abajo: sellar al final de la parada, seguir a la siguiente o volver al mapa */}
-      <Animated.View entering={FadeIn.delay(250)} onLayout={e => setCtaH(e.nativeEvent.layout.height)} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
+      <Animated.View entering={FadeIn.delay(250).duration(DUR.base).easing(EASE_OUT)} onLayout={e => setCtaH(e.nativeEvent.layout.height)} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
         {canStamp ? (
           <PrimaryButton label="Poner el sello" onPress={() => { player.pause(); setPlacing(true); }} />
         ) : mine && visitedHere && !current ? (

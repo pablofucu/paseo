@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { GuideButton } from '@/components/GuideButton';
 import { MePin, StopPin, StopPopup } from '@/components/MapPins';
-import { PressableScale } from '@/components/motion';
+import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
 import { IconButton } from '@/components/ui';
 import type { LngLat } from '@/data/types';
 import { cumulative, formatDistance, projectOnRoute, walkingMinutes } from '@/lib/geo';
@@ -219,7 +219,7 @@ export default function Walk() {
         )}
 
         {/* Hoja inferior (y, después, encima de ella la ventana de la parada elegida en el mapa) */}
-        <Animated.View entering={FadeInDown.delay(150).springify().damping(18)} onLayout={e => setSheetH(e.nativeEvent.layout.height)} style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
+        <Animated.View entering={FadeInDown.delay(150).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })} onLayout={e => setSheetH(e.nativeEvent.layout.height)} style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
           {showWay && (
             <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(way!.story ?? way!.text.replace(/^De camino:\s*/i, '')))} style={[s.way, { backgroundColor: p.soft }]}>
               <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>

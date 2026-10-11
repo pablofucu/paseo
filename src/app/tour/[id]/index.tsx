@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, SlideInDown, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { useHeroMotion } from '@/components/HeroMotion';
 import { Scrim } from '@/components/Scrim';
-import { rise } from '@/components/motion';
+import { DUR, EASE_OUT, rise } from '@/components/motion';
 import { Postcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
@@ -22,8 +22,8 @@ import { type } from '@/theme/type';
 
 const HERO = 290;
 
-/** Los sellos se «estampan» uno detrás de otro al abrir la ficha */
-const stampIn = (i: number) => ZoomIn.delay(350 + i * 90).springify().damping(11).stiffness(170).withInitialValues({ transform: [{ scale: 1.6 }] });
+/** Los sellos asoman como tinta que se asienta, uno detrás de otro, sin rebote */
+const stampIn = (i: number) => ZoomIn.delay(350 + i * 80).duration(DUR.slow).easing(EASE_OUT).withInitialValues({ transform: [{ scale: 1.04 }] });
 
 export default function Cover() {
   const tour = useTourParam();
@@ -54,7 +54,7 @@ export default function Cover() {
           </Animated.View>
           <Scrim opacity={0.5} />
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: neutral.bg }, veil]} />
-          <Animated.Text entering={FadeInDown.delay(120).springify().damping(16)} style={s.heroCity}>{tour.city}</Animated.Text>
+          <Animated.Text entering={FadeInDown.delay(120).duration(DUR.slow).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 12 }] })} style={s.heroCity}>{tour.city}</Animated.Text>
         </View>
         <Animated.View entering={rise(1)} style={s.body}>
           <Text style={[type.overline, { color: p.t }]}>{tour.category} · {tour.city}</Text>
@@ -106,8 +106,8 @@ export default function Cover() {
         </Animated.View>
       </Animated.ScrollView>
       <IconButton label="Volver" icon="back" onPress={() => router.back()} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
-      {/* El botón de empezar sube desde abajo cuando la ficha ya está en pantalla */}
-      <Animated.View entering={SlideInDown.delay(300).springify().damping(18)} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
+      {/* El botón de empezar aparece con una subida corta cuando la ficha ya está en pantalla */}
+      <Animated.View entering={FadeInDown.delay(300).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
         {nextStop >= 0 ? (
           <>
             <PrimaryButton label={`Continuar · parada ${nextStop + 1} de ${tour.stops.length}`} onPress={() => walkFrom(nextStop)} />

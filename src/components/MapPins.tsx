@@ -13,7 +13,7 @@ import Animated, {
   ZoomIn,
 } from 'react-native-reanimated';
 import { DuotoneImage } from '@/components/DuotoneImage';
-import { PressableScale, SPRING } from '@/components/motion';
+import { DUR, EASE_OUT, PressableScale, SPRING } from '@/components/motion';
 import type { Stop } from '@/data/types';
 import { font } from '@/theme/fonts';
 import { functional, neutral, shadow, type TourPalette } from '@/theme/tokens';
@@ -24,9 +24,9 @@ function Pulse({ size, color, delay = 0 }: { size: number; color: string; delay?
   const t = useSharedValue(0);
   useEffect(() => {
     if (reduced) return;
-    t.set(withDelay(delay, withRepeat(withTiming(1, { duration: 1700, easing: Easing.out(Easing.quad) }), -1, false)));
+    t.set(withDelay(delay, withRepeat(withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }), -1, false)));
   }, [t, reduced, delay]);
-  const style = useAnimatedStyle(() => ({ opacity: 0.55 * (1 - t.value), transform: [{ scale: 1 + t.value * 1.4 }] }));
+  const style = useAnimatedStyle(() => ({ opacity: 0.35 * (1 - t.value), transform: [{ scale: 1 + t.value * 1.1 }] }));
   return <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2, backgroundColor: color }, style]} />;
 }
 
@@ -39,20 +39,20 @@ interface StopPinProps {
 }
 
 /**
- * Pin de una parada: al abrir el mapa caen uno detrás de otro con rebote; la
- * parada a la que vas late; la elegida crece.
+ * Pin de una parada: al abrir el mapa aparecen uno detrás de otro con un fundido
+ * suave; la parada a la que vas late con calma; la elegida crece un poco.
  */
 export function StopPin({ index, state, selected, palette: p, onPress }: StopPinProps) {
   const reduced = useReducedMotion();
   const drop = useSharedValue(reduced ? 1 : 0);
   const sel = useSharedValue(0);
   useEffect(() => {
-    drop.set(withDelay(250 + index * 110, withSpring(1, { damping: 9, stiffness: 160, mass: 0.8 })));
+    drop.set(withDelay(250 + index * 90, withTiming(1, { duration: DUR.slow, easing: EASE_OUT })));
   }, [drop, index]);
   useEffect(() => { sel.set(withSpring(selected ? 1 : 0, SPRING)); }, [sel, selected]);
   const style = useAnimatedStyle(() => ({
     opacity: Math.min(1, drop.value * 2),
-    transform: [{ translateY: (1 - drop.value) * -46 }, { scale: 1 + sel.value * 0.28 }],
+    transform: [{ translateY: (1 - drop.value) * -10 }, { scale: 1 + sel.value * 0.14 }],
   }));
   const now = state === 'now';
   return (
@@ -99,11 +99,11 @@ interface PopupProps {
   children?: ReactNode;
 }
 
-/** Ventana de una parada en el mapa: nace del pin con un muelle y se cierra encogiendo */
+/** Ventana de una parada en el mapa: aparece con un fundido y una escala mínima, y se cierra con un fundido */
 export function StopPopup({ stop, index, total, palette: p, status, action, footer, onClose }: PopupProps) {
   return (
     <Animated.View
-      entering={ZoomIn.springify().damping(15).stiffness(220).withInitialValues({ transform: [{ scale: 0.6 }] })}
+      entering={ZoomIn.duration(DUR.base).easing(EASE_OUT).withInitialValues({ transform: [{ scale: 0.96 }] })}
       exiting={FadeOut.duration(140)}
       style={s.popup}
     >
