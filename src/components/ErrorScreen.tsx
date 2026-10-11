@@ -19,6 +19,7 @@ export function ErrorScreen({ error, retry }: ErrorBoundaryProps) {
       <Text style={s.body}>Tus sellos y postales están a salvo. Si vuelve a pasar, haz una captura de este mensaje:</Text>
       <ScrollView style={s.box} contentContainerStyle={{ padding: 12 }}>
         <Text selectable style={s.code}>{error.name}: {error.message}</Text>
+        <Text selectable style={[s.code, { marginTop: 8, opacity: 0.7 }]}>{(error.stack ?? '').split('\n').slice(1, 7).join('\n')}</Text>
       </ScrollView>
       <View style={{ gap: 10, marginTop: 'auto' }}>
         <PrimaryButton label="Reintentar" onPress={retry} />

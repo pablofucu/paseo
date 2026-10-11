@@ -93,18 +93,21 @@ interface PopupProps {
   /** «Sellada», «Vas aquí · 4 min», «Más adelante»… */
   status: string;
   action?: { label: string; onPress: () => void };
+  /** Opción a lo ancho al pie de la ventana («Ir aquí») */
+  footer?: { label: string; hint?: string; onPress: () => void };
   onClose: () => void;
   children?: ReactNode;
 }
 
 /** Ventana de una parada en el mapa: nace del pin con un muelle y se cierra encogiendo */
-export function StopPopup({ stop, index, total, palette: p, status, action, onClose }: PopupProps) {
+export function StopPopup({ stop, index, total, palette: p, status, action, footer, onClose }: PopupProps) {
   return (
     <Animated.View
       entering={ZoomIn.springify().damping(15).stiffness(220).withInitialValues({ transform: [{ scale: 0.6 }] })}
       exiting={FadeOut.duration(140)}
       style={s.popup}
     >
+      <View style={s.popRow}>
       <DuotoneImage source={stop.photo} palette={p} style={s.popPic} />
       <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
         <Text style={[s.popOver, { color: p.t }]}>Parada {index + 1} de {total}</Text>
@@ -121,6 +124,13 @@ export function StopPopup({ stop, index, total, palette: p, status, action, onCl
           </PressableScale>
         )}
       </View>
+      </View>
+      {footer && (
+        <PressableScale accessibilityRole="button" onPress={footer.onPress} scaleTo={0.97} style={[s.popFoot, { borderColor: p.t }]}>
+          <Text style={[s.popFootText, { color: p.t }]}>{footer.label}</Text>
+          {footer.hint && <Text style={s.popFootHint}>{footer.hint}</Text>}
+        </PressableScale>
+      )}
     </Animated.View>
   );
 }
@@ -133,7 +143,11 @@ const s = StyleSheet.create({
   meWrap: { width: 70, height: 70, alignItems: 'center', justifyContent: 'center' },
   cone: { position: 'absolute', width: 0, height: 0, top: 2, borderLeftWidth: 14, borderRightWidth: 14, borderBottomWidth: 32, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: 'rgba(45,127,249,0.25)', transformOrigin: 'center 33px' },
   me: { width: 22, height: 22, borderRadius: 11, backgroundColor: functional.me, borderWidth: 4, borderColor: '#fff', ...shadow[2] },
-  popup: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 22, backgroundColor: neutral.surface, ...shadow[3] },
+  popup: { gap: 10, padding: 10, borderRadius: 22, backgroundColor: neutral.surface, ...shadow[3] },
+  popRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  popFoot: { borderWidth: 1.5, borderRadius: 14, paddingVertical: 9, alignItems: 'center' },
+  popFootText: { fontFamily: font.black, fontSize: 14.5 },
+  popFootHint: { fontFamily: font.bold, fontSize: 11.5, color: neutral.ink3, marginTop: 1 },
   popPic: { width: 64, height: 64, borderRadius: 14 },
   popOver: { fontFamily: font.black, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
   popName: { fontFamily: font.serif, fontSize: 18, lineHeight: 21, color: neutral.ink },

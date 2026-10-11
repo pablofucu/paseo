@@ -160,10 +160,13 @@ describe('paseo en curso', () => {
     const { usePassport } = require('@/store/passport') as typeof import('@/store/passport'); // eslint-disable-line @typescript-eslint/no-require-imports
     const tour = TOURS.find(t => t.city === 'Tomares')!;
     usePassport.getState().startWalk(tour.id, 0);
-    expect(usePassport.getState().walk).toEqual({ tourId: tour.id, target: 0, arrived: null });
+    expect(usePassport.getState().walk).toEqual({ tourId: tour.id, target: 0, arrived: null, guide: null });
     usePassport.getState().arrive(tour.id, tour.stops[0].id);
     expect(usePassport.getState().walk?.arrived).toBe(tour.stops[0].id);
     usePassport.getState().advanceWalk();
-    expect(usePassport.getState().walk).toEqual({ tourId: tour.id, target: 1, arrived: null });
+    // La guía de la parada visitada sigue a mano desde el mapa
+    expect(usePassport.getState().walk).toEqual({ tourId: tour.id, target: 1, arrived: null, guide: 0 });
+    usePassport.getState().goTo(3);
+    expect(usePassport.getState().walk?.target).toBe(3);
   });
 });

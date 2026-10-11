@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale, rise, SPRING } from '@/components/motion';
 import { Postcard } from '@/components/Postcard';
@@ -27,7 +27,17 @@ export default function Postales() {
   const [view, setView] = useState<'list' | 'map'>('list');
   const [tabs, setTabs] = useState<Record<string, { x: number; width: number }>>({});
   const on = tabs[view];
-  const pill = useAnimatedStyle(() => (on ? { opacity: 1, width: withSpring(on.width, SPRING), transform: [{ translateX: withSpring(on.x, SPRING) }] } : { opacity: 0 }));
+  // El muelle se lanza desde JS: dentro de un worklet no se pueden usar valores importados de otros módulos
+  // (en el móvil arrastran el módulo entero al hilo de UI y la pantalla falla)
+  const px = useSharedValue(0), pw = useSharedValue(0), shown = useSharedValue(0);
+  useEffect(() => {
+    if (!on) return;
+    const first = shown.value === 0;
+    px.set(first ? on.x : withSpring(on.x, SPRING));
+    pw.set(first ? on.width : withSpring(on.width, SPRING));
+    shown.set(1);
+  }, [on, px, pw, shown]);
+  const pill = useAnimatedStyle(() => ({ opacity: shown.value, width: pw.value, transform: [{ translateX: px.value }] }));
 
 
   const openTour = (t: Tour) => {
@@ -51,7 +61,7 @@ export default function Postales() {
           {/* La píldora oscura se desliza de una opción a la otra */}
           <Animated.View style={[s.tOn, pill]} />
           {(['list', 'map'] as const).map(v => (
-            <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} onLayout={e => setTabs(t => ({ ...t, [v]: e.nativeEvent.layout }))} style={s.tBtn}>
+            <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} onLayout={e => { const { x, width } = e.nativeEvent.layout; setTabs(t => ({ ...t, [v]: { x, width } })); }} style={s.tBtn}>
               <Text style={[s.tText, view === v && { color: '#fff' }]}>{v === 'list' ? 'Tarjetero' : 'Mapa'}</Text>
             </Pressable>
           ))}

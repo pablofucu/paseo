@@ -5,6 +5,7 @@ import Animated, { FadeIn, FadeOut, SlideInUp, SlideOutUp, useReducedMotion } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { GuideButton } from '@/components/GuideButton';
 import { useHeroMotion } from '@/components/HeroMotion';
 import { rise } from '@/components/motion';
 import { StampPlacer } from '@/components/passport/StampPlacer';
@@ -50,11 +51,14 @@ export default function StopScreen() {
   // Solo se sella la parada a la que se ha llegado de verdad, y una sola vez
   const canStamp = current && walk.arrived === stop.id && !mine;
   const last = n === tour.stops.length - 1;
+  // Esta es la parada visitada (su guía se abre y se cierra con el botón del mapa)
+  const visitedHere = onWalk && walk.guide === n;
   const [placing, setPlacing] = useState(false);
   const [justStamped, setJustStamped] = useState(false);
   const [banner, setBanner] = useState(arrivedNow);
   const [gal, setGal] = useState(0);
   const [color, setColor] = useState(false);
+  const [ctaH, setCtaH] = useState(90);
   const sheetW = Math.floor(Math.min(width - 48, (height - insets.top - insets.bottom - 260) * SHEET_RATIO, 440));
   const script = `${stop.name}. ${stop.p1} Fíjate en ${stop.look.charAt(0).toLowerCase()}${stop.look.slice(1)} ${stop.p2} ¿Sabías que…? ${stop.fact}`;
   const player = useNarrationPlayer(script);
@@ -77,6 +81,11 @@ export default function StopScreen() {
     player.pause();
     advanceWalk();
     router.back();
+  };
+  // Con el sello en la hoja, el paseo pasa solo a la siguiente parada; la guía sigue abierta
+  const stamped = () => {
+    setJustStamped(true);
+    advanceWalk();
   };
   const crop = CROPS[gal];
   const look = stampBox(stop.rubber.shape, 84 / 0.325);
@@ -131,10 +140,12 @@ export default function StopScreen() {
       )}
 
       {/* Abajo: sellar al final de la parada, seguir a la siguiente o volver al mapa */}
-      <Animated.View entering={FadeIn.delay(250)} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
+      <Animated.View entering={FadeIn.delay(250)} onLayout={e => setCtaH(e.nativeEvent.layout.height)} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
         {canStamp ? (
           <PrimaryButton label="Poner el sello" onPress={() => { player.pause(); setPlacing(true); }} />
-        ) : current && (mine || walk.arrived === stop.id) ? (
+        ) : mine && visitedHere && !current ? (
+          <PrimaryButton label={last ? 'Terminar tour' : 'Ir a la siguiente parada'} onPress={close} />
+        ) : current && walk.arrived === stop.id ? (
           <PrimaryButton label={last ? 'Terminar tour' : 'Siguiente parada'} onPress={next} />
         ) : (
           <>
@@ -144,20 +155,22 @@ export default function StopScreen() {
         )}
       </Animated.View>
 
+      {/* Salir de la guía al mapa, en la misma esquina que el botón «Guía» del mapa */}
+      {onWalk && !placing && <GuideButton to="map" photo={stop.photo} palette={p} onPress={close} style={{ bottom: ctaH + 12 }} />}
+
       {placing && (
         <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(260)} style={[StyleSheet.absoluteFill, s.place, { backgroundColor: p.deep, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 20 }]}>
+          {/* Con el sello puesto, tocar en cualquier sitio cierra esta pantalla */}
+          {justStamped && <Pressable accessibilityRole="button" accessibilityLabel="Seguir" onPress={() => setPlacing(false)} style={[StyleSheet.absoluteFill, { zIndex: 10 }]} />}
           <Animated.Text entering={rise(1)} style={[s.placeOver, { color: p.t2 }]}>{stop.name}</Animated.Text>
           <Animated.Text entering={rise(2)} style={s.placeTitle}>Pon tu sello</Animated.Text>
           <Animated.View entering={rise(3)}>
-            <StampPlacer tour={tour} width={sheetW} target={stop.id} pageNumber={pageNumber} onStamped={() => setJustStamped(true)} />
+            <StampPlacer tour={tour} width={sheetW} target={stop.id} pageNumber={pageNumber} onStamped={stamped} />
           </Animated.View>
           {justStamped && (
-            <Animated.View entering={rise(0)} style={{ alignSelf: 'stretch', marginTop: 'auto' }}>
-              <PrimaryButton label={last ? 'Terminar tour' : 'Siguiente parada'} onPress={next} />
-              <Pressable accessibilityRole="button" onPress={() => setPlacing(false)} style={{ alignSelf: 'center', padding: 12 }}>
-                <Text style={s.placeBack}>Volver a la parada</Text>
-              </Pressable>
-            </Animated.View>
+            <Animated.Text entering={FadeIn.delay(500).duration(400)} style={[s.placeBack, { marginTop: 'auto' }]}>
+              {last ? 'Ruta terminada · toca para seguir' : `Siguiente: ${tour.stops[n + 1].name} · toca para seguir`}
+            </Animated.Text>
           )}
         </Animated.View>
       )}

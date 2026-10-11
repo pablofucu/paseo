@@ -49,6 +49,8 @@ export interface ActiveWalk {
   target: number;
   /** Parada a la que se ha llegado de verdad (GPS o «Llegar» en modo prueba): solo esa se puede sellar */
   arrived: string | null;
+  /** Última parada visitada: su guía se puede abrir y cerrar desde el botón del mapa */
+  guide: number | null;
 }
 
 /** Dónde soltó el usuario el sello (sin la fecha, que la pone la app) */
@@ -64,6 +66,8 @@ interface PassportState {
   startWalk: (tourId: string, target: number) => void;
   /** Tras la parada actual, a por la siguiente (las paradas van en orden) */
   advanceWalk: () => void;
+  /** Saltar hasta una parada más adelante (la ruta queda incompleta) */
+  goTo: (target: number) => void;
   endWalk: () => void;
   /** Llegada a una parada: queda en el historial y desde ese momento se puede sellar. Devuelve si ya estaba sellada. */
   arrive: (tourId: string, stopId: string) => boolean;
@@ -85,14 +89,15 @@ export const usePassport = create<PassportState>()(
       routes: {},
       walk: null,
       setOwner: owner => set(s => ({ passport: { ...s.passport, owner: owner.slice(0, 24) } })),
-      startWalk: (tourId, target) => set({ walk: { tourId, target, arrived: null } }),
+      startWalk: (tourId, target) => set({ walk: { tourId, target, arrived: null, guide: null } }),
       advanceWalk: () => set(s => (s.walk ? { walk: { ...s.walk, target: s.walk.target + 1, arrived: null } } : s)),
+      goTo: target => set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null } } : s)),
       endWalk: () => set({ walk: null }),
       arrive: (tourId, stopId) => {
         const route = get().routes[tourId] ?? emptyRoute(tourId);
         set(s => ({
           routes: { ...s.routes, [tourId]: { ...route, history: [...route.history, { stopId, date: now() }] } },
-          walk: s.walk?.tourId === tourId ? { ...s.walk, arrived: stopId } : s.walk,
+          walk: s.walk?.tourId === tourId ? { ...s.walk, arrived: stopId, guide: s.walk.target } : s.walk,
         }));
         return route.stamps.some(st => st.stopId === stopId);
       },

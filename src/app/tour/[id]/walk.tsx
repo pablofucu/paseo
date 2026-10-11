@@ -1,11 +1,12 @@
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import * as Haptics from 'expo-haptics';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { GuideButton } from '@/components/GuideButton';
 import { MePin, StopPin, StopPopup } from '@/components/MapPins';
 import { PressableScale } from '@/components/motion';
 import { IconButton } from '@/components/ui';
@@ -38,6 +39,7 @@ export default function Walk() {
   const param = Number(useLocalSearchParams<{ target: string }>().target ?? 0);
   const walkState = usePassport(s => s.walk);
   const startWalk = usePassport(s => s.startWalk);
+  const goTo = usePassport(s => s.goTo);
   const endWalk = usePassport(s => s.endWalk);
   const saved = usePassport(s => s.routes[tour.id]);
   const mine = walkState?.tourId === tour.id;
@@ -48,8 +50,11 @@ export default function Walk() {
   const [sheetH, setSheetH] = useState(230);
   // Si se entra directamente (sin pasar por la ficha), el paseo empieza aquí
   useEffect(() => { if (!mine) startWalk(tour.id, param); }, [mine, startWalk, tour.id, param]);
-  // Pasada la última parada, al resumen final
-  useEffect(() => { if (finished) router.replace({ pathname: '/tour/[id]/done', params: { id: tour.id } }); }, [finished, tour.id]);
+  // Pasada la última parada, al resumen final (cuando el mapa vuelve a estar delante, no con la guía encima)
+  useFocusEffect(useCallback(() => {
+    if (finished) router.replace({ pathname: '/tour/[id]/done', params: { id: tour.id } });
+  }, [finished, tour.id]));
+  const visited = mine && walkState.guide != null ? tour.stops[walkState.guide] : null;
   const p = tour.palette;
   const insets = useSafeAreaInsets();
   const { testMode, simSpeed, setSimSpeed } = useSettings();
@@ -178,7 +183,9 @@ export default function Walk() {
           <View style={s.then}><Text style={[s.thenText, g?.offRoute && { color: neutral.ink }]} numberOfLines={1}>{text.then}</Text></View>
         </View>
 
-        <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: 262 + insets.bottom }} />
+        <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: sheetH + 14 }} />
+        {/* Entrar y salir de la guía de la parada visitada */}
+        {visited && selected == null && <GuideButton to="guide" photo={visited.photo} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
         {quality !== 'streets' && leg && (
           <View style={[s.srcPill, { bottom: 268 + insets.bottom }]}>
             <Text style={s.srcText}>{quality === 'loading' ? 'Calculando la ruta por calles…' : 'Sin conexión: ruta en línea recta'}</Text>
@@ -258,7 +265,12 @@ export default function Walk() {
                     ? `Vas aquí${g ? ` · ${walkingMinutes(g.remaining)} min` : ''}`
                     : selected < target ? 'Ya pasaste por aquí' : 'Más adelante en la ruta'
               }
-              action={{ label: 'Entrar', onPress: () => openStop(selected) }}
+              action={{ label: 'Ver guía', onPress: () => openStop(selected) }}
+              footer={
+                selected > target && !saved?.stamps.some(x => x.stopId === tour.stops[selected].id)
+                  ? { label: 'Ir aquí', hint: `Te saltas ${selected - target === 1 ? 'una parada' : `${selected - target} paradas`}; puedes volver otro día`, onPress: () => { goTo(selected); setSelected(null); } }
+                  : undefined
+              }
               onClose={() => setSelected(null)}
             />
           </View>
