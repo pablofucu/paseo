@@ -5,19 +5,27 @@ import type { TourPalette } from '@/theme/tokens';
 /** [longitud, latitud], el mismo orden que usa MapLibre y GeoJSON */
 export type LngLat = [number, number];
 
-/** La forma del sello dice qué tipo de lugar es */
-export type StampShape = 'round' | 'ticket' | 'arch' | 'postal' | 'oval' | 'chapa';
+export type StopKind = 'monument' | 'civic' | 'religious' | 'tradition' | 'public' | 'food';
 
-export const SHAPE_FOR_KIND = {
-  monument: 'round',
-  civic: 'ticket',
-  religious: 'arch',
-  tradition: 'postal',
-  public: 'oval',
-  food: 'chapa',
-} as const satisfies Record<string, StampShape>;
+/**
+ * Formas del sello de goma (guía de sellos): rectángulo para fachadas anchas
+ * y comercios, círculo para plazas y monumentos con torre, óvalo para paisajes
+ * y letreros, octógono para edificios institucionales.
+ */
+export type RubberShape = 'rect' | 'circle' | 'oval' | 'octagon';
 
-export type StopKind = keyof typeof SHAPE_FOR_KIND;
+/** El sello de goma de una parada. La escena dibujada está en src/data/stamps/scenes.ts (misma clave que la parada). */
+export interface RubberArt {
+  shape: RubberShape;
+  /** Texto principal: nombre del sitio, en mayúsculas */
+  title: string;
+  /** Octógono: texto pequeño encima del título (por defecto, la ciudad) */
+  kicker?: string;
+  /** Octógono: texto de la banda inferior, encima de la fecha */
+  label?: string;
+  /** Lugar que acompaña a la fecha abajo (por defecto, la ciudad) */
+  place?: string;
+}
 
 export const KIND_LABEL: Record<StopKind, string> = {
   monument: 'Monumento',
@@ -31,11 +39,9 @@ export const KIND_LABEL: Record<StopKind, string> = {
 export interface Stop {
   id: string;
   name: string;
-  /** Texto del sello, en mayúsculas, 16 caracteres como mucho */
-  stampLabel: string;
   kind: StopKind;
-  /** Pictograma del sello: marcado SVG interior en una caja de 60 × 40 */
-  pictogram: string;
+  /** Sello de goma de la parada */
+  rubber: RubberArt;
   photo: ImageSourcePropType;
   /** Autoría y licencia de la foto (fotos libres de Wikimedia Commons) */
   photoCredit?: { author: string; license: string };
@@ -66,9 +72,22 @@ export interface Tour {
   category: string;
   intro: string;
   palette: TourPalette;
-  /** Tintas de los sellos: cada parada se estampa con un color distinto */
-  stampInks: string[];
-  /** Parada cuyo pictograma sirve de emblema en el visado del tour */
+  /**
+   * Color de acento de la ruta: la única tinta de sus sellos y del sello de
+   * ruta completada, y el marco y los títulos de su postal. Se corrige con
+   * tintaDeRuta() si no llega a 4,5:1 sobre el papel.
+   */
+  accent: string;
+  /** Postal que se gana al completar la ruta */
+  postcard: {
+    /** Ilustración 832 × 444 (sitios de la ruta bajo un cielo común, con textura de imprenta) */
+    art: ImageSourcePropType;
+    /** Valor facial, como en un sello de carta («4,50€») */
+    value: string;
+    /** Subtítulo: las paradas separadas por « · » */
+    subtitle: string;
+  };
+  /** Parada cuya foto sirve de portada del tour */
   emblemStop: number;
   durationMin: number;
   price: 'free' | { eur: number };

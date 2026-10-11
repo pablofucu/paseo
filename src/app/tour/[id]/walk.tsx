@@ -38,7 +38,7 @@ export default function Walk() {
   const [manual, setManual] = useState<LngLat | null>(null);
   const [resumeFrom, setResumeFrom] = useState<{ along: number; key: number } | undefined>(undefined);
   const [gpsOrigin, setGpsOrigin] = useState<LngLat | null>(null);
-  const collectStamp = usePassport(s => s.collectStamp);
+  const arrive = usePassport(s => s.arrive);
   const narration = useNarration();
 
   const route = useTourRoute(tour);
@@ -73,16 +73,17 @@ export default function Walk() {
   const g = leg && position ? guide(leg, position, stop.coord) : null;
   const text = g ? instruction(g, stop.name) : { text: 'Buscando tu posición…', then: 'Necesitas el GPS activado' };
 
-  // Llegada: sello, vibración y pantalla de la parada
+  // Llegada: vibración y pantalla de la parada, con el sello en la mano
   const arrivedRef = useRef(false);
   useEffect(() => {
     if (!g?.arrived || arrivedRef.current) return;
     arrivedRef.current = true;
-    collectStamp(stop.id);
+    // Cada parada se sella una vez; si ya estaba sellada, la llegada solo queda en el historial
+    const repeat = arrive(tour.id, stop.id);
     narration.stop();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    router.replace({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(target), arrived: '1' } });
-  }, [g?.arrived, collectStamp, stop.id, tour.id, target, narration]);
+    router.replace({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(target), arrived: repeat ? 'repeat' : '1' } });
+  }, [g?.arrived, arrive, stop.id, tour.id, target, narration]);
 
   const style = useMemo(() => buildMapStyle(p), [p]);
   const c = mapColors(p);

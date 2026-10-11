@@ -5,14 +5,6 @@ import geo from './tomares.geo.json';
 /** Ubicaciones y ruta fija: src/data/tours/tomares.geo.json (la ruta la genera el workflow «Contenido») */
 const coord = (id: string) => geo.stops.find(s => s.id === id)!.coord as LngLat;
 
-// Pictogramas de los sellos (caja 60 × 40, centrados en ella, solo currentColor)
-const PICTOGRAMS = {
-  ayuntamiento: "<g transform=\"translate(0.6 1.1)\"><path d=\"M2 37 H58\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M14 37 V20 H56 V37\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M12.5 19 H57.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M28 19 V9 H42 V19\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M26 9 H44 L40 3.5 H30 Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M35 3.5 V0.8 M33.5 1.8 H36.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M31 15 V12.5 a1.8 1.8 0 0 1 3.6 0 V15 M36 15 V12.5 a1.8 1.8 0 0 1 3.6 0 V15\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M31 15 H39.6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M31.5 25 H38.5 M33 25 V23.5 M35 25 V23.5 M37 25 V23.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M31.5 37 V31 a3.5 3.5 0 0 1 7 0 V37 Z\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><rect x=\"18\" y=\"25\" width=\"5\" height=\"7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\" stroke-linejoin=\"round\"/><rect x=\"47\" y=\"25\" width=\"5\" height=\"7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\" stroke-linejoin=\"round\"/><path d=\"M6 37 V16 M6 16 Q2.5 13.5 0.8 17 M6 16 Q9.5 13 12 17 M6 16 Q6 12 6 11\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M6 16 Q3 17 2 21 M6 16 Q9 17 10.5 21\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></g>",
-  rotonda: "<g transform=\"translate(0 -2.5)\"><path d=\"M3 8 H9 M6 8 V17\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M19 17 V8 L22 12.5 L25 8 V17\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M27 17 L30 8 L33 17 M28.3 14 H31.7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M35 17 V8 H38.3 a2.6 2.6 0 0 1 0 5.2 H35 M38 13.2 L41 17\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M49 8 H43 V17 H49 M43 12.5 H48\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M57 8.5 H53 Q51 8.5 51 10.2 Q51 12.5 54 12.5 Q57 12.5 57 14.8 Q57 17 55 17 H50.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><rect x=\"11\" y=\"8\" width=\"6\" height=\"9\" rx=\"3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linejoin=\"round\"/><path d=\"M2 21 H58\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><rect x=\"2\" y=\"24\" width=\"56\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M2 30.5 H58 M10 24 V30.5 M18 24 V30.5 M26 24 V30.5 M34 24 V30.5 M42 24 V30.5 M50 24 V30.5 M6 30.5 V37 M14 30.5 V37 M22 30.5 V37 M30 30.5 V37 M38 30.5 V37 M46 30.5 V37 M54 30.5 V37\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></g>",
-  iglesia: "<g transform=\"translate(0 0.5)\"><path d=\"M2 37 H58\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M4 37 V18 H42 M54 18 H56 V37\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M2.5 18 H42 M54 18 H57.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M11 37 V22.5 M29 37 V22.5 M13.5 37 V24 M26.5 37 V24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M10 22.5 H30\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M15 37 V29 a5 5 0 0 1 10 0 V37 Z\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M20 9.5 V17 M17.5 12.5 H22.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M30.5 18 V8 L34 4.5 L37.5 8 V18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M32 18 V15 a1.2 1.2 0 0 1 2.4 0 V18 Z M34.6 18 V15 a1.2 1.2 0 0 1 2.4 0 V18\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"28.3\" cy=\"12\" r=\"1.3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\"/><path d=\"M34 4.5 V2 M33 3 H35\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M42 18 V9 L48 3.5 L54 9 V18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"48\" cy=\"13.5\" r=\"3.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\"/><path d=\"M48 11.5 V13.5 L49.8 14.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></g>",
-  kebab: "<path d=\"M2 37 H58\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><rect x=\"2\" y=\"3\" width=\"56\" height=\"7\" rx=\"1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M6 6.5 H22 M26 6.5 H38 M42 6.5 H54\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M3.5 10 V37\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M6 33 V24 a5 5 0 1 1 9 0 V33 Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M10.5 20 V33\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M19 37 V17 H27 V37\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M20 37 V18 H26 V37 Z\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M34 12 V14 M30 14 H38 M30 14 C30 19 31.5 22 31.5 28 H36.5 C36.5 22 38 19 38 14 M31 19 H37 M31.5 23.5 H36.5 M29.5 30 H38.5 M34 30 V37\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M31 14 C31 18 32 20 32 22 M34 14 V28\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M44 27.5 H54 M49 27.5 V37 M46 37 H52\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M42 24 V37 M42 32 H45.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M56 24 V37 M56 32 H52.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
-};
-
 /*
  * Ubicaciones (buscadas en octubre de 2026):
  * - Ayuntamiento (Hacienda de Santa Ana, C/ de la Fuente 10): coordenadas de
@@ -36,8 +28,13 @@ export const tomares: Tour = {
   category: 'Historia y barrio',
   intro: "Cuatro paradas a pie por Tomares, en el corazón del Aljarafe sevillano. Empiezas en la rotonda y terminas con un kebab.",
   palette: { t: '#B23A2E', t2: '#E8B33A', soft: '#F8E7E2', deep: '#4A1610', on: '#FFFFFF' },
-  // Almagra, azulejo, verde naranjo y ocre: los colores de la iglesia y la plaza
-  stampInks: ['#B23A2E', '#1F4FA8', '#2E7D4F', '#9A6B0E'],
+  // Teja de la torre del Ayuntamiento (contraste 5,8:1 con el papel)
+  accent: '#9c3a24',
+  postcard: {
+    art: require('../../../assets/postcards/tomares.jpg'),
+    value: '4,50€',
+    subtitle: 'LETRERO · AYUNTAMIENTO · PARROQUIA · ROYAL KING KEBAB',
+  },
   emblemStop: 1,
   durationMin: 45,
   price: 'free',
@@ -45,9 +42,8 @@ export const tomares: Tour = {
   {
     id: "rotonda",
     name: "Rotonda de la Arboleda",
-    stampLabel: "LA ARBOLEDA",
     kind: "public",
-    pictogram: PICTOGRAMS.rotonda,
+    rubber: { shape: 'oval', title: 'BIENVENIDOS A', place: 'SEVILLA' },
     photo: require('../../../assets/tours/tomares/rotonda.jpg'),
     coord: coord("rotonda"),
     arriveHint: "Busca las letras blancas TOMARES sobre el césped.",
@@ -61,9 +57,8 @@ export const tomares: Tour = {
   {
     id: "ayuntamiento",
     name: "Ayuntamiento de Tomares",
-    stampLabel: "AYUNTAMIENTO",
     kind: "civic",
-    pictogram: PICTOGRAMS.ayuntamiento,
+    rubber: { shape: 'octagon', title: 'AYUNTAMIENTO', label: 'HACIENDA SANTA ANA' },
     photo: require('../../../assets/tours/tomares/ayuntamiento.jpg'),
     coord: coord("ayuntamiento"),
     arriveHint: "Mira arriba: la torre mirador con dos arcos.",
@@ -77,9 +72,8 @@ export const tomares: Tour = {
   {
     id: "iglesia",
     name: "Parroquia de Nuestra Señora de Belén",
-    stampLabel: "PARROQUIA",
     kind: "religious",
-    pictogram: PICTOGRAMS.iglesia,
+    rubber: { shape: 'circle', title: 'PARROQUIA DE BELÉN' },
     photo: require('../../../assets/tours/tomares/iglesia.jpg'),
     coord: coord("iglesia"),
     arriveHint: "Localiza la espadaña con campanas y la torre del reloj.",
@@ -93,9 +87,8 @@ export const tomares: Tour = {
   {
     id: "kebab",
     name: "Royal King Kebab",
-    stampLabel: "ROYAL KING",
     kind: "food",
-    pictogram: PICTOGRAMS.kebab,
+    rubber: { shape: 'rect', title: 'ROYAL KING KEBAB', place: 'SEVILLA' },
     photo: require('../../../assets/tours/tomares/kebab.jpg'),
     coord: coord("kebab"),
     arriveHint: "Busca la ventana con arco de herradura azul.",

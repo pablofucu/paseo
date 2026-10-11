@@ -7,14 +7,22 @@ Tours incluidos:
 - **Sevilla · Del río a la judería** (5 paradas, azulejo y albero): Torre del Oro, Archivo de Indias, Catedral y Giralda, Real Alcázar y Barrio de Santa Cruz. Fotos libres de Wikimedia Commons con su autoría en la app.
 - **Tomares en 4 paradas** (almagra y albero): letras de la Arboleda, Ayuntamiento, Parroquia de Belén y Royal King Kebab.
 
-Cada parada tiene su sello, con una forma según el tipo de lugar y una tinta distinta. Al completar un tour se estampa el **visado de ruta**. El pasaporte se hojea como una libreta: portada, datos del viajero y una página por visita.
+Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales** (v2):
+
+- **Una tinta por ruta.** Cada ruta tiene un color de acento (Tomares `#9c3a24`, Sevilla `#1f4fa8`) que es la única tinta de sus sellos, del sello de ruta completada y del marco de su postal. `tintaDeRuta()` lo oscurece si no llega a 4,5:1 sobre el papel `#f1ead6`.
+- **Sellos de goma** dibujados en línea, uno por parada, en cuatro formas (rectángulo, círculo, óvalo y octógono), con el sitio, la ciudad y la fecha real. Cada parada se sella una sola vez; las repeticiones quedan en el historial.
+- **Tú eliges dónde va el sello.** Al llegar se abre la hoja de la ruta con el sello «en la mano» (vista previa al 35 % que sigue al dedo). Al soltar, cae con la animación de la guía (550 ms, impacto a los 300 ms con «clac + pum», vibración y golpe de hoja). Márgenes de 16 px, sin pisar cabecera ni pie y como mucho un 35 % encima de otro sello; «Colócalo tú» busca un hueco libre.
+- **Ruta completada.** Con todas las paradas, se coloca el sello grande «RUTA COMPLETADA» y sube la tarjeta de **postal desbloqueada**.
+- **Pasaporte** (pestaña): portada de piel azul con dorado, hoja del titular, una hoja por ruta en el orden del primer sello y «Próxima ruta». Las hojas giran sobre el lomo arrastrando con el dedo (doble página en pantallas anchas).
+- **Postales** (pestaña): tarjetero por ciudad, con las rutas a medias como postal en blanco; a pantalla completa se les da la vuelta y se comparten. Vista secundaria en mapa.
 
 ## Tecnología
 
 - **Expo SDK 57** (React Native 0.86) con TypeScript y Expo Router
 - **MapLibre** (`@maplibre/maplibre-react-native` 11) con teselas OpenMapTiles
 - `expo-location` para el GPS y la brújula, `expo-haptics`, `expo-speech` (narración provisional)
-- `react-native-svg` para los sellos, el visado y las fotos en duotono; `react-native-reanimated` para el tampón
+- `react-native-svg` para los sellos, las postales y las fotos en duotono; `react-native-reanimated` y `react-native-gesture-handler` para estampar y pasar hojas
+- `expo-audio` + `expo-haptics` para el golpe del sello; `react-native-view-shot` + `expo-sharing` para compartir postales
 - `zustand` + AsyncStorage para el pasaporte (funciona sin conexión)
 
 ## Arrancar
@@ -45,7 +53,7 @@ Actívalo con el interruptor **Modo prueba** al final de la pantalla de inicio (
 - **Tocar el mapa** para moverte a ese punto, también fuera de la ruta (para ver el aviso de «te has salido»); «Andar» sigue desde el punto de la ruta más cercano
 - Cambiar entre **GPS real** y **simulado**
 
-En **Mi pasaporte**, con el modo prueba activo, hay un botón para borrar todos los sellos.
+En **Inicio**, con el modo prueba activo, hay un enlace para borrar el pasaporte (sellos y postales).
 
 ## Comprobaciones
 
@@ -59,33 +67,42 @@ npm test           # lógica de navegación: distancias, giros, llegada, fuera d
 
 ```
 src/
-  app/                    pantallas (Expo Router)
-    index.tsx             inicio: Tomares y sus tours
-    tour/[id]/index.tsx   portada del tour, con los sellos que puedes conseguir
-    tour/[id]/walk.tsx    mapa, indicaciones y llegada a la parada
-    tour/[id]/stop/[n]    parada: momento de llegada, audio, textos
-    tour/[id]/done.tsx    final: página de la visita y sello del tour
-    passport.tsx          Mis tours / pasaporte
-    visit/[id].tsx        página de sellos de una visita
-  components/             Stamp, VisitPage, botones
-  data/                   tipos y tours (tours/tomares.ts)
-  lib/                    geo, guiado, estilo del mapa, sellos, GPS, narración
-  store/passport.ts       visitas y sellos guardados
-  theme/                  colores, tipografía y paleta del tour
+  app/                       pantallas (Expo Router)
+    (tabs)/index.tsx         Inicio: los tours
+    (tabs)/pasaporte.tsx     el pasaporte (libreta con hojas que se pasan)
+    (tabs)/postales.tsx      tarjetero de postales y mapa
+    postal/[id].tsx          postal a pantalla completa (vuelta y compartir)
+    tour/[id]/index.tsx      portada del tour: sellos y postal que puedes conseguir
+    tour/[id]/walk.tsx       mapa, indicaciones y llegada a la parada
+    tour/[id]/stop/[n].tsx   parada: colocar el sello, audio y textos
+    tour/[id]/done.tsx       final: sello de ruta completada y postal desbloqueada
+  components/passport/       hoja de ruta, colocar sello, caída del sello, libreta
+  components/                sello de goma, papel, postal, botones
+  data/stamps/scenes.ts      escenas de los sellos (generado, ver abajo)
+  lib/rubber.ts              marcos de los sellos, sello de ruta completada, matasellos
+  lib/placement.ts           reglas para colocar sellos
+  lib/ink.ts                 tintaDeRuta y contraste
+  store/passport.ts          UserPassport y UserRoute (con migración del formato anterior)
+design/stamps/*.svg          sellos de goma de cada parada (fuente)
+design/postcards/*.svg       ilustración de cada postal (fuente)
 ```
+
+## Sellos, postales y sonidos
+
+- **Sellos de goma:** cada parada tiene `design/stamps/<parada>.svg`. La escena (desde el primer `<clipPath>`) se extrae con `node scripts/build-stamps.mjs`; el marco y los textos los pone la app.
+- **Postales:** la ilustración (832 × 444) está en `design/postcards/<tour>.svg`. `node scripts/render-postcards.cjs` (necesita Playwright) le aplica la textura de imprenta de la guía y la guarda en `assets/postcards/`. El marco, los textos y el matasellos los pinta la app.
+- **Sonidos:** `python3 scripts/make-sounds.py` sintetiza `assets/sounds/stamp.wav` y `page.wav` con los parámetros de la guía.
 
 ## Añadir un tour
 
-Un tour es un objeto `Tour` en `src/data/tours/`: paleta de 5 colores, paradas (foto, textos, tipo de lugar y pictograma del sello) y la ruta a pie entre paradas (`legs`). La forma del sello sale del tipo de lugar:
+Un tour es un objeto `Tour` en `src/data/tours/`: paleta, **acento** (la tinta), paradas (foto, textos y su sello de goma: forma y textos), la postal (ilustración, valor y subtítulo) y la ruta a pie entre paradas (`legs`). Formas recomendadas:
 
-| Tipo | Forma |
+| Forma | Para |
 |---|---|
-| Monumento | círculo |
-| Edificio civil | billete |
-| Religioso | arco |
-| Tradición | sello postal |
-| Espacio público | óvalo |
-| Gastronomía | chapa |
+| Rectángulo | fachadas anchas, comercios, sitios con rótulo |
+| Círculo | plazas y monumentos con torre o estatua |
+| Óvalo | paisajes, miradores, letreros de bienvenida |
+| Octógono | ayuntamientos, museos, edificios institucionales |
 
 ## Pendiente antes de probar en la calle
 
@@ -97,3 +114,5 @@ Un tour es un objeto `Tour` en `src/data/tours/`: paleta de 5 colores, paradas (
 - [ ] **Descarga sin conexión** del mapa del tour (`OfflineManager` de MapLibre) y de sus fotos y audios.
 - [ ] Compras: tour suelto y pase de ciudad (RevenueCat).
 - [ ] Revisar los textos de las paradas con alguien de Tomares.
+- [ ] **Fotos de dos paradas de Sevilla.** `alcazar.jpg` muestra el Palacio de Don Pedro (no la Puerta del León) y `elvira.jpg` un callejón (no la Plaza de Doña Elvira).
+- [ ] **Sonido del sello grabado.** Ahora es sintético (guía § 07); se puede grabar un tampón real.

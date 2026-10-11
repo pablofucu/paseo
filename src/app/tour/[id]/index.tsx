@@ -2,13 +2,15 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
-import { StopStamp, TourSeal } from '@/components/Stamp';
+import { Postcard } from '@/components/Postcard';
+import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
-import { stampDate, usePassport } from '@/store/passport';
+import { stampBox } from '@/lib/sheet';
+import { routeProgress, usePassport, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
 import { TourThemeProvider } from '@/theme/TourTheme';
@@ -17,25 +19,21 @@ import { type } from '@/theme/type';
 export default function Cover() {
   const tour = useTourParam();
   const insets = useSafeAreaInsets();
-  const startVisit = usePassport(s => s.startVisit);
-  const lastVisit = usePassport(s => [...s.visits].reverse().find(v => v.tourId === tour.id));
+  const startWalk = usePassport(s => s.startWalk);
+  const saved = useRoute(tour.id);
+  const prog = routeProgress(tour.id, saved);
   const route = useTourRoute(tour);
   const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
   const p = tour.palette;
+  const ink = inkOf(tour);
 
-  // Si hay una visita a medias de este tour, se puede continuar donde se dejó
-  const resumeVisit = usePassport(s => s.resumeVisit);
-  const unfinished = usePassport(s => [...s.visits].reverse().find(v => v.tourId === tour.id && !v.completedAt && Object.keys(v.stamps).length > 0));
-  const nextStop = unfinished ? tour.stops.findIndex(st => !unfinished.stamps[st.id]) : -1;
-  const start = () => {
-    startVisit(tour.id);
-    router.push({ pathname: '/tour/[id]/walk', params: { id: tour.id, target: '0' } });
+  // Cada parada se sella una vez: si la ruta está a medias, se sigue por la primera sin sellar
+  const nextStop = prog.started && !prog.allStamped ? tour.stops.findIndex(st => !saved?.stamps.some(x => x.stopId === st.id)) : -1;
+  const walkFrom = (target: number) => {
+    startWalk(tour.id);
+    router.push({ pathname: '/tour/[id]/walk', params: { id: tour.id, target: String(target) } });
   };
-  const resume = () => {
-    if (!unfinished) return;
-    resumeVisit(unfinished.id);
-    router.push({ pathname: '/tour/[id]/walk', params: { id: tour.id, target: String(Math.max(0, nextStop)) } });
-  };
+  const cell = tour.stops.length > 4 ? 300 * 0.21 : 300 * 0.25;
 
   return (
     <TourThemeProvider palette={p}>
@@ -55,22 +53,30 @@ export default function Cover() {
           <Text style={type.body}>{tour.intro}</Text>
 
           <Text style={[type.headline, s.h]}>Sellos que puedes conseguir</Text>
+          <View style={s.progress}>
+            <View style={[s.bar, { width: `${(prog.done / prog.total) * 100}%`, backgroundColor: ink }]} />
+          </View>
+          <Text style={type.caption}>{prog.done} de {prog.total} sellos · cada parada se sella una vez</Text>
           <View style={s.stamps}>
-            {tour.stops.map((st, i) => {
-              const got = lastVisit?.stamps[st.id];
+            {tour.stops.map(st => {
+              const got = saved?.stamps.find(x => x.stopId === st.id);
+              const b = stampBox(st.rubber.shape, cell * 2.2);
               return (
                 <View key={st.id} style={[s.stampCell, { width: `${100 / Math.min(5, tour.stops.length)}%` }]}>
-                  <StopStamp tour={tour} index={i} date={stampDate(got)} ghost={!got} size={tour.stops.length > 4 ? 62 : 72} />
+                  <View style={{ height: cell * 0.85, justifyContent: 'center', opacity: got ? 1 : 0.22 }}>
+                    <RubberStamp tour={tour} stop={st} date={got?.date ?? new Date().toISOString()} seed={got?.seed ?? 5} width={b.w} height={b.h} style={{ transform: [{ rotate: `${got ? got.rot / 2 : 0}deg` }] }} />
+                  </View>
                   <Text style={s.stampName} numberOfLines={2}>{st.name}</Text>
                 </View>
               );
             })}
           </View>
 
-          <View style={{ alignItems: 'center', marginTop: 14, gap: 4 }}>
-            <TourSeal tour={tour} width={210} date={stampDate(lastVisit?.completedAt)} collected={tour.stops.map(st => !!lastVisit?.stamps[st.id])} ghost={!lastVisit?.completedAt} />
-            <Text style={type.caption}>Con todos los sellos consigues el visado del tour</Text>
-          </View>
+          <Text style={[type.headline, s.h]}>Tu postal</Text>
+          <Pressable accessibilityRole="button" disabled={!prog.completed} onPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} style={{ alignItems: 'center', gap: 6 }}>
+            <Postcard tour={tour} route={saved} width={300} />
+            <Text style={type.caption}>{prog.completed ? 'Ganada · tócala para verla' : 'Con todos los sellos y el sello de ruta completada te llevas esta postal'}</Text>
+          </Pressable>
 
           <Text style={[type.headline, s.h]}>Paradas</Text>
           {tour.stops.map((st, i) => (
@@ -86,15 +92,15 @@ export default function Cover() {
         </View>
       </ScrollView>
       <View style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
-        {unfinished && nextStop >= 0 ? (
+        {nextStop >= 0 ? (
           <>
-            <PrimaryButton label={`Continuar · parada ${nextStop + 1} de ${tour.stops.length}`} onPress={resume} />
-            <Pressable accessibilityRole="button" onPress={start} style={s.restart} hitSlop={6}>
-              <Text style={s.restartText}>Empezar de nuevo</Text>
+            <PrimaryButton label={`Continuar · parada ${nextStop + 1} de ${tour.stops.length}`} onPress={() => walkFrom(nextStop)} />
+            <Pressable accessibilityRole="button" onPress={() => walkFrom(0)} style={s.restart} hitSlop={6}>
+              <Text style={s.restartText}>Empezar desde la primera parada</Text>
             </Pressable>
           </>
         ) : (
-          <PrimaryButton label="Empezar tour" onPress={start} />
+          <PrimaryButton label={prog.completed ? 'Volver a hacer la ruta' : prog.allStamped ? 'Poner el sello de ruta completada' : 'Empezar tour'} onPress={() => (prog.allStamped && !prog.completed ? router.push({ pathname: '/tour/[id]/done', params: { id: tour.id } }) : walkFrom(0))} />
         )}
       </View>
     </TourThemeProvider>
@@ -107,6 +113,8 @@ const s = StyleSheet.create({
   h: { marginTop: 18, marginBottom: 8 },
   stamps: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', rowGap: 10 },
   stampCell: { alignItems: 'center', gap: 4 },
+  progress: { height: 5, borderRadius: 3, backgroundColor: neutral.line, overflow: 'hidden', marginBottom: 4 },
+  bar: { height: 5, borderRadius: 3 },
   stampName: { fontFamily: font.heavy, fontSize: 10.5, color: neutral.ink3, textAlign: 'center' },
   stop: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
   pin: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },

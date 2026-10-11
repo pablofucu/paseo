@@ -11,7 +11,9 @@
       "bundleIdentifier": "app.paseo.tours",
       "supportsTablet": false,
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -43,7 +45,8 @@
           "locationWhenInUsePermission": "Paseo usa tu ubicación para guiarte entre las paradas del tour y avisarte cuando llegas."
         }
       ],
-      "@maplibre/maplibre-react-native"
+      "@maplibre/maplibre-react-native",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

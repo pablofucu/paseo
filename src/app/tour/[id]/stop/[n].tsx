@@ -1,19 +1,20 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { Scrim } from '@/components/Scrim';
-import { Guilloche } from '@/components/PassportPage';
-import { inkFor, StopStamp } from '@/components/Stamp';
-import { PRESS_MS, StampPress } from '@/components/StampPress';
+import { RouteSheet } from '@/components/passport/RouteSheet';
+import { StampPlacer } from '@/components/passport/StampPlacer';
+import { RubberStamp } from '@/components/RubberStamp';
 import { IconButton, PrimaryButton } from '@/components/ui';
-import { KIND_LABEL, SHAPE_FOR_KIND } from '@/data/types';
+import { KIND_LABEL } from '@/data/types';
+import { SHEET_RATIO, stampBox } from '@/lib/sheet';
 import { useNarrationPlayer } from '@/lib/useNarrationPlayer';
 import { useTourParam } from '@/lib/useTour';
-import { stampDate, useActiveVisit } from '@/store/passport';
+import { usePassport, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral, radius } from '@/theme/tokens';
 import { TourThemeProvider } from '@/theme/TourTheme';
@@ -21,7 +22,6 @@ import { type } from '@/theme/type';
 
 /** La galería muestra la foto con cuatro encuadres */
 const CROPS = [{ x: 0.5, y: 0.5, zoom: 1 }, { x: 0.25, y: 0.35, zoom: 1.8 }, { x: 0.75, y: 0.4, zoom: 1.8 }, { x: 0.5, y: 0.8, zoom: 1.5 }];
-const STAMP = 168;
 
 export default function StopScreen() {
   const tour = useTourParam();
@@ -30,17 +30,23 @@ export default function StopScreen() {
   const stop = tour.stops[n];
   const p = tour.palette;
   const insets = useSafeAreaInsets();
-  const visit = useActiveVisit();
-  const date = stampDate(visit?.stamps[stop.id]);
-  const [arriving, setArriving] = useState(params.arrived === '1');
+  const { width, height } = useWindowDimensions();
+  const saved = useRoute(tour.id);
+  const mine = saved?.stamps.find(x => x.stopId === stop.id);
+  const pageNumber = usePassport(s => s.passport.pageOrder.indexOf(tour.id));
+  const repeat = params.arrived === 'repeat';
+  const [arriving, setArriving] = useState(params.arrived === '1' || repeat);
+  // El audio cuenta atrás cuando el sello ya está en la hoja
+  const [stamped, setStamped] = useState(repeat);
   const [count, setCount] = useState(3);
+  const sheetW = Math.floor(Math.min(width - 48, (height - insets.top - insets.bottom - 330) * SHEET_RATIO, 440));
   const [gal, setGal] = useState(0);
   const [color, setColor] = useState(false);
   const script = `${stop.name}. ${stop.p1} Fíjate en ${stop.look.charAt(0).toLowerCase()}${stop.look.slice(1)} ${stop.p2} ¿Sabías que…? ${stop.fact}`;
   const player = useNarrationPlayer(script);
   const last = n === tour.stops.length - 1;
 
-  // Llegada: el tampón estampa el sello y el audio empieza solo unos segundos después
+  // Llegada: se coloca el sello en la hoja y el audio empieza solo unos segundos después
   const started = useRef(false);
   const playRef = useRef(player.play);
   useEffect(() => { playRef.current = player.play; });
@@ -49,10 +55,10 @@ export default function StopScreen() {
     if (!started.current) { started.current = true; playRef.current(); }
   }, []);
   useEffect(() => {
-    if (!arriving) return;
-    const t = setTimeout(() => (count <= 1 ? listenNow() : setCount(c => c - 1)), count === 3 ? 1000 + PRESS_MS : 1000);
+    if (!arriving || !stamped) return;
+    const t = setTimeout(() => (count <= 1 ? listenNow() : setCount(c => c - 1)), count === 3 ? 1600 : 1000);
     return () => clearTimeout(t);
-  }, [arriving, count, listenNow]);
+  }, [arriving, stamped, count, listenNow]);
 
   const next = () => {
     player.pause();
@@ -83,7 +89,9 @@ export default function StopScreen() {
           <AudioPlayer title={stop.audioTitle} player={player} />
           <Text style={type.body}>{stop.p1}</Text>
           <View style={[s.look, { backgroundColor: p.soft }]}>
-            <StopStamp tour={tour} index={n} date={date} size={78} ghost={!visit?.stamps[stop.id]} />
+            <View style={{ width: 84, alignItems: 'center', opacity: mine ? 1 : 0.25 }}>
+              <RubberStamp tour={tour} stop={stop} date={mine?.date ?? new Date().toISOString()} seed={mine?.seed ?? 5} width={stampBox(stop.rubber.shape, 84 / 0.4).w} height={stampBox(stop.rubber.shape, 84 / 0.4).h} />
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={[s.lookOver, { color: p.deep }]}>Fíjate en</Text>
               <Text style={s.lookText}>{stop.look}</Text>
@@ -101,26 +109,29 @@ export default function StopScreen() {
       </View>
 
       {arriving && (
-        <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(350)} style={[StyleSheet.absoluteFill, s.arrive, { backgroundColor: p.deep, paddingTop: insets.top + 56 }]}>
+        <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(350)} style={[StyleSheet.absoluteFill, s.arrive, { backgroundColor: p.deep, paddingTop: insets.top + 24 }]}>
           <View style={s.arrivePic}>
             <DuotoneImage source={stop.photo} palette={p} style={StyleSheet.absoluteFill} />
             <Scrim color={p.deep} opacity={1} from="top" />
             <View style={[StyleSheet.absoluteFill, { backgroundColor: p.deep, opacity: 0.15 }]} />
           </View>
-          <View style={s.paper}>
-            <Guilloche width={STAMP + 44} height={STAMP + 44} color={p.deep} />
-            <Text style={s.paperHead}>Pasaporte Paseo · {tour.city}</Text>
-            <StampPress width={STAMP} height={STAMP} ink={inkFor(tour, n)} delay={350} shape={['round', 'oval', 'chapa'].includes(SHAPE_FOR_KIND[stop.kind]) ? 'round' : 'rect'}>
-              <StopStamp tour={tour} index={n} date={date} size={STAMP} />
-            </StampPress>
-          </View>
-          <Animated.Text entering={FadeInDown.delay(350 + PRESS_MS * 0.5)} style={[s.arriveOver, { color: p.t2 }]}>Has llegado · Sello {n + 1} de {tour.stops.length}</Animated.Text>
-          <Animated.Text entering={FadeInDown.delay(500 + PRESS_MS * 0.5)} style={s.arriveTitle}>{stop.name}</Animated.Text>
-          <Animated.Text entering={FadeInDown.delay(750 + PRESS_MS * 0.5)} style={s.arriveHint}>{stop.arriveHint}</Animated.Text>
-          <Pressable accessibilityRole="button" onPress={listenNow} style={[s.listen, { marginBottom: insets.bottom + 24 }]}>
-            <Text style={s.listenText}>Escuchar ahora</Text>
-            <Text style={s.listenSub}>El audio empieza en {count} s</Text>
-          </Pressable>
+          <Animated.Text entering={FadeInDown.delay(150)} style={[s.arriveOver, { color: p.t2 }]}>{repeat ? 'Ya tenías este sello' : `Has llegado · parada ${n + 1} de ${tour.stops.length}`}</Animated.Text>
+          <Animated.Text entering={FadeInDown.delay(250)} style={s.arriveTitle} numberOfLines={2}>{stop.name}</Animated.Text>
+          <Animated.View entering={FadeInDown.delay(350)} style={{ marginTop: 6 }}>
+            {repeat ? (
+              <RouteSheet tour={tour} route={saved} width={sheetW} pageNumber={pageNumber + 2} />
+            ) : (
+              <StampPlacer tour={tour} width={sheetW} target={stop.id} pageNumber={Math.max(0, pageNumber) + 2} onStamped={() => setStamped(true)} />
+            )}
+          </Animated.View>
+          {stamped && (
+            <Animated.View entering={FadeInDown} style={[s.listenWrap, { marginBottom: insets.bottom + 20 }]}>
+              <Pressable accessibilityRole="button" onPress={listenNow} style={s.listen}>
+                <Text style={s.listenText}>Escuchar ahora</Text>
+                <Text style={s.listenSub}>El audio empieza en {count} s</Text>
+              </Pressable>
+            </Animated.View>
+          )}
         </Animated.View>
       )}
     </TourThemeProvider>
@@ -146,12 +157,11 @@ const s = StyleSheet.create({
   cta: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 14, backgroundColor: neutral.bg, borderTopWidth: 1, borderTopColor: neutral.line },
   arrive: { alignItems: 'center', paddingHorizontal: 24, gap: 10 },
   arrivePic: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '48%' },
-  paper: { padding: 22, paddingTop: 30, borderRadius: 10, backgroundColor: neutral.paper, overflow: 'hidden', transform: [{ rotate: '-2deg' }], boxShadow: '0px 18px 40px rgba(0,0,0,0.45)' },
-  paperHead: { position: 'absolute', top: 10, left: 14, fontFamily: font.black, fontSize: 9, letterSpacing: 1.6, textTransform: 'uppercase', color: neutral.ink3 },
-  arriveOver: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 16 },
-  arriveTitle: { fontFamily: font.serif, fontSize: 40, lineHeight: 43, color: '#fff', textAlign: 'center', letterSpacing: -1 },
+  arriveOver: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase' },
+  arriveTitle: { fontFamily: font.serif, fontSize: 30, lineHeight: 33, color: '#fff', textAlign: 'center', letterSpacing: -0.5 },
   arriveHint: { fontFamily: font.bold, fontSize: 15, lineHeight: 21, color: 'rgba(255,255,255,0.92)', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: radius.md, padding: 12, overflow: 'hidden' },
-  listen: { marginTop: 'auto', alignSelf: 'stretch', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: radius.pill, height: 64, alignItems: 'center', justifyContent: 'center' },
+  listenWrap: { marginTop: 'auto', alignSelf: 'stretch' },
+  listen: { backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: radius.pill, height: 64, alignItems: 'center', justifyContent: 'center' },
   listenText: { fontFamily: font.black, fontSize: 17, color: neutral.ink },
   listenSub: { fontFamily: font.bold, fontSize: 12.5, color: neutral.ink3, fontVariant: ['tabular-nums'] },
 });
