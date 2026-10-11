@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { IconButton } from '@/components/ui';
-import { PressableScale } from '@/components/motion';
+import { appear, PressableScale, rise } from '@/components/motion';
 import { Scrim } from '@/components/Scrim';
 import { CITIES, getTour, toursIn } from '@/data/tours';
 import { useSettings, type CityId } from '@/store/settings';
@@ -49,14 +49,14 @@ export default function Ciudad() {
   return (
     <View style={[s.root, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 20 }]}>
       {change ? <IconButton label="Volver" icon="back" onPress={() => router.back()} /> : <View style={{ height: 44 }} />}
-      <Animated.Text entering={FadeInDown.delay(60)} style={[type.overline, { marginTop: 8 }]}>Paso 2 de 2</Animated.Text>
-      <Animated.Text entering={FadeInDown.delay(120)} style={[type.hero, { fontSize: 38, lineHeight: 42 }]}>¿Dónde paseamos?</Animated.Text>
-      <Animated.Text entering={FadeIn.delay(250)} style={[type.caption, { marginBottom: 6 }]}>Puedes cambiar de ciudad cuando quieras desde Inicio.</Animated.Text>
+      <Animated.Text entering={rise(1)} style={[type.overline, { marginTop: 8 }]}>Paso 2 de 2</Animated.Text>
+      <Animated.Text entering={rise(2)} style={[type.hero, { fontSize: 38, lineHeight: 42 }]}>¿Dónde paseamos?</Animated.Text>
+      <Animated.Text entering={appear(250)} style={[type.caption, { marginBottom: 6 }]}>Puedes cambiar de ciudad cuando quieras desde Inicio.</Animated.Text>
 
       {CITIES.map((c, i) => {
         const { open, locked } = toursIn(c.id);
         return (
-          <Animated.View key={c.id} entering={FadeInDown.delay(300 + i * 140).springify().damping(16)} style={{ flex: 1, maxHeight: 260 }}>
+          <Animated.View key={c.id} entering={rise(6 + i * 3)} style={{ flex: 1, maxHeight: 260 }}>
             <PressableScale accessibilityRole="button" accessibilityState={{ selected: current === c.id }} onPress={() => choose(c.id)} scaleTo={0.97} style={[s.card, current === c.id && s.cardOn]}>
               {c.id === 'sevilla' ? <DuotoneImage source={SEVILLA.stops[SEVILLA.emblemStop].photo} palette={SEVILLA.palette} style={StyleSheet.absoluteFill} /> : <MadridArt />}
               <Scrim opacity={0.65} />

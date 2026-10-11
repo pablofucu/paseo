@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { ZoomIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { rise } from '@/components/motion';
 import { Book, type Leaf } from '@/components/passport/Book';
@@ -62,8 +62,8 @@ export default function Pasaporte() {
           {stamps ? `${stamps} ${stamps === 1 ? 'sello' : 'sellos'} en ${passport.pageOrder.length} ${passport.pageOrder.length === 1 ? 'ruta' : 'rutas'} · Pasa las hojas con el dedo` : 'Ábrelo y pasa las hojas con el dedo. Cada ruta tendrá su hoja con el primer sello.'}
         </Text>
       </Animated.View>
-      {/* La libreta llega desde un poco más pequeña, como si se acercara a la mano */}
-      <Animated.View entering={ZoomIn.springify().damping(20).stiffness(160).delay(80).withInitialValues({ transform: [{ scale: 0.92 }] })}>
+      {/* La libreta aparece suave, subiendo un poco hasta la mano */}
+      <Animated.View entering={rise(2)}>
       <Book leaves={leaves} width={pageW} spread={spread} index={Math.min(index, leaves.length - 1)} onIndex={setIndex} />
       </Animated.View>
     </View>

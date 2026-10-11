@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring } from 'react-native-reanimated';
+import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DUR, EASE_OUT } from '@/components/motion';
 import { Postcard } from '@/components/Postcard';
 import type { Tour } from '@/data/types';
 import { sharePostcard } from '@/lib/share';
@@ -10,8 +11,8 @@ import type { UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
 /**
- * «Postal desbloqueada»: se oscurece el fondo y la lámina sube con un muelle;
- * la postal llega un poco después, girando hasta quedarse a −3°. Con «Ver en
+ * «Postal desbloqueada»: se oscurece el fondo y la lámina sube suave;
+ * la postal llega un poco después, girando sin pasarse hasta quedarse a −3°. Con «Ver en
  * Postales» y «Compartir».
  */
 export function PostcardUnlock({ tour, route }: { tour: Tour; route: UserRoute | undefined }) {
@@ -22,8 +23,8 @@ export function PostcardUnlock({ tour, route }: { tour: Tour; route: UserRoute |
   const spin = useSharedValue(reduced ? 1 : 0);
   const card = useRef<View>(null);
   useEffect(() => {
-    y.set(withSpring(0, { damping: 20, stiffness: 140, mass: 0.9 }));
-    spin.set(withDelay(180, withSpring(1, { damping: 11, stiffness: 120 })));
+    y.set(withTiming(0, { duration: DUR.slow + 80, easing: EASE_OUT }));
+    spin.set(withDelay(180, withTiming(1, { duration: 760, easing: EASE_OUT })));
   }, [y, spin]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
   const cardStyle = useAnimatedStyle(() => ({

@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { rise } from '@/components/motion';
 import { RouteSheet } from '@/components/passport/RouteSheet';
 import { PostcardUnlock } from '@/components/PostcardUnlock';
 import { GhostButton } from '@/components/ui';
@@ -48,12 +49,12 @@ export default function Done() {
   return (
     <TourThemeProvider palette={p}>
       <ScrollView style={{ flex: 1, backgroundColor: p.deep }} contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24, paddingHorizontal: 16, gap: 16, alignItems: 'center' }}>
-        <Animated.View entering={FadeInDown} style={{ alignItems: 'center' }}>
+        <Animated.View entering={rise(0)} style={{ alignItems: 'center' }}>
           <Text style={[s.over, { color: p.t2 }]}>{prog.allStamped ? 'Todas las paradas selladas' : `${prog.done} de ${prog.total} paradas`}</Text>
           <Text style={s.title}>{prog.allStamped ? '¡Ruta completada!' : 'Ruta a medias'}</Text>
           <Text style={s.sub}>{tour.title}</Text>
         </Animated.View>
-        <Animated.View entering={FadeInDown.delay(120)} style={s.stats}>
+        <Animated.View entering={rise(2)} style={s.stats}>
           {stats.map(([v, l]) => (
             <View key={l} style={{ alignItems: 'center', flex: 1 }}>
               <Text style={s.statV}>{v}</Text>
@@ -62,11 +63,11 @@ export default function Done() {
           ))}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(220).springify().damping(18)}>
+        <Animated.View entering={rise(4)}>
           <RouteSheet tour={tour} route={saved} width={sheetW} pageNumber={pageNumber} />
         </Animated.View>
         {prog.completed && !unlocked && (
-          <Animated.View entering={FadeInDown.delay(400)} style={{ alignSelf: 'stretch' }}>
+          <Animated.View entering={rise(8)} style={{ alignSelf: 'stretch' }}>
             <GhostButton label="Ver la postal" onPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} />
           </Animated.View>
         )}

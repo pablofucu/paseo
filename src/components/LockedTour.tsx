@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
-import { PressableScale } from '@/components/motion';
+import { appear, DUR, EASE_OUT, PressableScale } from '@/components/motion';
 import type { LockedTour } from '@/data/types';
 import { font } from '@/theme/fonts';
 import { neutral, radius, shadow } from '@/theme/tokens';
@@ -78,7 +78,7 @@ export function LockedTourSheet({ tour, onClose }: { tour: LockedTour; onClose: 
       <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(200)} style={[StyleSheet.absoluteFill, s.backdrop]}>
         <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
-      <Animated.View entering={SlideInDown.springify().damping(20)} exiting={SlideOutDown.duration(220)} style={[s.sheet, { paddingBottom: insets.bottom + 18 }]}>
+      <Animated.View entering={SlideInDown.duration(DUR.slow).easing(EASE_OUT)} exiting={SlideOutDown.duration(220)} style={[s.sheet, { paddingBottom: insets.bottom + 18 }]}>
         <View style={s.grab} />
         <View style={s.sheetHero}>
           <Pattern tour={tour} />
@@ -89,7 +89,7 @@ export function LockedTourSheet({ tour, onClose }: { tour: LockedTour; onClose: 
         <Text style={type.caption}>{tour.durationMin} min · {tour.stops} paradas · audio, sellos y postal</Text>
         <Text style={[type.body, { marginTop: 6 }]}>{tour.intro}</Text>
         {tried && (
-          <Animated.Text entering={FadeIn} style={s.soon}>Los pagos todavía no están disponibles. Este tour se podrá desbloquear muy pronto.</Animated.Text>
+          <Animated.Text entering={appear()} style={s.soon}>Los pagos todavía no están disponibles. Este tour se podrá desbloquear muy pronto.</Animated.Text>
         )}
         <PressableScale accessibilityRole="button" onPress={() => setTried(true)} style={[s.buy, { backgroundColor: p.t }]}>
           <Lock size={18} color={p.on} />

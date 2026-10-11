@@ -81,7 +81,7 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
       setTurning(0);
       deg.set(withSequence(
         withTiming(-24, { duration: 420, easing: Easing.out(Easing.quad) }),
-        withSpring(0, { damping: 9, stiffness: 140 }),
+        withTiming(0, { duration: 640, easing: Easing.inOut(Easing.quad) }),
       ));
       // El aviso de fin de una animación dentro de withSequence no siempre llega: se cierra a tiempo fijo
       end = setTimeout(() => { deg.set(0); settled(0, 1, false); }, 1300);

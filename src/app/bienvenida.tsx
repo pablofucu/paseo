@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { PressableScale } from '@/components/motion';
+import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
 import { useSettings, type Language } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { brand } from '@/theme/tokens';
@@ -14,18 +14,22 @@ const LANGS: { id: Language; name: string; note: string; ready: boolean }[] = [
   { id: 'en', name: 'English', note: 'Coming soon · Próximamente', ready: false },
 ];
 
+/** Entrada suave: sube 14 px y aparece, sin rebote */
+const up = (delay: number, duration: number = DUR.slow) =>
+  FadeInDown.delay(delay).duration(duration).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] });
+
 /** Emblema: una brújula que gira hasta su sitio sobre un camino de paradas */
 function Emblem() {
   const reduced = useReducedMotion();
   const spin = useSharedValue(reduced ? 1 : 0);
   const float = useSharedValue(0);
   useEffect(() => {
-    spin.set(withDelay(150, withSpring(1, { damping: 10, stiffness: 70 })));
+    spin.set(withDelay(150, withTiming(1, { duration: 1300, easing: EASE_OUT })));
     if (!reduced) float.set(withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.sin) }), -1, true));
   }, [spin, float, reduced]);
   const style = useAnimatedStyle(() => ({
     opacity: Math.min(1, spin.value * 1.5),
-    transform: [{ translateY: float.value * -6 }, { rotate: `${(1 - spin.value) * -140}deg` }, { scale: 0.6 + spin.value * 0.4 }],
+    transform: [{ translateY: float.value * -6 }, { rotate: `${(1 - spin.value) * -90}deg` }, { scale: 0.88 + spin.value * 0.12 }],
   }));
   return (
     <Animated.View style={style}>
@@ -63,18 +67,18 @@ export default function Bienvenida() {
         <Emblem />
         <View style={s.word}>
           {'Paseo'.split('').map((ch, i) => (
-            <Animated.Text key={i} entering={FadeInDown.delay(350 + i * 70).springify().damping(12)} style={s.wordText}>{ch}</Animated.Text>
+            <Animated.Text key={i} entering={up(350 + i * 70)} style={s.wordText}>{ch}</Animated.Text>
           ))}
         </View>
         <Animated.Text entering={FadeIn.delay(800).duration(500)} style={s.tag}>Rutas a pie con audio, sellos y postales</Animated.Text>
       </View>
 
       <View style={{ gap: 12 }}>
-        <Animated.Text entering={FadeInDown.delay(950)} style={s.ask}>Elige tu idioma · Choose your language</Animated.Text>
+        <Animated.Text entering={up(950, DUR.base)} style={s.ask}>Elige tu idioma · Choose your language</Animated.Text>
         {LANGS.map((l, i) => {
           const on = language === l.id;
           return (
-            <Animated.View key={l.id} entering={FadeInDown.delay(1050 + i * 110).springify().damping(16)}>
+            <Animated.View key={l.id} entering={up(1050 + i * 110)}>
               <PressableScale
                 accessibilityRole="button"
                 accessibilityState={{ disabled: !l.ready, selected: on }}

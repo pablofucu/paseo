@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming, ZoomIn } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { appear, rise } from '@/components/motion';
 import { Postcard, postcardHeight } from '@/components/Postcard';
 import { IconButton } from '@/components/ui';
 import { getTour } from '@/data/tours';
@@ -42,9 +43,9 @@ export default function PostalScreen() {
     <View style={[s.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
       <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
       <View style={s.center}>
-        <Animated.Text entering={FadeIn.delay(120)} style={s.over}>{tour.city}</Animated.Text>
-        <Animated.Text entering={FadeIn.delay(180)} style={s.title}>{tour.title}</Animated.Text>
-        <Animated.View entering={ZoomIn.springify().damping(15).stiffness(150).delay(60).withInitialValues({ transform: [{ scale: 0.82 }] })}>
+        <Animated.Text entering={appear(120)} style={s.over}>{tour.city}</Animated.Text>
+        <Animated.Text entering={appear(180)} style={s.title}>{tour.title}</Animated.Text>
+        <Animated.View entering={rise(2)}>
         <Pressable accessibilityRole="button" accessibilityLabel={back ? 'Ver el anverso' : 'Dar la vuelta a la postal'} onPress={flip} style={{ marginTop: 18 }}>
           <Animated.View ref={card} collapsable={false} style={[{ width: w, height: postcardHeight(w) }, style]}>
             <Postcard tour={tour} route={route} width={w} back={back} />

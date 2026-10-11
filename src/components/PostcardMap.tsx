@@ -2,8 +2,8 @@ import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, ZoomIn } from 'react-native-reanimated';
-import { PressableScale, SPRING } from '@/components/motion';
+import Animated, { FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
+import { DUR, EASE_OUT, PressableScale, rise, SPRING } from '@/components/motion';
 import { Postcard } from '@/components/Postcard';
 import type { Tour } from '@/data/types';
 import { tintaDeRuta } from '@/lib/ink';
@@ -15,16 +15,16 @@ import { brandPalette, neutral, shadow } from '@/theme/tokens';
 
 const STYLE = buildMapStyle(brandPalette);
 
-/** Pin de una postal: cae con rebote al abrir el mapa y crece al elegirlo */
+/** Pin de una postal: aparece suave al abrir el mapa y crece un poco al elegirlo */
 function PostcardPin({ tour, won, index, selected, onPress }: { tour: Tour; won: boolean; index: number; selected: boolean; onPress: () => void }) {
   const reduced = useReducedMotion();
   const drop = useSharedValue(reduced ? 1 : 0);
   const sel = useSharedValue(0);
-  useEffect(() => { drop.set(withDelay(200 + index * 140, withSpring(1, { damping: 9, stiffness: 150 }))); }, [drop, index]);
+  useEffect(() => { drop.set(withDelay(200 + index * 140, withTiming(1, { duration: DUR.slow, easing: EASE_OUT }))); }, [drop, index]);
   useEffect(() => { sel.set(withSpring(selected ? 1 : 0, SPRING)); }, [sel, selected]);
   const style = useAnimatedStyle(() => ({
     opacity: Math.min(1, drop.value * 2),
-    transform: [{ translateY: (1 - drop.value) * -50 }, { scale: 1 + sel.value * 0.15 }, { rotate: `${-3 + sel.value * 3}deg` }],
+    transform: [{ translateY: (1 - drop.value) * -14 }, { scale: 1 + sel.value * 0.15 }, { rotate: `${-3 + sel.value * 3}deg` }],
   }));
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={`Postal ${tour.title}`} onPress={onPress} scaleTo={0.92}>
@@ -54,7 +54,7 @@ export function PostcardMap({ tours, routes, onOpen }: { tours: Tour[]; routes: 
         ))}
       </Map>
       {sel && prog && (
-        <Animated.View key={sel.id} entering={ZoomIn.springify().damping(15).stiffness(220).withInitialValues({ transform: [{ scale: 0.6 }] })} exiting={FadeOut.duration(140)} style={s.popup}>
+        <Animated.View key={sel.id} entering={rise(0)} exiting={FadeOut.duration(140)} style={s.popup}>
           <Postcard tour={sel} route={routes[sel.id]} width={120} />
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <Text style={s.popTitle} numberOfLines={2}>{sel.title}</Text>
