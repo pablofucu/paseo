@@ -35,6 +35,9 @@ export default function Home() {
         <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de ciudad" onPress={() => router.push({ pathname: '/ciudad', params: { change: '1' } })} style={s.chip}>
           <Text style={s.chipText}>{CITIES.find(c => c.id === city)?.name} ▾</Text>
         </PressableScale>
+        <PressableScale accessibilityRole="button" accessibilityLabel="Explorar tours por país" onPress={() => router.push('/paises')} style={s.chip}>
+          <Text style={s.chipText}>🌍 Países</Text>
+        </PressableScale>
         <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de idioma" onPress={() => router.push({ pathname: '/bienvenida', params: { change: '1' } })} style={s.chip}>
           <Text style={s.chipText}>{(language ?? 'es').toUpperCase()}</Text>
         </PressableScale>
