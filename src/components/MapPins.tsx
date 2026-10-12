@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -15,6 +15,7 @@ import Animated, {
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { DUR, EASE_OUT, PressableScale, SPRING } from '@/components/motion';
 import type { Stop } from '@/data/types';
+import { angleDelta, unwrapAngle } from '@/lib/smooth';
 import { font } from '@/theme/fonts';
 import { functional, neutral, shadow, type TourPalette } from '@/theme/tokens';
 
@@ -74,12 +75,29 @@ export function StopPin({ index, state, selected, palette: p, onPress }: StopPin
   );
 }
 
-/** Tu posición: punto azul con un halo que se expande y el cono hacia donde miras */
+/**
+ * Tu posición: punto azul con un halo que se expande y el cono hacia donde miras.
+ * El cono gira con suavidad por el camino más corto e ignora el temblor de la brújula.
+ */
 export function MePin({ heading }: { heading: number | null }) {
+  const reduced = useReducedMotion();
+  const rot = useSharedValue(heading ?? 0);
+  const shown = useSharedValue(heading != null ? 1 : 0);
+  const last = useRef<number | null>(heading);
+  useEffect(() => {
+    shown.set(withTiming(heading != null ? 1 : 0, { duration: DUR.fast }));
+    if (heading == null) return;
+    if (last.current == null) { last.current = heading; rot.set(heading); return; }
+    // Menos de 2° es ruido de la brújula
+    if (Math.abs(angleDelta(last.current, heading)) < 2) return;
+    last.current = unwrapAngle(last.current, heading);
+    rot.set(reduced ? last.current : withTiming(last.current, { duration: 320, easing: EASE_OUT }));
+  }, [heading, rot, shown, reduced]);
+  const cone = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ rotate: `${rot.value}deg` }] }));
   return (
     <View style={s.meWrap} pointerEvents="none">
       <Pulse size={22} color={functional.me} />
-      {heading != null && <View style={[s.cone, { transform: [{ rotate: `${heading}deg` }] }]} />}
+      <Animated.View style={[s.cone, cone]} />
       <View style={s.me} />
     </View>
   );

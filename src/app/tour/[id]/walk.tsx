@@ -7,7 +7,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { GuideButton } from '@/components/GuideButton';
-import { MePin, StopPin, StopPopup } from '@/components/MapPins';
+import { StopPin, StopPopup } from '@/components/MapPins';
+import { MapPoints } from '@/components/MapPoints';
+import { MeMarker } from '@/components/MeMarker';
 import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
 import { IconButton } from '@/components/ui';
 import type { LngLat } from '@/data/types';
@@ -162,11 +164,8 @@ export default function Walk() {
               <StopPin index={i} state={i < target ? 'done' : i === target ? 'now' : 'next'} selected={selected === i} palette={p} onPress={() => setSelected(v => (v === i ? null : i))} />
             </Marker>
           ))}
-          {position && (
-            <Marker id="me" lngLat={position} anchor="center">
-              <MePin heading={heading} />
-            </Marker>
-          )}
+          <MapPoints position={position} palette={p} />
+          {position && <MeMarker position={position} heading={heading} />}
         </Map>
 
         {/* Indicación */}

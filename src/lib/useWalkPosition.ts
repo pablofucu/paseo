@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { LngLat } from '@/data/types';
 import { bearing, pointAlong } from './geo';
 import type { PreparedLeg } from './guidance';
+import { angleDelta } from './smooth';
 
 export type PositionSource = 'gps' | 'simulated';
 
@@ -47,7 +48,11 @@ export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null,
         { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 2, timeInterval: 1000 },
         l => setState(s => ({ ...s, position: [l.coords.longitude, l.coords.latitude] })),
       );
-      head = await Location.watchHeadingAsync(h => setState(s => ({ ...s, heading: h.trueHeading >= 0 ? h.trueHeading : h.magHeading })));
+      head = await Location.watchHeadingAsync(h => {
+        const heading = h.trueHeading >= 0 ? h.trueHeading : h.magHeading;
+        // La brújula manda lecturas sin parar: menos de 2° es temblor y no repinta el mapa
+        setState(s => (s.heading != null && Math.abs(angleDelta(s.heading, heading)) < 2 ? s : { ...s, heading }));
+      });
     })();
     return () => { cancelled = true; pos?.remove(); head?.remove(); };
   }, [source]);
