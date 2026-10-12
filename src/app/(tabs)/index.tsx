@@ -1,89 +1,95 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MadridArt } from '@/components/CityArt';
 import { DuotoneImage } from '@/components/DuotoneImage';
-import { LockedTourCard, LockedTourSheet } from '@/components/LockedTour';
 import { PressableScale, rise } from '@/components/motion';
+import { StampDots, Stat, stopInks } from '@/components/RouteCard';
+import { stopInk } from '@/components/RubberStamp';
 import { Scrim } from '@/components/Scrim';
-import { CITIES, toursIn } from '@/data/tours';
-import type { LockedTour } from '@/data/types';
-import { cumulative, formatDistance } from '@/lib/geo';
-import { tintaDeRuta } from '@/lib/ink';
-import { routeProgress, usePassport } from '@/store/passport';
+import { CITIES, getTour, toursIn, TOURS, type City } from '@/data/tours';
+import { usePassport, type UserRoute } from '@/store/passport';
 import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
-import { brand, neutral, radius, shadow } from '@/theme/tokens';
+import { brand, neutral, shadow } from '@/theme/tokens';
 import { type } from '@/theme/type';
 
+/** Tarjeta de ciudad (modelo G1): su foto o dibujo, los sellos de sus paradas y cuántos tours tiene */
+function CityCard({ city, routes }: { city: City; routes: Record<string, UserRoute> }) {
+  const { open, locked } = toursIn(city.id);
+  const cover = city.coverTour ? getTour(city.coverTour) : undefined;
+  const inks = open.flatMap(t => stopInks(t, routes[t.id]));
+  const got = inks.filter(Boolean).length;
+  const free = open.filter(t => t.price === 'free').length;
+  const p = city.palette;
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`${city.name}: ${open.length + locked.length} tours${inks.length ? `, ${got} de ${inks.length} sellos` : ''}`}
+      scaleTo={0.975}
+      onPress={() => router.push({ pathname: '/rutas/[ciudad]', params: { ciudad: city.id } })}
+      style={s.card}
+    >
+      <View style={s.hero}>
+        {cover ? <DuotoneImage source={cover.stops[cover.emblemStop].photo} palette={cover.palette} style={StyleSheet.absoluteFill} /> : city.id === 'madrid' ? <MadridArt /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: p.deep }]} />}
+        <Scrim color={p.deep} opacity={0.75} />
+        <Text style={s.city}>{city.name}</Text>
+        {inks.length > 0 && <View style={s.coll}><StampDots inks={inks} size={16} gap={4} /></View>}
+      </View>
+      <View style={s.cardBody}>
+        <View style={s.stats}>
+          <Stat icon="ticket" color={p.t}>{open.length + locked.length} tours</Stat>
+          {free > 0 && <View style={s.stat}><View style={s.sunDot} /><Text style={s.statText}>{free} gratis</Text></View>}
+          {locked.length > 0 && <Stat icon="lock" color={neutral.ink3}>{locked.length} de pago</Stat>}
+        </View>
+        {inks.length > 0 && <Text style={[s.cnt, { backgroundColor: p.soft, color: p.deep }]}>{got}/{inks.length} sellos</Text>}
+      </View>
+    </PressableScale>
+  );
+}
+
+/** Inicio (modelo G1): las ciudades, cada una con sus sellos; al tocar una se ven sus rutas */
 export default function Home() {
   const insets = useSafeAreaInsets();
   const routes = usePassport(s => s.routes);
   const reset = usePassport(s => s.reset);
   const { testMode, setTestMode, language } = useSettings();
-  const city = useSettings(s => s.city) ?? 'sevilla';
-  const { open, locked } = toursIn(city);
-  const [sheet, setSheet] = useState<LockedTour | null>(null);
+  const city = useSettings(s => s.city);
+  // La ciudad elegida en la bienvenida va primero
+  const cities = [...CITIES].sort((a, b) => Number(b.id === city) - Number(a.id === city));
+  // Tu colección: todos los sellos, los más recientes delante
+  const stamps = TOURS.flatMap(t => (routes[t.id]?.stamps ?? []).map(st => ({ date: st.date, ink: stopInk(t, st.stopId) }))).sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <View style={{ flex: 1 }}>
-    <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 18, gap: 14 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 20, gap: 12 }}>
       <Animated.View entering={rise(0)} style={s.top}>
         <Text style={[type.overline, { color: brand.coral, flex: 1 }]}>Paseo</Text>
-        {/* Ciudad e idioma: se cambian desde aquí */}
-        <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de ciudad" onPress={() => router.push({ pathname: '/ciudad', params: { change: '1' } })} style={s.chip}>
-          <Text style={s.chipText}>{CITIES.find(c => c.id === city)?.name} ▾</Text>
-        </PressableScale>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Explorar tours por país" onPress={() => router.push('/paises')} style={s.chip}>
-          <Text style={s.chipText}>🌍 Países</Text>
-        </PressableScale>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de idioma" onPress={() => router.push({ pathname: '/bienvenida', params: { change: '1' } })} style={s.chip}>
-          <Text style={s.chipText}>{(language ?? 'es').toUpperCase()}</Text>
+        <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de idioma" onPress={() => router.push({ pathname: '/bienvenida', params: { change: '1' } })} style={s.lang}>
+          <View style={s.langDot}><Text style={s.langCode}>{(language ?? 'es').toUpperCase()}</Text></View>
+          <Text style={s.langText}>{language === 'en' ? 'English' : 'Español'}</Text>
         </PressableScale>
       </Animated.View>
-      <Animated.Text entering={rise(1)} style={[type.hero, { fontSize: 38, lineHeight: 42 }]}>¿Dónde paseamos hoy?</Animated.Text>
-
-      {open.map((t, i) => {
-        const meters = t.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
-        const prog = routeProgress(t.id, routes[t.id]);
-        return (
-          <Animated.View key={t.id} entering={rise(i + 2)}>
-          <PressableScale accessibilityRole="button" accessibilityLabel={`Abrir ${t.title}`} scaleTo={0.975} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: t.id } })} style={s.card}>
-            <View style={s.hero}>
-              <DuotoneImage source={t.stops[t.emblemStop].photo} palette={t.palette} style={StyleSheet.absoluteFill} />
-              <Scrim opacity={0.6} />
-              <View style={s.heroText}>
-                <Text style={[type.overline, { color: '#fff' }]}>{t.region}</Text>
-                <Text style={s.city}>{t.city}</Text>
-              </View>
-              {t.price === 'free' && <View style={s.free}><Text style={s.freeText}>Gratis</Text></View>}
+      <Animated.Text entering={rise(1)} style={s.hello}>¿Dónde paseamos hoy?</Animated.Text>
+      <Animated.View entering={rise(2)} style={{ flexDirection: 'row' }}>
+        <PressableScale accessibilityRole="button" accessibilityLabel={`Tu colección: ${stamps.length} sellos. Abrir el pasaporte`} onPress={() => router.push('/pasaporte')} style={s.sumpill}>
+          {stamps.length > 0 && (
+            <View style={{ flexDirection: 'row' }}>
+              {stamps.slice(0, 4).map((st, i) => <View key={i} style={[s.mini, { backgroundColor: st.ink, marginLeft: i ? -7 : 0 }]} />)}
             </View>
-            <View style={s.cardBody}>
-              <View style={[s.swatch, { backgroundColor: tintaDeRuta(t.accent) }]} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[s.cat, { color: t.palette.t }]} numberOfLines={1}>{t.category}</Text>
-                <Text style={s.cardTitle}>{t.title}</Text>
-                <Text style={type.caption}>{t.durationMin} min · {formatDistance(meters)} · {prog.completed ? 'Postal ganada' : prog.started ? `${prog.done} de ${prog.total} sellos` : `${t.stops.length} paradas`}</Text>
-              </View>
-            </View>
-          </PressableScale>
-          </Animated.View>
-        );
-      })}
+          )}
+          <Text style={s.sumText}>Tu colección · {stamps.length} {stamps.length === 1 ? 'sello' : 'sellos'}</Text>
+        </PressableScale>
+      </Animated.View>
 
-      {locked.length > 0 && (
-        <Animated.Text entering={rise(open.length + 2)} style={[type.headline, { marginTop: 8 }]}>
-          {open.length ? 'Próximamente, de pago' : 'Tours de pago'}
-        </Animated.Text>
-      )}
-      {locked.map((t, i) => (
-        <Animated.View key={t.id} entering={rise(open.length + 3 + i)}>
-          <LockedTourCard tour={t} onPress={() => setSheet(t)} />
+      <View style={{ height: 4 }} />
+      {cities.map((c, i) => (
+        <Animated.View key={c.id} entering={rise(i + 3)}>
+          <CityCard city={c} routes={routes} />
         </Animated.View>
       ))}
 
-      <Animated.View entering={rise(open.length + locked.length + 3)} style={s.test}>
+      <Animated.View entering={rise(cities.length + 3)} style={s.test}>
         <View style={{ flex: 1 }}>
           <Text style={s.testTitle}>Modo prueba</Text>
           <Text style={type.caption}>Recorre los tours sin moverte: paseo simulado, velocidad, llegar a la parada o tocar el mapa para moverte.</Text>
@@ -96,25 +102,29 @@ export default function Home() {
         </Pressable>
       )}
     </ScrollView>
-    {sheet && <LockedTourSheet tour={sheet} onClose={() => setSheet(null)} />}
-    </View>
   );
 }
 
 const s = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  chip: { height: 34, paddingHorizontal: 12, borderRadius: 999, backgroundColor: neutral.bg2, justifyContent: 'center' },
-  chipText: { fontFamily: font.black, fontSize: 13, color: neutral.ink },
+  lang: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingLeft: 5, paddingRight: 12, borderRadius: 999, backgroundColor: neutral.surface, ...shadow[1] },
+  langDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: brand.coral, alignItems: 'center', justifyContent: 'center' },
+  langCode: { fontFamily: font.black, fontSize: 10, color: '#fff' },
+  langText: { fontFamily: font.black, fontSize: 13, color: neutral.ink },
+  hello: { fontFamily: font.serif, fontSize: 30, lineHeight: 34, color: neutral.ink },
+  sumpill: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: neutral.ink },
+  mini: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: neutral.ink },
+  sumText: { fontFamily: font.black, fontSize: 13, color: '#fff', paddingLeft: 6 },
   card: { backgroundColor: neutral.surface, borderRadius: 22, overflow: 'hidden', ...shadow[2] },
-  hero: { height: 170 },
-  heroText: { position: 'absolute', left: 16, bottom: 12 },
-  city: { fontFamily: font.serif, fontSize: 34, lineHeight: 37, color: '#fff' },
-  free: { position: 'absolute', right: 12, top: 12, backgroundColor: brand.sun, borderRadius: radius.pill, paddingHorizontal: 10, height: 26, justifyContent: 'center' },
-  freeText: { fontFamily: font.black, fontSize: 12, color: neutral.ink },
-  cardBody: { flexDirection: 'row', gap: 12, padding: 14, alignItems: 'center' },
-  swatch: { width: 8, alignSelf: 'stretch', borderRadius: 4 },
-  cat: { fontFamily: font.black, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
-  cardTitle: { fontFamily: font.serif, fontSize: 19, lineHeight: 22, color: neutral.ink, marginVertical: 2 },
+  hero: { height: 112 },
+  city: { position: 'absolute', left: 16, bottom: 10, fontFamily: font.serif, fontSize: 30, lineHeight: 34, color: '#fff', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 10 },
+  coll: { position: 'absolute', right: 12, bottom: 12, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingVertical: 5, paddingHorizontal: 6 },
+  cardBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 },
+  stats: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 6 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  statText: { fontFamily: font.black, fontSize: 13.5, color: neutral.ink },
+  sunDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: brand.sun },
+  cnt: { fontFamily: font.black, fontSize: 12.5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden' },
   test: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6, padding: 14, borderRadius: 18, borderWidth: 1.5, borderStyle: 'dashed', borderColor: neutral.line },
   testTitle: { fontFamily: font.black, fontSize: 15, color: neutral.ink, marginBottom: 2 },
 });

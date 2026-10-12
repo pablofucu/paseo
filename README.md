@@ -11,7 +11,7 @@ Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales**
 
 - **Tintas de la ruta.** Cada parada sella con su propia tinta, de una familia de colores de la ruta (`inks` en los datos del tour: Tomares en ladrillo, ocre, vino y verde; Sevilla en oro, azul, terracota, verde y añil). `tintaDeRuta()` oscurece cualquier tinta que no llegue a 4,5:1 sobre el papel de su hoja. El acento de la ruta enmarca su postal.
 - **Sellos de goma** dibujados en línea, uno por parada, en cuatro formas (rectángulo, círculo, óvalo y octógono), con el sitio, la ciudad y la fecha real. Cada parada se sella una sola vez; las repeticiones quedan en el historial.
-- **Inicio:** la primera vez, bienvenida con el idioma (solo hay versión en español; el inglés sale como «próximamente») y elección de ciudad (Sevilla, con Tomares, o Madrid). Inicio enseña los tours de la ciudad y, bloqueados, los de pago (solo interfaz: no hay pagos todavía).
+- **Inicio:** la primera vez, bienvenida con el idioma (solo hay versión en español; el inglés sale como «próximamente») y elección de ciudad (Sevilla, con Tomares, o Madrid). Inicio enseña las ciudades con sus sellos y, al tocar una, sus rutas dibujadas sobre la foto de cada tour (paradas selladas rellenas, la siguiente destacada) y, bloqueados, los de pago (solo interfaz: no hay pagos todavía).
 - **El paseo.** Las paradas van en orden. El mapa es la pantalla central del tour: al llegar, la parada se abre encima y al cerrarla se vuelve al mapa; tocando cualquier pin sale su ventana con «Entrar». Al llegar el audio empieza solo y el sello se pone al final, con «Poner el sello»: solo se puede sellar la parada a la que has llegado (GPS o «Llegar» en modo prueba).
 - **Tú eliges dónde va el sello.** Al pulsar «Poner el sello» se abre la hoja de la ruta con el sello «en la mano» (vista previa al 35 % que sigue al dedo). Al soltar, cae con la animación de la guía (550 ms, impacto a los 300 ms con «clac + pum», vibración y golpe de hoja). Márgenes de 16 px, sin pisar cabecera ni pie y como mucho un 35 % encima de otro sello; «Colócalo tú» busca un hueco libre. Cada sello sale girado entre 4° y 12° a un lado o al otro, nunca recto.
 - **Ruta completada.** Con el último sello la ruta queda completada y, al terminar, sube la tarjeta de **postal desbloqueada**. No hay sello de ruta completada.
@@ -73,7 +73,8 @@ src/
   app/                       pantallas (Expo Router)
     bienvenida.tsx           bienvenida y elección de idioma
     ciudad.tsx               elección de ciudad
-    (tabs)/index.tsx         Inicio: los tours de la ciudad y los de pago bloqueados
+    (tabs)/index.tsx         Inicio: las ciudades, con sus sellos y su colección
+    rutas/[ciudad].tsx       rutas de una ciudad: cada tour con su ruta dibujada; los de pago, bloqueados
     (tabs)/pasaporte.tsx     el pasaporte (libreta con hojas que se pasan)
     (tabs)/postales.tsx      tarjetero de postales y mapa
     postal/[id].tsx          postal a pantalla completa (vuelta y compartir)

@@ -1,4 +1,5 @@
 import type { CityId } from '@/store/settings';
+import type { TourPalette } from '@/theme/tokens';
 import type { LockedTour, Tour } from '../types';
 import { LOCKED_TOURS } from './locked';
 import { sevilla } from './sevilla';
@@ -10,31 +11,25 @@ export const getTour = (id: string) => TOURS.find(t => t.id === id);
 
 export { LOCKED_TOURS };
 
-export type CountryId = 'es' | 'pt' | 'it' | 'fr';
-
-/** Países del selector. Solo España tiene tours; el resto sale como «próximamente». */
-export const COUNTRIES: { id: CountryId; name: string; flag: string }[] = [
-  { id: 'es', name: 'España', flag: '🇪🇸' },
-  { id: 'pt', name: 'Portugal', flag: '🇵🇹' },
-  { id: 'it', name: 'Italia', flag: '🇮🇹' },
-  { id: 'fr', name: 'Francia', flag: '🇫🇷' },
-];
+export interface City {
+  id: CityId;
+  name: string;
+  region: string;
+  /** Colores de su tarjeta en Inicio */
+  palette: TourPalette;
+  /** Tour cuya foto emblema sirve de portada; sin él, la tarjeta se dibuja */
+  coverTour?: string;
+}
 
 /** Ciudades del selector, con sus tours disponibles y los de pago bloqueados */
-export const CITIES: { id: CityId; name: string; region: string; country: CountryId }[] = [
-  { id: 'sevilla', name: 'Sevilla', region: 'Andalucía', country: 'es' },
-  { id: 'madrid', name: 'Madrid', region: 'Comunidad de Madrid', country: 'es' },
+export const CITIES: City[] = [
+  { id: 'sevilla', name: 'Sevilla', region: 'Andalucía', palette: sevilla.palette, coverTour: sevilla.id },
+  { id: 'madrid', name: 'Madrid', region: 'Comunidad de Madrid', palette: { t: '#B5462E', t2: '#F2C14E', soft: '#F7E4DD', deep: '#4A1A10', on: '#FFFFFF' } },
 ];
 
-export const getCountry = (id: string) => COUNTRIES.find(c => c.id === id);
+export const getCity = (id: string) => CITIES.find(c => c.id === id);
 
 export const toursIn = (city: CityId): { open: Tour[]; locked: LockedTour[] } => ({
   open: TOURS.filter(t => t.area === city),
   locked: LOCKED_TOURS.filter(t => t.area === city),
 });
-
-/** Los tours de un país, ciudad por ciudad (solo las ciudades que tienen alguno) */
-export const toursInCountry = (country: CountryId) =>
-  CITIES.filter(c => c.country === country)
-    .map(c => ({ city: c, ...toursIn(c.id) }))
-    .filter(g => g.open.length + g.locked.length > 0);
