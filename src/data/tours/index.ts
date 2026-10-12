@@ -3,9 +3,10 @@ import type { TourPalette } from '@/theme/tokens';
 import type { LockedTour, Tour } from '../types';
 import { LOCKED_TOURS } from './locked';
 import { sevilla } from './sevilla';
+import { sevillaArenal } from './sevilla-arenal';
 import { tomares } from './tomares';
 
-export const TOURS: Tour[] = [sevilla, tomares];
+export const TOURS: Tour[] = [sevilla, sevillaArenal, tomares];
 
 export const getTour = (id: string) => TOURS.find(t => t.id === id);
 

@@ -85,16 +85,29 @@ export interface Tour {
    * distintos pero de la misma familia que la ruta. Si falta, todas usan el acento.
    */
   inks?: string[];
-  /** Postal que se gana al completar la ruta */
+  /**
+   * Postal que se gana al completar la ruta. Es una ilustración con escena
+   * propia (una vista, un momento de la ruta), no tiene por qué juntar todos
+   * los sitios: ver «Postales y sellos de ruta» en el README.
+   */
   postcard: {
-    /** Ilustración 832 × 444 (sitios de la ruta bajo un cielo común, con textura de imprenta) */
+    /** Ilustración 832 × 444 con textura de imprenta */
     art: ImageSourcePropType;
     /** Valor facial, como en un sello de carta («4,50€») */
     value: string;
     /** Subtítulo: las paradas separadas por « · » */
     subtitle: string;
-    /** Encuadre del sello de la ruta dentro de la ilustración (0–1): su sitio más reconocible */
-    stampFocus: { x: number; y: number };
+  };
+  /**
+   * Sello de correos de la ruta: un dibujo exclusivo que simboliza la ruta
+   * entera, nunca un recorte de la postal (design/route-stamps/<tour>.svg,
+   * horneado por scripts/render-postcards.cjs).
+   */
+  stamp: {
+    /** Dibujo 164 × 200 con textura de imprenta, sin el borde dentado (lo pone la app) */
+    art: ImageSourcePropType;
+    /** Qué representa y por qué simboliza la ruta */
+    symbol: string;
   };
   /** Parada cuya foto sirve de portada del tour */
   emblemStop: number;

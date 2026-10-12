@@ -31,7 +31,10 @@ export const sevilla: Tour = {
     art: require('../../../assets/postcards/sevilla.jpg'),
     value: '3,20€',
     subtitle: 'TORRE DEL ORO · ARCHIVO · GIRALDA · ALCÁZAR · SANTA CRUZ',
-    stampFocus: { x: 0.36, y: 0.42 },
+  },
+  stamp: {
+    art: require('../../../assets/route-stamps/sevilla-centro.png'),
+    symbol: 'El Giraldillo, la veleta que corona la Giralda, sobre el azul del azulejo y el lema NO8DO de la ciudad.',
   },
   emblemStop: 2,
   durationMin: 60,

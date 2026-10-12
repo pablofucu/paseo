@@ -1,0 +1,12 @@
+{
+  "_info": "Fotos libres de la imagen principal del artículo de Wikipedia. Las descarga scripts/fetch-photos.mjs (workflow 'Contenido') con su autoría y licencia.",
+  "dir": "assets/tours/sevilla-arenal",
+  "photos": [
+    { "id": "maestranza", "wiki": "es:Plaza de toros de la Real Maestranza de Caballería de Sevilla" },
+    { "id": "caridad", "wiki": "es:Hospital de la Caridad (Sevilla)" },
+    { "id": "san-telmo", "wiki": "es:Palacio de San Telmo" },
+    { "id": "tabacos", "wiki": "es:Real Fábrica de Tabacos de Sevilla" },
+    { "id": "plaza-espana", "wiki": "es:Plaza de España (Sevilla)" },
+    { "id": "maria-luisa", "wiki": "es:Parque de María Luisa" }
+  ]
+}

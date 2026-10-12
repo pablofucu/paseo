@@ -5,9 +5,6 @@ import type { Tour } from '@/data/types';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
 
-/** Proporción de la ilustración de la postal (832 × 444) */
-const ART = 832 / 444;
-
 /**
  * Borde dentado de sello de correos como un solo trazado (sin máscaras SVG,
  * que en el móvil cerraban la app): cada diente es un semicírculo hacia dentro.
@@ -66,9 +63,9 @@ interface Props {
 }
 
 /**
- * Sello de una ruta: un sello de correos dentado con un recorte de la
- * ilustración de su postal (su sitio más reconocible). A medias se ve
- * desvaído; al completarla, a todo color y con el matasellos encima.
+ * Sello de una ruta: un sello de correos dentado con su dibujo exclusivo
+ * (`tour.stamp`), que simboliza la ruta entera. No es un trozo de la postal.
+ * A medias se ve desvaído; al completarla, a todo color y con el matasellos.
  */
 export function RouteStamp({ tour, done = 0, total = 1, height: h, rotate = 0, style }: Props) {
   const w = Math.round(h * 0.82);
@@ -76,12 +73,6 @@ export function RouteStamp({ tour, done = 0, total = 1, height: h, rotate = 0, s
   const pad = r + Math.max(1.5, h / 26);
   const completed = !!tour && done >= total;
   const iw = w - pad * 2, ih = h - pad * 2;
-  // La ilustración, ampliada y centrada en el sitio del sello
-  const zoom = 1.7;
-  const artH = ih * zoom, artW = artH * ART;
-  const focus = tour?.postcard.stampFocus ?? { x: 0.5, y: 0.5 };
-  const left = Math.min(0, Math.max(iw - artW, iw / 2 - focus.x * artW));
-  const top = Math.min(0, Math.max(ih - artH, ih / 2 - focus.y * artH));
 
   return (
     <View style={[{ width: w, height: h, transform: [{ rotate: `${rotate}deg` }] }, s.shadow, style]}>
@@ -91,7 +82,7 @@ export function RouteStamp({ tour, done = 0, total = 1, height: h, rotate = 0, s
       <View style={[s.inner, { left: pad, top: pad, width: iw, height: ih }, !tour && s.blank]}>
         {tour ? (
           <>
-            <Image source={tour.postcard.art} style={{ position: 'absolute', left, top, width: artW, height: artH }} contentFit="fill" />
+            <Image source={tour.stamp.art} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={`Sello de la ruta ${tour.title}`} />
             {!completed && <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(251,246,236,0.5)' }]} />}
             {!completed && done > 0 && h >= 44 && <Text style={[s.count, { fontSize: h / 6 }]}>{done}/{total}</Text>}
           </>

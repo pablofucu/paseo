@@ -1,0 +1,106 @@
+{
+  "_info": "Paradas de «Del Arenal a la Plaza de España». legs y steps los genera scripts/build-routes.mjs (workflow «Contenido»); hasta entonces cada tramo es una línea recta.",
+  "stops": [
+    {
+      "id": "maestranza",
+      "coord": [
+        -5.9993,
+        37.3862
+      ]
+    },
+    {
+      "id": "caridad",
+      "coord": [
+        -5.9962,
+        37.3842
+      ]
+    },
+    {
+      "id": "san-telmo",
+      "coord": [
+        -5.9939,
+        37.3803
+      ]
+    },
+    {
+      "id": "tabacos",
+      "coord": [
+        -5.9911,
+        37.3806
+      ]
+    },
+    {
+      "id": "plaza-espana",
+      "coord": [
+        -5.9869,
+        37.3772
+      ]
+    },
+    {
+      "id": "maria-luisa",
+      "coord": [
+        -5.9883,
+        37.3734
+      ]
+    }
+  ],
+  "legs": [
+    [
+      [
+        -5.9993,
+        37.3862
+      ],
+      [
+        -5.9962,
+        37.3842
+      ]
+    ],
+    [
+      [
+        -5.9962,
+        37.3842
+      ],
+      [
+        -5.9939,
+        37.3803
+      ]
+    ],
+    [
+      [
+        -5.9939,
+        37.3803
+      ],
+      [
+        -5.9911,
+        37.3806
+      ]
+    ],
+    [
+      [
+        -5.9911,
+        37.3806
+      ],
+      [
+        -5.9869,
+        37.3772
+      ]
+    ],
+    [
+      [
+        -5.9869,
+        37.3772
+      ],
+      [
+        -5.9883,
+        37.3734
+      ]
+    ]
+  ],
+  "steps": [
+    [],
+    [],
+    [],
+    [],
+    []
+  ]
+}

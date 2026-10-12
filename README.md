@@ -5,7 +5,18 @@ App de tours a pie para iOS y Android. Cada tour tiene su paleta de color, un ma
 Tours incluidos:
 
 - **Sevilla · Del río a la judería** (5 paradas, azulejo y albero): Torre del Oro, Archivo de Indias, Catedral y Giralda, Real Alcázar y Barrio de Santa Cruz. Fotos libres de Wikimedia Commons con su autoría en la app.
+- **Sevilla · Del Arenal a la Plaza de España** (6 paradas, ladrillo y azulejo): Real Maestranza, Hospital de la Caridad, Palacio de San Telmo, Real Fábrica de Tabacos, Plaza de España y Parque de María Luisa.
 - **Tomares en 4 paradas** (almagra y albero): letras de la Arboleda, Ayuntamiento, Parroquia de Belén y Royal King Kebab.
+
+## Filosofía: lo que se gana en cada ruta
+
+Cada ruta deja tres recuerdos distintos, y cada uno tiene un papel propio:
+
+1. **Sello de goma, uno por parada.** Dibujo en línea del sitio concreto, estampado con la tinta de la parada y la fecha real. Es el registro de «estuve aquí».
+2. **Postal de la ruta.** Una ilustración en color con **una escena propia**: una vista o un momento del paseo, como una postal de verdad. No es un catálogo de todas las paradas ni tiene por qué juntarlas en una fila; basta con que cuente cómo se siente la ruta (en la del Arenal, la Plaza de España vista desde el canal, con una barca y un puente de azulejo).
+3. **Sello de correos de la ruta.** Un dibujo **exclusivo** que **simboliza la ruta entera** con un emblema: el Giraldillo y el NO8DO en el centro de Sevilla, una rama de olivo del Aljarafe en Tomares, una carabela sobre un azulejo de 1929 en el Arenal. **Nunca es un recorte de la postal ni de una parada.** Se ve en Inicio, en la lista de rutas (desvaído a medias, a todo color y matasellado al completarla) y pegado en el reverso de la postal. Cada ruta guarda en sus datos qué representa su sello (`stamp.symbol`).
+
+Al diseñar una ruta nueva hacen falta las tres piezas, y ninguna se saca de otra.
 
 Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales** (v2):
 
@@ -14,7 +25,7 @@ Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales**
 - **Inicio:** la primera vez, bienvenida con el idioma (solo hay versión en español; el inglés sale como «próximamente») y elección de ciudad (Sevilla, con Tomares, o Madrid). Inicio enseña las ciudades con sus sellos y, al tocar una, sus rutas dibujadas sobre la foto de cada tour (paradas selladas rellenas, la siguiente destacada) y, bloqueados, los de pago (solo interfaz: no hay pagos todavía).
 - **El paseo.** Las paradas van en orden. El mapa es la pantalla central del tour: al llegar, la parada se abre encima y al cerrarla se vuelve al mapa; tocando cualquier pin sale su ventana con «Entrar». Al llegar el audio empieza solo y el sello se pone al final, con «Poner el sello»: solo se puede sellar la parada a la que has llegado (GPS o «Llegar» en modo prueba).
 - **Tú eliges dónde va el sello.** Al pulsar «Poner el sello» se abre la hoja de la ruta con el sello «en la mano» (vista previa al 35 % que sigue al dedo). Al soltar, cae con la animación de la guía (550 ms, impacto a los 300 ms con «clac + pum», vibración y golpe de hoja). Márgenes de 16 px, sin pisar cabecera ni pie y como mucho un 35 % encima de otro sello; «Colócalo tú» busca un hueco libre. Cada sello sale girado entre 4° y 12° a un lado o al otro, nunca recto.
-- **Ruta completada.** Con el último sello la ruta queda completada y, al terminar, sube la tarjeta de **postal desbloqueada**. No hay sello de ruta completada.
+- **Ruta completada.** Con el último sello la ruta queda completada y, al terminar, sube la tarjeta de **postal desbloqueada** y el sello de la ruta pasa a todo color con su matasellos. No se estampa ningún sello de goma extra por completarla.
 - **Hoja de la ruta.** Papel con un velo suave del color de la ruta y, arriba, solo su nombre y su ciudad, discretos.
 - **Pasaporte** (pestaña): portada de piel azul con dorado, hoja del titular, una hoja por ruta en el orden del primer sello y «Próxima ruta». Las hojas giran sobre el lomo arrastrando con el dedo (doble página en pantallas anchas).
 - **Postales** (pestaña): tarjetero por ciudad, con las rutas a medias como postal en blanco; a pantalla completa se les da la vuelta y se comparten. Vista secundaria en mapa.
@@ -74,7 +85,7 @@ src/
     bienvenida.tsx           bienvenida y elección de idioma
     ciudad.tsx               elección de ciudad
     (tabs)/index.tsx         Inicio: las ciudades, con sus sellos y su colección
-    rutas/[ciudad].tsx       rutas de una ciudad: cada tour con su ruta dibujada y su sello de correos; los de pago, bloqueados
+    rutas/[ciudad].tsx       rutas de una ciudad: cada tour con su ruta dibujada y su sello de ruta; los de pago, bloqueados
     (tabs)/pasaporte.tsx     el pasaporte (libreta con hojas que se pasan)
     (tabs)/postales.tsx      tarjetero de postales y mapa
     postal/[id].tsx          postal a pantalla completa (vuelta y compartir)
@@ -91,17 +102,20 @@ src/
   store/passport.ts          UserPassport y UserRoute (con migración del formato anterior)
 design/stamps/*.svg          sellos de goma de cada parada (fuente)
 design/postcards/*.svg       ilustración de cada postal (fuente)
+design/route-stamps/*.svg    sello de correos de cada ruta (fuente)
 ```
 
 ## Sellos, postales y sonidos
 
 - **Sellos de goma:** cada parada tiene `design/stamps/<parada>.svg`. `NODE_PATH=$(npm root -g) node scripts/build-stamps.mjs` junta la escena (desde el primer `<clipPath>`) con el marco de `src/lib/rubber.ts` y la hornea con la textura de goma de la guía en `assets/stamps/<parada>.png` (negro sobre transparente). La app la tiñe con la tinta de la parada y pinta encima la fecha real. Así cada sello son dos vistas en lugar de miles de nodos SVG, y el pasaporte abre al instante.
-- **Postales:** la ilustración (832 × 444) está en `design/postcards/<tour>.svg`. `node scripts/render-postcards.cjs` (necesita Playwright) le aplica la textura de imprenta de la guía y la guarda en `assets/postcards/`. El papel perforado se hornea con `NODE_PATH=$(npm root -g) node scripts/build-postcard-paper.mjs` en `assets/postcards/paper.png` (en el móvil, las máscaras SVG de antes cerraban la app). El marco, los textos y el matasellos los pinta la app.
+- **Dibujar sellos nuevos:** `scripts/stamp-kit.mjs` tiene las piezas del trazo de la guía (rayados, ventanas, arcos, palmeras, gente, máscaras para que lo de delante tape lo de detrás). `node scripts/draw-stamps-arenal.mjs` dibuja con ellas los sellos de la ruta del Arenal; sirve de ejemplo para otras rutas.
+- **Postales:** la ilustración (832 × 444) está en `design/postcards/<tour>.svg` (la del Arenal la dibuja `node scripts/draw-postcard-arenal.mjs`). `node scripts/render-postcards.cjs` (necesita Playwright) le aplica la textura de imprenta de la guía y la guarda en `assets/postcards/`. El papel perforado se hornea con `NODE_PATH=$(npm root -g) node scripts/build-postcard-paper.mjs` en `assets/postcards/paper.png` (en el móvil, las máscaras SVG de antes cerraban la app). El marco, los textos y el matasellos los pinta la app.
+- **Sellos de ruta:** el dibujo (164 × 200) está en `design/route-stamps/<tour>.svg` (`node scripts/draw-route-stamps.mjs` dibuja los tres actuales). `render-postcards.cjs` los hornea con la misma tinta de imprenta en `assets/route-stamps/<tour>.png`; el borde dentado y el matasellos los pone la app.
 - **Sonidos:** `python3 scripts/make-sounds.py` sintetiza `assets/sounds/stamp.wav` y `page.wav` con los parámetros de la guía.
 
 ## Añadir un tour
 
-Un tour es un objeto `Tour` en `src/data/tours/`: paleta, **acento** (la tinta), paradas (foto, textos y su sello de goma: forma y textos), la postal (ilustración, valor y subtítulo) y la ruta a pie entre paradas (`legs`). Formas recomendadas:
+Un tour es un objeto `Tour` en `src/data/tours/`: paleta, **acento** (la tinta), paradas (foto, textos y su sello de goma: forma y textos), la postal (ilustración con escena propia, valor y subtítulo), el **sello de ruta** (dibujo exclusivo y qué simboliza; ver «Filosofía») y la ruta a pie entre paradas (`legs`). Las fotos y la ruta por calles las genera el workflow **Contenido** a partir de `<tour>.photos.json` y `<tour>.geo.json`. Formas recomendadas para los sellos de goma:
 
 | Forma | Para |
 |---|---|
@@ -112,6 +126,7 @@ Un tour es un objeto `Tour` en `src/data/tours/`: paleta, **acento** (la tinta),
 
 ## Pendiente antes de probar en la calle
 
+- [ ] **Comprobar las ubicaciones de la ruta del Arenal** sobre el terreno (están tomadas de la puerta o el punto de vista de cada sitio; ver `src/data/tours/sevilla-arenal.ts`).
 - [ ] **Comprobar dos ubicaciones aproximadas**: el portal del kebab (C/ Navarro Caro 83) y el talud de las letras TOMARES (Avda. de la Arboleda). Las del Ayuntamiento y la iglesia salen de fuentes publicadas (ver `src/data/tours/tomares.ts`).
 - [x] **Ruta a pie fija por calles** en `src/data/tours/tomares.geo.json` (letras → Ayuntamiento 844 m, → iglesia 260 m, → kebab 212 m), con los giros y nombres de calle. Se genera con OSRM (perfil peatón, OpenStreetMap) desde el workflow **Contenido** de GitHub Actions: cambia las coordenadas en ese archivo y lánzalo con *Run workflow*.
 - [ ] **Teselas propias.** En desarrollo se usa OpenFreeMap (gratis, sin clave). Para producción: Protomaps autoalojado o MapTiler, configurado con `EXPO_PUBLIC_MAP_TILES`.

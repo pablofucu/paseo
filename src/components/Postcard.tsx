@@ -31,7 +31,7 @@ interface Props {
 }
 
 /**
- * Postal de una ruta. Ganada: la ilustración de los sitios con el marco, los
+ * Postal de una ruta. Ganada: su ilustración con el marco, los
  * textos y el matasellos con la fecha en que se completó. Sin ganar: en
  * blanco, con el progreso.
  */
@@ -85,7 +85,7 @@ function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserR
   const when = new Date(date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
   const mark = useMemo(() => postmarkXml({ city: tour.city, date }), [tour.city, date]);
   const fs = (n: number) => Math.max(9, n * k);
-  // Sello de carta: un trozo de la ilustración con su borde perforado
+  // Sello de carta: el sello exclusivo de la ruta, no un trozo de la postal
   const stampW = 150 * k, stampH = 190 * k;
   return (
     <View style={{ width, height }}>
@@ -100,7 +100,7 @@ function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserR
       <View style={[s.abs, { left: 520 * k, top: 60 * k, width: 2, height: 480 * k, backgroundColor: 'rgba(90,67,32,0.25)' }]} />
       <View style={[s.abs, { right: 70 * k, top: 52 * k, width: stampW, height: stampH, padding: 6 * k, backgroundColor: '#fbf7ec', borderWidth: 1, borderColor: '#d9ccab', borderStyle: 'dashed', transform: [{ rotate: '2deg' }] }]}>
         <View style={{ flex: 1, overflow: 'hidden', borderWidth: 2, borderColor: accent }}>
-          <Image source={tour.postcard.art} style={{ position: 'absolute', height: '100%', aspectRatio: 832 / 444, left: -stampW * 0.6 }} contentFit="cover" />
+          <Image source={tour.stamp.art} style={StyleSheet.absoluteFill} contentFit="cover" />
         </View>
       </View>
       <View style={[s.abs, { right: 120 * k, top: 120 * k }]} pointerEvents="none">
