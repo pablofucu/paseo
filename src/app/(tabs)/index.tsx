@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MadridArt } from '@/components/CityArt';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { PressableScale, rise } from '@/components/motion';
+import { ResumeStrip } from '@/components/ResumeStrip';
 import { Stat } from '@/components/RouteCard';
 import { RouteStamp } from '@/components/RouteStamp';
 import { Scrim } from '@/components/Scrim';
@@ -87,6 +88,7 @@ export default function Home() {
       </Animated.View>
 
       <View style={{ height: 4 }} />
+      <ResumeStrip tourIds={TOURS.map(t => t.id)} />
       {cities.map((c, i) => (
         <Animated.View key={c.id} entering={rise(i + 3)}>
           <CityCard city={c} routes={routes} />

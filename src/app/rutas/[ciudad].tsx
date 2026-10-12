@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LockedTourSheet } from '@/components/LockedTour';
 import { rise } from '@/components/motion';
 import { LockedRouteCard, TourRouteCard } from '@/components/RouteCard';
+import { ResumeStrip } from '@/components/ResumeStrip';
 import { RouteStamp } from '@/components/RouteStamp';
 import { IconButton } from '@/components/ui';
 import { getCity, toursIn } from '@/data/tours';
@@ -39,6 +40,7 @@ export default function CityRoutes() {
           {open.length > 0 && <Text style={s.count}><Text style={{ color: neutral.ink, fontFamily: font.black }}>{completed} de {open.length}</Text> hechas</Text>}
         </Animated.View>
         <View style={{ height: 6 }} />
+        <ResumeStrip tourIds={open.map(t => t.id)} />
         {open.map((t, i) => (
           <Animated.View key={t.id} entering={rise(3 + i)}><TourRouteCard tour={t} route={routes[t.id]} /></Animated.View>
         ))}

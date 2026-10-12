@@ -1,14 +1,13 @@
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Path, Polyline, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, G, LinearGradient, Path, Polyline, Rect, Stop } from 'react-native-svg';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { euros } from '@/components/LockedTour';
 import { PressableScale } from '@/components/motion';
 import { RouteStamp } from '@/components/RouteStamp';
 import { stopInk } from '@/components/RubberStamp';
 import type { LockedTour, Tour } from '@/data/types';
-import { cumulative, formatDistance } from '@/lib/geo';
 import { routeProgress, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { brand, functional, neutral, radius, shadow, type TourPalette } from '@/theme/tokens';
@@ -25,21 +24,6 @@ export const HERO = 112;
 
 const I = {
   ticket: (c: string) => <Path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z" fill="none" stroke={c} strokeWidth={2.4} strokeLinejoin="round" />,
-  clock: (c: string) => (
-    <>
-      <Circle cx={12} cy={12} r={9} fill="none" stroke={c} strokeWidth={2.6} />
-      <Path d="M12 7v5l3.5 2" fill="none" stroke={c} strokeWidth={2.6} strokeLinecap="round" />
-    </>
-  ),
-  steps: (c: string) => <Path d="M7.5 3C9.4 3 10 5 10 7.3S9.2 11 7.5 11 5 9.6 5 7.3 5.6 3 7.5 3zM5.4 12.5h4.2v2.2a2.1 2.1 0 0 1-4.2 0zM16.5 8c1.9 0 2.5 2 2.5 4.3S18.2 16 16.5 16 14 14.6 14 12.3 14.6 8 16.5 8zM14.4 17.5h4.2v2.2a2.1 2.1 0 0 1-4.2 0z" fill={c} />,
-  pin: (c: string) => <Path d="M12 22s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zm0-9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" fill={c} />,
-  audio: (c: string) => (
-    <>
-      <Path d="M4 15v-3a8 8 0 0 1 16 0v3" fill="none" stroke={c} strokeWidth={2.4} strokeLinecap="round" />
-      <Rect x={3} y={14} width={5} height={7} rx={2} fill="none" stroke={c} strokeWidth={2.4} />
-      <Rect x={16} y={14} width={5} height={7} rx={2} fill="none" stroke={c} strokeWidth={2.4} />
-    </>
-  ),
   lock: (c: string) => (
     <>
       <Rect x={4.5} y={10.5} width={15} height={10.5} rx={2.5} fill={c} />
@@ -69,6 +53,36 @@ export function stopInks(tour: Tour, route: UserRoute | undefined) {
 }
 
 export const durationLabel = (min: number) => (min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60}` : ''}`);
+
+/* ── Rastro de pasos ──────────────────────────────────────────────── */
+
+/** Una pisada (24 × 24, punta hacia arriba) */
+const FOOT = 'M12 1.5c3.6 0 5.5 3.6 5.5 7.6S15.6 15 12 15s-5.5-2-5.5-5.9S8.4 1.5 12 1.5zM8.7 16.5h6.6v2.6a3.3 3.3 0 0 1-6.6 0z';
+
+/**
+ * Duración como un rastro de pisadas hacia la derecha, una cada 5 minutos
+ * (más largo cuanto más dura el paseo), y los minutos al final.
+ */
+export function Trail({ minutes, color }: { minutes: number; color: string }) {
+  const n = Math.min(18, Math.max(3, Math.round(minutes / 5)));
+  const step = 15, size = 15;
+  return (
+    <View style={s.trail} accessible accessibilityLabel={`${minutes} minutos a pie`}>
+      <Svg width={n * step + 4} height={22}>
+        {Array.from({ length: n }, (_, i) => {
+          const up = i % 2 === 0;
+          // Izquierda y derecha alternas, de más clara a más marcada
+          return (
+            <G key={i} opacity={0.35 + (0.65 * (i + 1)) / n} transform={`translate(${i * step} ${up ? 0 : 7}) rotate(${up ? 80 : 100} ${size / 2} ${size / 2}) scale(${size / 24})`}>
+              <Path d={FOOT} fill={color} />
+            </G>
+          );
+        })}
+      </Svg>
+      <Text style={s.trailText}>{durationLabel(minutes)}</Text>
+    </View>
+  );
+}
 
 /* ── Ruta dibujada ───────────────────────────────────────────────── */
 
@@ -138,15 +152,11 @@ export function TourRouteCard({ tour, route }: { tour: Tour; route: UserRoute | 
   const p = tour.palette;
   const prog = routeProgress(tour.id, route);
   const stamped = stopInks(tour, route).map(Boolean);
-  const meters = tour.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
   const next = stamped.indexOf(false);
-  const tag = prog.completed
-    ? <Tag label="¡Sello tuyo!" bg={neutral.ink} color="#fff" />
-    : prog.started
-      ? <Tag label={`Parada ${next + 1} de ${prog.total}`} bg={p.soft} color={p.deep} />
-      : tour.price === 'free'
-        ? <Tag label="Gratis" bg={brand.sun} color={neutral.ink} />
-        : <Tag label={euros(tour.price.eur)} bg={functional.premium} color="#fff" icon={<Icon name="lock" color={functional.gold} size={12} />} />;
+  // Solo el precio: si la ruta está hecha o a medias ya lo dicen el sello y la línea
+  const tag = tour.price === 'free'
+    ? <Tag label="Gratis" bg={brand.sun} color={neutral.ink} />
+    : <Tag label={euros(tour.price.eur)} bg={functional.premium} color="#fff" icon={<Icon name="lock" color={functional.gold} size={12} />} />;
   const label = `${tour.title}. ${prog.completed ? 'Completada' : prog.started ? `Vas por la parada ${next + 1} de ${prog.total}` : `${prog.total} paradas`}`;
 
   return (
@@ -165,12 +175,7 @@ export function TourRouteCard({ tour, route }: { tour: Tour; route: UserRoute | 
           </View>
           {tag}
         </View>
-        <View style={s.stats}>
-          <Stat icon="clock" color={p.t}>{durationLabel(tour.durationMin)}</Stat>
-          <Stat icon="steps" color={p.t}>{formatDistance(meters)}</Stat>
-          <Stat icon="pin" color={p.t}>{tour.stops.length} paradas</Stat>
-          <Stat icon="audio" color={p.t}>Audio</Stat>
-        </View>
+        <Trail minutes={tour.durationMin} color={p.t} />
       </View>
     </PressableScale>
   );
@@ -196,10 +201,7 @@ export function LockedRouteCard({ tour, onPress }: { tour: LockedTour; onPress: 
           </View>
           <Tag label={euros(tour.eur)} bg={functional.premium} color="#fff" icon={<Icon name="lock" color={functional.gold} size={12} />} />
         </View>
-        <View style={s.stats}>
-          <Stat icon="clock" color={neutral.ink3}>{durationLabel(tour.durationMin)}</Stat>
-          <Stat icon="pin" color={neutral.ink3}>{tour.stops} paradas</Stat>
-        </View>
+        <Trail minutes={tour.durationMin} color={neutral.ink3} />
       </View>
     </PressableScale>
   );
@@ -215,7 +217,8 @@ const s = StyleSheet.create({
   title: { fontFamily: font.serif, fontSize: 19, lineHeight: 22, color: neutral.ink, marginTop: 1 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 26, paddingHorizontal: 10, borderRadius: radius.pill },
   tagText: { fontFamily: font.black, fontSize: 12 },
-  stats: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 6 },
+  trail: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  trailText: { fontFamily: font.black, fontSize: 14, color: neutral.ink },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   statText: { fontFamily: font.black, fontSize: 13.5, color: neutral.ink },
 });
