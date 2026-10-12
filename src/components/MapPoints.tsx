@@ -1,74 +1,71 @@
 import { Marker } from '@maplibre/maplibre-react-native';
+import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-import { PressableScale } from '@/components/motion';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
+import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
 import { POINT_ICON, POINTS, type MapPoint } from '@/data/points';
 import type { LngLat } from '@/data/types';
-import { distance } from '@/lib/geo';
+import { distance, formatDistance } from '@/lib/geo';
+import { LEAVE, nearbyPoint } from '@/lib/points';
 import { font } from '@/theme/fonts';
-import { neutral, shadow, type TourPalette } from '@/theme/tokens';
+import { shadow, type TourPalette } from '@/theme/tokens';
 
 /*
  * Puntos marcados del mapa (src/data/points.ts), los mismos en todas las rutas.
- * Aquí sí hay rebote a propósito: el pin cae y se aplasta al tocar el suelo, y
- * la burbuja salta desde el pin con un muelle que se pasa y vuelve. Al pasar
- * cerca de un punto, su burbuja salta sola una vez.
+ * Cada uno es un punto pequeño junto a la calle. Al acercarte, el punto se
+ * abre en la foto redonda del sitio con su nombre debajo, y al dejarlo atrás
+ * se vuelve a cerrar. Tocarlo también lo abre y lo cierra.
  */
 
-/** A esta distancia (m) la burbuja salta sola */
-const NEAR = 45;
-/** La burbuja que saltó sola se cierra pasado este tiempo si no la tocas */
-const AUTO_CLOSE_MS = 7000;
-const PIN = 38;
-const BUBBLE_W = 230;
-const BUBBLE_H = 104;
+const DOT = 16;
+const ROUND = 74;
+const BOX_W = 180;
+const BOX_H = ROUND + 40 + DOT;
 
-/** Muelle juguetón: se pasa un poco y vuelve */
-const POP = { damping: 9, stiffness: 340, mass: 0.7 } as const;
+/** Muelle con un pelín de rebote: la foto se pasa un poco de tamaño y se posa */
+const OPEN = { damping: 13, stiffness: 300, mass: 0.8 } as const;
 
 export function MapPoints({ position, palette }: { position: LngLat | null; palette: TourPalette }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const [auto, setAuto] = useState(false);
-  const seen = useRef(new Set<string>());
+  const [near, setNear] = useState<string | null>(null);
+  const [tapped, setTapped] = useState<string | null>(null);
+  const dismissed = useRef(new Set<string>());
 
-  // Al pasar cerca de un punto que aún no ha saltado, salta solo
   useEffect(() => {
     if (!position) return;
-    const near = POINTS.find(pt => !seen.current.has(pt.id) && distance(position, pt.coord) < NEAR);
-    if (!near) return;
-    seen.current.add(near.id);
-    setOpen(near.id);
-    setAuto(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-  }, [position]);
+    // Los cerrados a mano vuelven a poder abrirse cuando te has alejado
+    for (const id of dismissed.current) {
+      const pt = POINTS.find(x => x.id === id);
+      if (!pt || distance(position, pt.coord) >= LEAVE) dismissed.current.delete(id);
+    }
+    const next = nearbyPoint(POINTS, position, near, dismissed.current);
+    if (next === near) return;
+    setNear(next);
+    if (next) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  }, [position, near]);
 
-  useEffect(() => {
-    if (!open || !auto) return;
-    const id = setTimeout(() => setOpen(null), AUTO_CLOSE_MS);
-    return () => clearTimeout(id);
-  }, [open, auto]);
-
+  const open = tapped ?? near;
   const toggle = (id: string) => {
-    seen.current.add(id);
-    setAuto(false);
-    setOpen(v => (v === id ? null : id));
     Haptics.selectionAsync().catch(() => {});
+    if (open === id) {
+      setTapped(null);
+      if (near === id) { dismissed.current.add(id); setNear(null); }
+    } else {
+      setTapped(id);
+    }
   };
 
   return POINTS.map((pt, i) => (
     <Marker key={pt.id} id={`point-${pt.id}`} lngLat={pt.coord} anchor="bottom">
-      <PointPin point={pt} index={i} open={open === pt.id} palette={palette} onPress={() => toggle(pt.id)} />
+      <PointPin
+        point={pt}
+        index={i}
+        open={open === pt.id}
+        meters={position && open === pt.id ? distance(position, pt.coord) : null}
+        palette={palette}
+        onPress={() => toggle(pt.id)}
+      />
     </Marker>
   ));
 }
@@ -77,77 +74,65 @@ interface PointPinProps {
   point: MapPoint;
   index: number;
   open: boolean;
+  /** Distancia a ti, si está abierto */
+  meters: number | null;
   palette: TourPalette;
   onPress: () => void;
 }
 
-/** Pin con su burbuja encima. La caja tiene siempre el mismo tamaño para que el pin no se mueva al abrirla. */
-function PointPin({ point, index, open, palette: p, onPress }: PointPinProps) {
+/**
+ * Punto que se abre en foto. La caja tiene siempre el mismo tamaño y se ancla
+ * por abajo, así el punto no se mueve en el mapa al abrirse.
+ */
+function PointPin({ point, index, open, meters, palette: p, onPress }: PointPinProps) {
   const reduced = useReducedMotion();
-  const drop = useSharedValue(reduced ? 1 : 0);
-  const squash = useSharedValue(0);
-  const bubble = useSharedValue(0);
+  const appear = useSharedValue(reduced ? 1 : 0);
+  const o = useSharedValue(0);
 
-  // Entrada: cae desde arriba con muelle, después de las paradas
+  // Los puntos aparecen con un fundido después de las paradas
   useEffect(() => {
     if (reduced) return;
-    drop.set(withDelay(700 + index * 110, withSpring(1, POP)));
-  }, [drop, index, reduced]);
+    appear.set(withDelay(700 + index * 90, withTiming(1, { duration: DUR.slow, easing: EASE_OUT })));
+  }, [appear, index, reduced]);
 
-  // Al abrirse: el pin se aplasta y estira, y la burbuja salta desde él
   useEffect(() => {
-    if (reduced) { bubble.set(open ? 1 : 0); return; }
-    if (open) {
-      squash.set(withSequence(withTiming(1, { duration: 90, easing: Easing.out(Easing.quad) }), withSpring(0, { damping: 6, stiffness: 420 })));
-      bubble.set(withSpring(1, POP));
-    } else {
-      bubble.set(withTiming(0, { duration: 150, easing: Easing.in(Easing.quad) }));
-    }
-  }, [open, reduced, bubble, squash]);
+    if (reduced) o.set(withTiming(open ? 1 : 0, { duration: DUR.fast }));
+    else o.set(open ? withSpring(1, OPEN) : withTiming(0, { duration: 200, easing: Easing.in(Easing.quad) }));
+  }, [open, reduced, o]);
 
-  const pinStyle = useAnimatedStyle(() => ({
-    opacity: Math.min(1, drop.value * 3),
-    transform: [
-      { translateY: (1 - drop.value) * -26 },
-      { scaleX: drop.value * (1 + squash.value * 0.22) },
-      { scaleY: drop.value * (1 - squash.value * 0.2) },
-    ],
-  }));
-  const bubbleStyle = useAnimatedStyle(() => ({
-    opacity: Math.min(1, bubble.value * 2.5),
-    transform: [{ translateY: (1 - bubble.value) * 18 }, { scale: 0.35 + bubble.value * 0.65 }, { rotate: `${(1 - bubble.value) * -6}deg` }],
-  }));
+  const dot = useAnimatedStyle(() => ({ opacity: appear.value, transform: [{ scale: appear.value * (1 + Math.min(1, o.value) * 0.25) }] }));
+  const bubble = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, o.value) * 2.5), transform: [{ scale: Math.max(0, o.value) }] }));
 
   return (
     <View style={s.box} pointerEvents="box-none">
-      <Animated.View style={[s.bubble, bubbleStyle]} pointerEvents={open ? 'auto' : 'none'}>
-        <PressableScale accessibilityRole="button" accessibilityLabel={`Cerrar ${point.name}`} onPress={onPress} scaleTo={0.97} style={s.card}>
-          <View style={s.head}>
-            <Text style={s.icon}>{POINT_ICON[point.kind]}</Text>
-            <Text style={[s.name, { color: p.deep }]} numberOfLines={1}>{point.name}</Text>
+      <Animated.View style={[s.bubble, bubble]} pointerEvents={open ? 'auto' : 'none'}>
+        <PressableScale accessibilityRole="button" accessibilityLabel={`Cerrar ${point.name}`} onPress={onPress} scaleTo={0.95} style={s.bubbleIn}>
+          <View style={[s.round, { backgroundColor: p.soft }]}>
+            {point.photo
+              ? <Image source={point.photo} style={StyleSheet.absoluteFill} contentFit="cover" transition={DUR.fast} />
+              : <Text style={s.roundIcon}>{POINT_ICON[point.kind]}</Text>}
           </View>
-          <Text style={s.text} numberOfLines={3}>{point.text}</Text>
+          <View style={[s.tag, { backgroundColor: p.deep }]}>
+            <Text style={s.tagName} numberOfLines={1}>{point.name}</Text>
+            {meters != null && <Text style={[s.tagDist, { color: p.t2 }]}>{formatDistance(Math.max(5, Math.round(meters / 5) * 5))}</Text>}
+          </View>
         </PressableScale>
-        <View style={s.tail} />
       </Animated.View>
-      <PressableScale accessibilityRole="button" accessibilityLabel={point.name} onPress={onPress} hitSlop={10} scaleTo={0.85}>
-        <Animated.View style={[s.pin, { backgroundColor: p.t2 }, pinStyle]}>
-          <Text style={s.pinIcon}>{POINT_ICON[point.kind]}</Text>
-        </Animated.View>
+      <PressableScale accessibilityRole="button" accessibilityLabel={point.name} onPress={onPress} hitSlop={14} scaleTo={0.85}>
+        <Animated.View style={[s.dot, { backgroundColor: p.t2 }, dot]} />
       </PressableScale>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  box: { width: BUBBLE_W, height: BUBBLE_H + PIN + 10, alignItems: 'center', justifyContent: 'flex-end' },
-  pin: { width: PIN, height: PIN, borderRadius: PIN / 2, borderWidth: 3, borderColor: '#fff', alignItems: 'center', justifyContent: 'center', transformOrigin: 'bottom', ...shadow[2] },
-  pinIcon: { fontSize: 17 },
-  bubble: { position: 'absolute', bottom: PIN + 8, width: BUBBLE_W, alignItems: 'center', transformOrigin: 'bottom' },
-  card: { width: '100%', backgroundColor: neutral.surface, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10, gap: 3, ...shadow[3] },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  icon: { fontSize: 15 },
-  name: { flex: 1, fontFamily: font.black, fontSize: 14.5 },
-  text: { fontFamily: font.bold, fontSize: 12.5, lineHeight: 16.5, color: neutral.ink2 },
-  tail: { width: 14, height: 14, marginTop: -8, backgroundColor: neutral.surface, transform: [{ rotate: '45deg' }] },
+  box: { width: BOX_W, height: BOX_H, alignItems: 'center', justifyContent: 'flex-end' },
+  dot: { width: DOT, height: DOT, borderRadius: DOT / 2, borderWidth: 3, borderColor: '#fff', ...shadow[2] },
+  bubble: { position: 'absolute', bottom: DOT + 4, width: BOX_W, alignItems: 'center', transformOrigin: 'bottom' },
+  bubbleIn: { alignItems: 'center', gap: 6 },
+  round: { width: ROUND, height: ROUND, borderRadius: ROUND / 2, borderWidth: 4, borderColor: '#fff', overflow: 'hidden', alignItems: 'center', justifyContent: 'center', ...shadow[3] },
+  roundIcon: { fontSize: 30 },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: BOX_W, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, ...shadow[2] },
+  tagName: { flexShrink: 1, fontFamily: font.black, fontSize: 12, color: '#fff' },
+  tagDist: { fontFamily: font.black, fontSize: 12 },
 });
