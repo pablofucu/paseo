@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MadridArt } from '@/components/CityArt';
@@ -9,6 +9,7 @@ import { ResumeStrip } from '@/components/ResumeStrip';
 import { Stat } from '@/components/RouteCard';
 import { RouteStamp } from '@/components/RouteStamp';
 import { Scrim } from '@/components/Scrim';
+import { IconButton } from '@/components/ui';
 import { CITIES, getCity, getTour, toursIn, TOURS, type City } from '@/data/tours';
 import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
 import { useSettings } from '@/store/settings';
@@ -58,8 +59,6 @@ function CityCard({ city, routes }: { city: City; routes: Record<string, UserRou
 export default function Home() {
   const insets = useSafeAreaInsets();
   const routes = usePassport(s => s.routes);
-  const reset = usePassport(s => s.reset);
-  const { testMode, setTestMode, language } = useSettings();
   const city = useSettings(s => s.city);
   // La ciudad elegida en la bienvenida va primero
   const cities = [...CITIES].sort((a, b) => Number(b.id === city) - Number(a.id === city));
@@ -70,10 +69,7 @@ export default function Home() {
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 20, gap: 12 }}>
       <Animated.View entering={rise(0)} style={s.top}>
         <Text style={[type.overline, { color: brand.coral, flex: 1 }]}>Paseo</Text>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de idioma" onPress={() => router.push({ pathname: '/bienvenida', params: { change: '1' } })} style={s.lang}>
-          <View style={s.langDot}><Text style={s.langCode}>{(language ?? 'es').toUpperCase()}</Text></View>
-          <Text style={s.langText}>{language === 'en' ? 'English' : 'Español'}</Text>
-        </PressableScale>
+        <IconButton label="Ajustes" icon="settings" onPress={() => router.push('/ajustes')} style={s.settings} />
       </Animated.View>
       <Animated.Text entering={rise(1)} style={s.hello}>¿Dónde paseamos hoy?</Animated.Text>
       <Animated.View entering={rise(2)} style={{ flexDirection: 'row' }}>
@@ -94,29 +90,13 @@ export default function Home() {
           <CityCard city={c} routes={routes} />
         </Animated.View>
       ))}
-
-      <Animated.View entering={rise(cities.length + 3)} style={s.test}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.testTitle}>Modo prueba</Text>
-          <Text style={type.caption}>Recorre los tours sin moverte: paseo simulado, velocidad, llegar a la parada o tocar el mapa para moverte.</Text>
-        </View>
-        <Switch accessibilityLabel="Modo prueba" value={testMode} onValueChange={setTestMode} trackColor={{ true: brand.coral, false: neutral.line }} thumbColor="#fff" />
-      </Animated.View>
-      {testMode && (
-        <Pressable accessibilityRole="button" onPress={reset} style={{ alignSelf: 'center', padding: 8 }}>
-          <Text style={[type.caption, { textDecorationLine: 'underline' }]}>Borrar el pasaporte (sellos y postales)</Text>
-        </Pressable>
-      )}
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  lang: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingLeft: 5, paddingRight: 12, borderRadius: 999, backgroundColor: neutral.surface, ...shadow[1] },
-  langDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: brand.coral, alignItems: 'center', justifyContent: 'center' },
-  langCode: { fontFamily: font.black, fontSize: 10, color: '#fff' },
-  langText: { fontFamily: font.black, fontSize: 13, color: neutral.ink },
+  settings: { width: 38, height: 38, backgroundColor: neutral.surface, ...shadow[1] },
   hello: { fontFamily: font.serif, fontSize: 30, lineHeight: 34, color: neutral.ink },
   sumpill: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: neutral.ink },
   mini: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: neutral.ink },
@@ -131,6 +111,4 @@ const s = StyleSheet.create({
   statText: { fontFamily: font.black, fontSize: 13.5, color: neutral.ink },
   sunDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: brand.sun },
   cnt: { fontFamily: font.black, fontSize: 12.5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden' },
-  test: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6, padding: 14, borderRadius: 18, borderWidth: 1.5, borderStyle: 'dashed', borderColor: neutral.line },
-  testTitle: { fontFamily: font.black, fontSize: 15, color: neutral.ink, marginBottom: 2 },
 });
