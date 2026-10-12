@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
@@ -7,8 +7,19 @@ import { pageTurn } from '@/lib/feedback';
 import { sheetFor } from '@/lib/sheet';
 import { font } from '@/theme/fonts';
 
-/** Pasar hoja con los botones: rotateY 0 → −180° sobre el lomo en 800 ms; arranca suave, se acelera y se posa */
-const TURN_MS = 800;
+/** Pasar hoja con los botones: rotateY 0 → −180° sobre el lomo en 750 ms; arranca suave, se acelera y se posa */
+const TURN_MS = 750;
+/**
+ * La hoja se curva como el papel: se parte en tramos (en fracciones del ancho,
+ * del lomo al borde) unidos por bisagras. Cada bisagra dobla una parte de la
+ * curva, más hacia el borde, que se queda atrás al levantarse la hoja.
+ */
+const SEGMENTS = [0.4, 0.24, 0.2, 0.16];
+const JOINTS = [0, 0.22, 0.33, 0.45];
+/** Curva total del borde en el punto más alto del giro (grados) */
+const BEND = { paper: 46, cover: 9 };
+/** Distancia de la cámara en anchos de hoja: más cerca, más se acerca el borde de la hoja al levantarse */
+const DEPTH = 3;
 const EASE = Easing.bezier(0.42, 0.05, 0.2, 1);
 /** La pista de «se puede pasar con el dedo» se enseña una vez por sesión */
 let hinted = false;
@@ -17,6 +28,8 @@ export interface Leaf {
   key: string;
   front: ReactNode;
   back: ReactNode;
+  /** Tapa de piel: apenas se curva al girar */
+  stiff?: boolean;
 }
 
 interface Props {
@@ -34,13 +47,17 @@ interface Props {
  * pasan arrastrando con el dedo (más del 30 % del ancho o soltando con
  * velocidad > 0,5 px/ms) o con los botones. Cada hoja tiene reverso de papel
  * y una sombra recorre la cara mientras gira.
+ *
+ * Qué hoja está pasada, cuál gira y en qué orden se apilan se decide en el
+ * hilo de UI (indexSV, turningSV): si dependiera del render de React, al
+ * terminar un giro la hoja volvería un instante a su sitio antes de que
+ * llegase el índice nuevo.
  */
 export function Book({ leaves, width, spread, index, onIndex }: Props) {
   const height = sheetFor(width).h;
   const reduced = useReducedMotion();
   const deg = useSharedValue(0);
-  const [turning, setTurning] = useState<number | null>(null);
-  // Lo que necesita el gesto en el hilo de UI
+  // Hoja que gira (−1 si ninguna) y hoja abierta, en el hilo de UI
   const turningSV = useSharedValue(-1);
   const indexSV = useSharedValue(index);
   const countSV = useSharedValue(leaves.length);
@@ -49,26 +66,33 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
   useEffect(() => { indexSV.set(index); }, [index, indexSV]);
   useEffect(() => { countSV.set(leaves.length); }, [leaves.length, countSV]);
 
-  // Fin del giro (en JS): cambia de hoja y desmonta lo que ya no se ve
-  const settled = useCallback((i: number, dir: number, complete: boolean) => {
-    if (complete) onIndex(dir === 1 ? i + 1 : i);
-    turningSV.set(-1);
-    setTurning(null);
-  }, [onIndex, turningSV]);
+  // Fin del giro (en JS): avisa del índice nuevo; la libreta ya lo enseña desde el hilo de UI
+  const settled = useCallback((next: number) => onIndex(next), [onIndex]);
 
   const flip = (dir: 1 | -1) => {
-    if (turning != null) return;
-    if (dir === 1 && index >= leaves.length - 1) return;
-    if (dir === -1 && index <= 0) return;
-    const i = dir === 1 ? index : index - 1;
+    // El índice del hilo de UI ya va por delante si un giro acaba de terminar
+    const idx = indexSV.value;
+    if (turningSV.value >= 0) return;
+    if (dir === 1 && idx >= leaves.length - 1) return;
+    if (dir === -1 && idx <= 0) return;
+    const i = dir === 1 ? idx : idx - 1;
     deg.set(dir === 1 ? 0 : -180);
     turningSV.set(i);
-    setTurning(i);
     pageTurn();
     deg.set(withTiming(dir === 1 ? -180 : 0, { duration: reduced ? 0 : TURN_MS, easing: EASE }, done => {
       'worklet';
-      if (done) scheduleOnRN(settled, i, dir, true);
+      land(i, dir, true);
     }));
+  };
+
+  // Al posarse la hoja, el índice y la pila cambian en el mismo fotograma
+  const land = (i: number, dir: number, complete: boolean) => {
+    'worklet';
+    if (turningSV.value !== i) return;
+    const next = complete ? (dir === 1 ? i + 1 : i) : indexSV.value;
+    indexSV.set(next);
+    turningSV.set(-1);
+    if (complete) scheduleOnRN(settled, next);
   };
 
   // Pista la primera vez: la esquina de la tapa se levanta un poco y vuelve
@@ -78,13 +102,12 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
     const t = setTimeout(() => {
       if (turningSV.value >= 0) return;
       turningSV.set(0);
-      setTurning(0);
       deg.set(withSequence(
         withTiming(-24, { duration: 420, easing: Easing.out(Easing.quad) }),
         withTiming(0, { duration: 640, easing: Easing.inOut(Easing.quad) }),
       ));
       // El aviso de fin de una animación dentro de withSequence no siempre llega: se cierra a tiempo fijo
-      end = setTimeout(() => { deg.set(0); settled(0, 1, false); }, 1300);
+      end = setTimeout(() => { deg.set(0); if (turningSV.value === 0) turningSV.set(-1); }, 1300);
     }, 700);
     let end: ReturnType<typeof setTimeout> | undefined;
     return () => { clearTimeout(t); clearTimeout(end); };
@@ -108,7 +131,6 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
         deg.set(dir === 1 ? 0 : -180);
         turningSV.set(i);
         dragSV.set(1);
-        scheduleOnRN(setTurning, i);
       }
       const t = turningSV.value;
       // La hoja sigue al dedo; pasado el lomo, se curva un poco más deprisa
@@ -130,7 +152,7 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
       // Al soltar, la hoja sigue con la velocidad del dedo y se asienta con un muelle
       deg.set(withSpring(target, { velocity: (e.velocityX / width) * 180, damping: 22, stiffness: 170, mass: 0.9, overshootClamping: true }, done => {
         'worklet';
-        if (done) scheduleOnRN(settled, t, dir, complete);
+        land(t, dir, complete);
       }));
     },
   });
@@ -143,26 +165,23 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
     const a = -deg.value;
     return { opacity: turningSV.value >= 0 ? Math.sin((a * Math.PI) / 180) * 0.55 : 0 };
   });
-  // La hoja se levanta un poco a mitad de giro
-  const lift = useAnimatedStyle(() => {
-    const a = turningSV.value >= 0 ? Math.sin((-deg.value * Math.PI) / 180) : 0;
-    return { transform: [{ scale: 1 + a * 0.012 }] };
+  // Con una sola hoja en pantalla, la cámara acompaña a la que gira: la libreta se aleja
+  // un poco y se desplaza hacia el lado del lomo para que se vea la hoja de pie y su vuelta
+  const camera = useAnimatedStyle(() => {
+    const a = !spread && turningSV.value >= 0 ? Math.sin((-deg.value * Math.PI) / 180) : 0;
+    return { transform: [{ translateX: width * 0.12 * a }, { scale: 1 - a * 0.14 }] };
   });
 
   return (
     <View style={{ alignItems: 'center', gap: 14 }}>
       <GestureDetector gesture={pan}>
-        <Animated.View style={[{ width: spread ? width * 2 : width, height, overflow: spread ? 'visible' : 'hidden' }, lift]}>
-          {visible.map(({ l, i }) => {
-            const flipped = i < index;
-            const isTurning = turning === i;
-            const z = isTurning ? 1000 : flipped ? i : 500 - i;
-            return (
-              <Page key={l.key} i={i} deg={deg} turning={turningSV} flipped={flipped} width={width} height={height} left={spread ? width : 0} z={z} back={l.back}>
-                {l.front}
-              </Page>
-            );
-          })}
+        {/* Sin recortar: la hoja sale del lomo hacia el espectador y sigue más allá del borde */}
+        <Animated.View style={[{ width: spread ? width * 2 : width, height }, camera]}>
+          {visible.map(({ l, i }) => (
+            <Page key={l.key} i={i} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
+              {l.front}
+            </Page>
+          ))}
           <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: spread ? width : 0, top: 0, width, height, zIndex: 999 }, s.cast, cast]} />
         </Animated.View>
       </GestureDetector>
@@ -183,45 +202,121 @@ interface PageProps {
   i: number;
   deg: SharedValue<number>;
   turning: SharedValue<number>;
-  flipped: boolean;
+  index: SharedValue<number>;
+  spread: boolean;
+  stiff: boolean;
   width: number;
   height: number;
   left: number;
-  z: number;
   back: ReactNode;
   children: ReactNode;
 }
 
-const Page = memo(function Page({ i, deg, turning, flipped, width, height, left, z, back, children }: PageProps) {
+const Page = memo(function Page({ i, deg, turning, index, spread, stiff, width, height, left, back, children }: PageProps) {
+  const perspective = width * DEPTH;
   // Cada estilo lee los valores compartidos directamente: así Reanimated sabe de qué depende
   const leaf = useAnimatedStyle(() => {
-    const a = turning.value === i ? deg.value : flipped ? -180 : 0;
-    return { transform: [{ perspective: 1600 }, { rotateY: `${a}deg` }] };
+    const t = turning.value === i;
+    const flipped = i < index.value;
+    const a = t ? deg.value : flipped ? -180 : 0;
+    return {
+      // Encima la que gira; luego las pasadas (la última arriba) y las por pasar (la siguiente arriba)
+      zIndex: t ? 1000 : flipped ? i : 500 - i,
+      // Con una sola hoja, las ya pasadas quedan fuera de la pantalla
+      opacity: !spread && flipped && !t ? 0 : 1,
+      transform: [{ perspective }, { rotateY: `${a}deg` }],
+    };
   });
-  const front = useAnimatedStyle(() => {
-    const a = turning.value === i ? deg.value : flipped ? -180 : 0;
-    return { opacity: a > -90 ? 1 : 0 };
-  });
-  const rear = useAnimatedStyle(() => {
-    const a = turning.value === i ? deg.value : flipped ? -180 : 0;
-    return { opacity: a > -90 ? 0 : 1 };
-  });
-  // Sombra que recorre la cara mientras gira
-  const shade = useAnimatedStyle(() => ({ opacity: turning.value === i ? Math.sin((-deg.value * Math.PI) / 180) * 0.9 : 0 }));
-  const shadeBack = useAnimatedStyle(() => ({ opacity: turning.value === i ? interpolate(-deg.value, [90, 180], [0.7, 0]) : 0 }));
+  const seg = { i, deg, turning, index, stiff, width, height, perspective, front: children, back };
   return (
-    <Animated.View style={[{ position: 'absolute', left, top: 0, width, height, zIndex: z, transformOrigin: 'left center' }, leaf]}>
-      <Animated.View style={[StyleSheet.absoluteFill, front]}>
-        {children}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shade, shade]} />
-      </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scaleX: -1 }] }, rear]}>
-        {back}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shadeBack, shadeBack]} />
-      </Animated.View>
+    <Animated.View style={[{ position: 'absolute', left, top: 0, width: edges(width)[1], height, transformOrigin: 'left center' }, leaf]}>
+      <Segment k={0} {...seg} />
     </Animated.View>
   );
 });
+
+/** Bordes de los tramos en píxeles enteros, para que no se abran rendijas entre ellos */
+function edges(width: number) {
+  let acc = 0;
+  return [0, ...SEGMENTS.map(f => Math.round((acc += f) * width))];
+}
+
+interface SegmentProps {
+  k: number;
+  i: number;
+  deg: SharedValue<number>;
+  turning: SharedValue<number>;
+  index: SharedValue<number>;
+  stiff: boolean;
+  width: number;
+  height: number;
+  perspective: number;
+  front: ReactNode;
+  back: ReactNode;
+}
+
+/**
+ * Un tramo de la hoja: recorta su franja del anverso y del reverso, y lleva
+ * colgado el siguiente tramo de su borde derecho, doblado un poco más.
+ */
+function Segment({ k, i, deg, turning, index, stiff, width, height, perspective, front, back }: SegmentProps) {
+  const e = edges(width);
+  const x = e[k], w = e[k + 1] - x;
+  const last = k === SEGMENTS.length - 1;
+  // Curva de la hoja que gira: más al levantarse que al posarse, y nada en reposo.
+  // Hacia delante el borde se queda atrás (menos girado); hacia atrás, igual en sentido contrario.
+  // Las funciones reciben los valores ya leídos: cada estilo los lee directamente para que Reanimated sepa de qué depende
+  const bend = (t: number, d: number, idx: number) => {
+    'worklet';
+    if (t !== i) return 0;
+    const r = (-d * Math.PI) / 180;
+    const lag = i === idx ? 1 : -1;
+    return lag * (stiff ? BEND.cover : BEND.paper) * Math.sin(r) * (1 + 0.4 * Math.cos(r));
+  };
+  // Ángulo total de este tramo, para saber qué cara enseña y cuánta sombra lleva
+  let share = 0;
+  for (let j = 1; j <= k; j++) share += JOINTS[j];
+  const angle = (t: number, d: number, idx: number) => {
+    'worklet';
+    return (t === i ? d : i < idx ? -180 : 0) + share * bend(t, d, idx);
+  };
+  const face = useAnimatedStyle(() => ({ opacity: angle(turning.value, deg.value, index.value) > -90 ? 1 : 0 }));
+  const rear = useAnimatedStyle(() => ({ opacity: angle(turning.value, deg.value, index.value) > -90 ? 0 : 1 }));
+  // Sombra que recorre la cara mientras gira: los tramos más doblados, algo más oscuros
+  const shade = useAnimatedStyle(() => {
+    const t = turning.value;
+    return { opacity: t === i ? Math.min(1, Math.sin((-angle(t, deg.value, index.value) * Math.PI) / 180) * 0.9) : 0 };
+  });
+  const shadeBack = useAnimatedStyle(() => {
+    const t = turning.value;
+    return { opacity: t === i ? interpolate(-angle(t, deg.value, index.value), [90, 180], [0.7, 0], 'clamp') : 0 };
+  });
+  const joint = useAnimatedStyle(() => ({ transform: [{ perspective }, { rotateY: `${last ? 0 : JOINTS[k + 1] * bend(turning.value, deg.value, index.value)}deg` }] }));
+  // Cada franja solapa 1 px con la siguiente para que no se vea la costura
+  const clip = { position: 'absolute', left: 0, top: 0, width: last ? w : w + 1, height, overflow: 'hidden' } as const;
+  const sheet = { position: 'absolute', left: -x, top: 0, width, height } as const;
+  return (
+    <>
+      <Animated.View style={[clip, face]}>
+        <View style={sheet}>
+          {front}
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shade, shade]} />
+        </View>
+      </Animated.View>
+      <Animated.View style={[clip, rear]}>
+        <View style={[sheet, { transform: [{ scaleX: -1 }] }]}>
+          {back}
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shadeBack, shadeBack]} />
+        </View>
+      </Animated.View>
+      {!last && (
+        <Animated.View style={[{ position: 'absolute', left: w, top: 0, width: e[k + 2] - e[k + 1], height, transformOrigin: 'left center' }, joint]}>
+          <Segment {...{ i, deg, turning, index, stiff, width, height, perspective, front, back }} k={k + 1} />
+        </Animated.View>
+      )}
+    </>
+  );
+}
 
 const s = StyleSheet.create({
   cast: { experimental_backgroundImage: 'linear-gradient(90deg, rgba(40,28,10,0.35), rgba(40,28,10,0) 55%)', borderRadius: 6 },

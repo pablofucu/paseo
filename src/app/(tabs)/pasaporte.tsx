@@ -32,7 +32,7 @@ export default function Pasaporte() {
 
   const leaves = useMemo<Leaf[]>(() => {
     const out: Leaf[] = [
-      { key: 'cover', front: <Cover width={pageW} />, back: <SheetBack width={pageW} lining /> },
+      { key: 'cover', front: <Cover width={pageW} />, back: <SheetBack width={pageW} lining />, stiff: true },
       { key: 'holder', front: <Holder width={pageW} />, back: <SheetBack width={pageW} /> },
     ];
     passport.pageOrder.forEach((id, i) => {
