@@ -16,6 +16,7 @@ import { guide, instruction, prepareLeg } from '@/lib/guidance';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { useNarration } from '@/lib/useNarration';
 import { useTourParam } from '@/lib/useTour';
+import { useReroute } from '@/lib/useReroute';
 import { useApproachRoute, useTourRoute } from '@/lib/useTourRoute';
 import { useWalkPosition, type PositionSource } from '@/lib/useWalkPosition';
 import { usePassport } from '@/store/passport';
@@ -64,12 +65,14 @@ export default function Walk() {
   const [manual, setManual] = useState<LngLat | null>(null);
   const [resumeFrom, setResumeFrom] = useState<{ along: number; key: number } | undefined>(undefined);
   const [gpsOrigin, setGpsOrigin] = useState<LngLat | null>(null);
+  /** Nuevo punto de partida hacia la primera parada tras salirte del camino */
+  const [rerouted, setRerouted] = useState<{ source: PositionSource; from: LngLat } | null>(null);
   const arrive = usePassport(s => s.arrive);
   const narration = useNarration();
 
   const route = useTourRoute(tour);
   const simOrigin = useMemo(() => approachFrom(stop.coord), [stop]);
-  const origin = target !== 0 ? null : source === 'simulated' ? simOrigin : gpsOrigin;
+  const origin = target !== 0 ? null : rerouted?.source === source ? rerouted.from : source === 'simulated' ? simOrigin : gpsOrigin;
 
   // Tramo actual: de la parada anterior a esta; para la primera, por calles desde donde estés
   const approach = useApproachRoute(origin, stop.coord);
@@ -113,7 +116,9 @@ export default function Walk() {
   if (target === 0 && source === 'gps' && position && !gpsOrigin) setGpsOrigin(position);
 
   const g = leg && position ? guide(leg, position, stop.coord) : null;
-  const text = g ? instruction(g, stop.name) : { text: 'Buscando tu posición…', then: 'Necesitas el GPS activado' };
+  // Hasta la primera parada, si te sales del camino se recalcula desde donde estés; el resto del tour es fijo
+  const rerouting = useReroute(target === 0, position, !!g?.offRoute, from => setRerouted({ source, from }));
+  const text = !g ? { text: 'Buscando tu posición…', then: 'Necesitas el GPS activado' } : rerouting ? { text: 'Recalculando la ruta…', then: `Te llevamos a ${stop.name} desde donde estás` } : instruction(g, stop.name);
 
   // Llegada: vibración y la parada se abre encima del mapa. Desde ahora se puede sellar.
   const arrivedFor = useRef<number | null>(null);
