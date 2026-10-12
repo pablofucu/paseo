@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Path, Polyline, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, G, LinearGradient, Path, Polyline, Rect, Stop } from 'react-native-svg';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { euros } from '@/components/LockedTour';
 import { PressableScale } from '@/components/motion';
 import { stopInk } from '@/components/RubberStamp';
-import type { LockedTour, Tour } from '@/data/types';
+import type { LockedTour, RouteSymbol, Tour } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { routeProgress, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
@@ -39,8 +39,6 @@ const I = {
       <Rect x={16} y={14} width={5} height={7} rx={2} fill="none" stroke={c} strokeWidth={2.4} />
     </>
   ),
-  plus: (c: string) => <Path d="M12 5v14M5 12h14" fill="none" stroke={c} strokeWidth={2.6} strokeLinecap="round" />,
-  check: (c: string) => <Path d="m5 12 5 5 9-10" fill="none" stroke={c} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />,
   lock: (c: string) => (
     <>
       <Rect x={4.5} y={10.5} width={15} height={10.5} rx={2.5} fill={c} />
@@ -53,30 +51,61 @@ export function Icon({ name, color, size = 16 }: { name: keyof typeof I; color: 
   return <Svg width={size} height={size} viewBox="0 0 24 24">{I[name](color)}</Svg>;
 }
 
+/** Símbolos de ruta (24 × 24, en línea) */
+const SYMBOLS: Record<RouteSymbol, string> = {
+  // Torre con campanario (Giralda, monumentos)
+  tower: 'M8 21V10h8v11M9.5 10V6.5h5V10M12 6.5V3M6 21h12M11 21v-3.5h2V21',
+  // Casa de pueblo (barrio)
+  house: 'M4 20v-8.5L12 5l8 6.5V20zM10 20v-5h4v5M4 20h16',
+  // Jarra de cerámica (Triana)
+  jar: 'M8 4h8M9 4v2.5C6.5 8 5.5 10 5.5 13c0 4 2.8 7 6.5 7s6.5-3 6.5-7c0-3-1-5-3.5-6.5V4M7 13h10',
+  // Pincel (arte)
+  brush: 'M19.5 4.5 11 13M11 13l-2.5-.5c-2 0-3.5 1.5-3.5 3.5 0 1.6-.8 2.8-2 3.5 3.5 1 7.5 0 8.5-3.5z',
+  // Corona (Austrias, historia de la corte)
+  crown: 'M4 18h16M5 18 4 8l4.5 4L12 5l3.5 7L20 8l-1 10',
+  // Libro abierto (literatura)
+  book: 'M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5zM12 6.5v13',
+  // Árbol (parques)
+  tree: 'M12 21v-6M12 15c-4 0-6.5-2.3-6.5-5.3C5.5 6.5 8.4 4 12 4s6.5 2.5 6.5 5.7c0 3-2.5 5.3-6.5 5.3zM9 21h6',
+};
+
+/**
+ * Marca de una ruta: su símbolo dentro de un anillo que se llena según sus
+ * sellos; rellena del todo al completarla. Las de pago, en gris y a trazos.
+ */
+export function RouteMark({ symbol, color, progress = 0, locked, size = 30 }: { symbol: RouteSymbol; color: string; progress?: number; locked?: boolean; size?: number }) {
+  const done = !locked && progress >= 1;
+  const r = 10.5;
+  const arc = (a: number) => {
+    const t = Math.min(a, 0.999) * 2 * Math.PI;
+    return `M12 ${12 - r} A${r} ${r} 0 ${a > 0.5 ? 1 : 0} 1 ${12 + r * Math.sin(t)} ${12 - r * Math.cos(t)}`;
+  };
+  const ink = locked ? neutral.ink3 : done ? '#fff' : color;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {done ? (
+        <Circle cx={12} cy={12} r={11.5} fill={color} />
+      ) : locked ? (
+        <Circle cx={12} cy={12} r={r} fill="none" stroke="#B9B0A2" strokeWidth={1.5} strokeDasharray="2 2.4" />
+      ) : (
+        <>
+          <Circle cx={12} cy={12} r={r} fill="none" stroke={color} strokeOpacity={0.25} strokeWidth={2} />
+          {progress > 0 && <Path d={arc(progress)} fill="none" stroke={color} strokeWidth={2.6} strokeLinecap="round" />}
+        </>
+      )}
+      <G transform="translate(4.8 4.8) scale(0.6)">
+        <Path d={SYMBOLS[symbol]} fill="none" stroke={ink} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+      </G>
+    </Svg>
+  );
+}
+
 /** Un dato con icono: «2 h», «2,4 km», «8 paradas» */
 export function Stat({ icon, color, children }: { icon: keyof typeof I; color: string; children: ReactNode }) {
   return (
     <View style={s.stat}>
       <Icon name={icon} color={color} />
       <Text style={s.statText}>{children}</Text>
-    </View>
-  );
-}
-
-/** Puntos de sellos: rellenos con la tinta de la parada si ya está sellada, a trazos si no */
-export function StampDots({ inks, size = 20, gap = 5 }: { inks: (string | null)[]; size?: number; gap?: number }) {
-  return (
-    <View style={{ flexDirection: 'row', gap }}>
-      {inks.map((c, i) =>
-        c ? (
-          // Relleno con la tinta, un aro blanco y un filo fino de la misma tinta
-          <View key={i} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c, padding: 1.5 }}>
-            <View style={{ flex: 1, borderRadius: size / 2, borderWidth: 2, borderColor: '#fff', backgroundColor: c }} />
-          </View>
-        ) : (
-          <View key={i} style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderStyle: 'dashed', borderColor: '#CFC6B8' }} />
-        ),
-      )}
     </View>
   );
 }
@@ -125,19 +154,19 @@ function RouteLine({ width, palette, stamped, dim }: { width: number; palette: T
   );
 }
 
-/** El sello de la ruta en la esquina: a trazos con «+» hasta completarla, relleno con ✓ después */
-function Slot({ palette, got, locked }: { palette: TourPalette; got?: boolean; locked?: boolean }) {
+/** El sello de la ruta en la esquina, con su símbolo: a trazos hasta completarla, relleno después */
+function Slot({ palette, symbol, got, locked }: { palette: TourPalette; symbol: RouteSymbol; got?: boolean; locked?: boolean }) {
   if (got) {
     return (
       <View style={[s.slot, { backgroundColor: palette.t, borderWidth: 3, borderColor: palette.deep }]}>
         <View style={[StyleSheet.absoluteFill, { borderRadius: 24, borderWidth: 3, borderColor: palette.soft }]} />
-        <Icon name="check" color={palette.on} size={22} />
+        <Svg width={26} height={26} viewBox="0 0 24 24"><Path d={SYMBOLS[symbol]} fill="none" stroke={palette.on} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
       </View>
     );
   }
   return (
     <View style={[s.slot, { borderWidth: 2.5, borderStyle: 'dashed', borderColor: locked ? '#fff' : palette.t, backgroundColor: locked ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.92)' }]}>
-      <Icon name={locked ? 'lock' : 'plus'} color={locked ? '#fff' : palette.t} size={20} />
+      <Svg width={24} height={24} viewBox="0 0 24 24"><Path d={SYMBOLS[symbol]} fill="none" stroke={locked ? '#fff' : palette.t} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
     </View>
   );
 }
@@ -191,7 +220,7 @@ export function TourRouteCard({ tour, route }: { tour: Tour; route: UserRoute | 
         <DuotoneImage source={tour.stops[tour.emblemStop].photo} palette={p} style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.12)' }]} />
         <RouteLine width={w} palette={p} stamped={stamped} />
-        <Slot palette={p} got={prog.completed} />
+        <Slot palette={p} symbol={tour.symbol} got={prog.completed} />
       </View>
       <View style={s.body}>
         <View style={s.row}>
@@ -222,7 +251,7 @@ export function LockedRouteCard({ tour, onPress }: { tour: LockedTour; onPress: 
         <Drawn palette={p} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(29,43,79,0.5)' }]} />
         <RouteLine width={w} palette={p} stamped={Array(tour.stops).fill(false)} dim />
-        <Slot palette={p} locked />
+        <Slot palette={p} symbol={tour.symbol} locked />
       </View>
       <View style={s.body}>
         <View style={s.row}>

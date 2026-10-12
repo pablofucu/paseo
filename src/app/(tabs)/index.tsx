@@ -5,11 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MadridArt } from '@/components/CityArt';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { PressableScale, rise } from '@/components/motion';
-import { StampDots, Stat, stopInks } from '@/components/RouteCard';
-import { stopInk } from '@/components/RubberStamp';
+import { RouteMark, Stat } from '@/components/RouteCard';
 import { Scrim } from '@/components/Scrim';
-import { CITIES, getTour, toursIn, TOURS, type City } from '@/data/tours';
-import { usePassport, type UserRoute } from '@/store/passport';
+import { CITIES, getCity, getTour, toursIn, TOURS, type City } from '@/data/tours';
+import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
 import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { brand, neutral, shadow } from '@/theme/tokens';
@@ -19,14 +18,14 @@ import { type } from '@/theme/type';
 function CityCard({ city, routes }: { city: City; routes: Record<string, UserRoute> }) {
   const { open, locked } = toursIn(city.id);
   const cover = city.coverTour ? getTour(city.coverTour) : undefined;
-  const inks = open.flatMap(t => stopInks(t, routes[t.id]));
-  const got = inks.filter(Boolean).length;
+  const progress = open.map(t => routeProgress(t.id, routes[t.id]));
+  const completed = progress.filter(pr => pr.completed).length;
   const free = open.filter(t => t.price === 'free').length;
   const p = city.palette;
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`${city.name}: ${open.length + locked.length} tours${inks.length ? `, ${got} de ${inks.length} sellos` : ''}`}
+      accessibilityLabel={`${city.name}: ${open.length + locked.length} rutas${open.length ? `, ${completed} completadas` : ''}`}
       scaleTo={0.975}
       onPress={() => router.push({ pathname: '/rutas/[ciudad]', params: { ciudad: city.id } })}
       style={s.card}
@@ -35,15 +34,19 @@ function CityCard({ city, routes }: { city: City; routes: Record<string, UserRou
         {cover ? <DuotoneImage source={cover.stops[cover.emblemStop].photo} palette={cover.palette} style={StyleSheet.absoluteFill} /> : city.id === 'madrid' ? <MadridArt /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: p.deep }]} />}
         <Scrim color={p.deep} opacity={0.75} />
         <Text style={s.city}>{city.name}</Text>
-        {inks.length > 0 && <View style={s.coll}><StampDots inks={inks} size={16} gap={4} /></View>}
+        {/* Una marca por ruta, con el color de la ciudad: las suyas con su progreso y las de pago en gris */}
+        <View style={s.coll}>
+          {open.map((t, i) => <RouteMark key={t.id} symbol={t.symbol} color={p.t} progress={progress[i].done / progress[i].total} size={26} />)}
+          {locked.map(t => <RouteMark key={t.id} symbol={t.symbol} color={p.t} locked size={26} />)}
+        </View>
       </View>
       <View style={s.cardBody}>
         <View style={s.stats}>
-          <Stat icon="ticket" color={p.t}>{open.length + locked.length} tours</Stat>
+          <Stat icon="ticket" color={p.t}>{open.length + locked.length} rutas</Stat>
           {free > 0 && <View style={s.stat}><View style={s.sunDot} /><Text style={s.statText}>{free} gratis</Text></View>}
           {locked.length > 0 && <Stat icon="lock" color={neutral.ink3}>{locked.length} de pago</Stat>}
         </View>
-        {inks.length > 0 && <Text style={[s.cnt, { backgroundColor: p.soft, color: p.deep }]}>{got}/{inks.length} sellos</Text>}
+        {open.length > 0 && <Text style={[s.cnt, { backgroundColor: p.soft, color: p.deep }]}>{completed}/{open.length} hechas</Text>}
       </View>
     </PressableScale>
   );
@@ -59,7 +62,7 @@ export default function Home() {
   // La ciudad elegida en la bienvenida va primero
   const cities = [...CITIES].sort((a, b) => Number(b.id === city) - Number(a.id === city));
   // Tu colección: todos los sellos, los más recientes delante
-  const stamps = TOURS.flatMap(t => (routes[t.id]?.stamps ?? []).map(st => ({ date: st.date, ink: stopInk(t, st.stopId) }))).sort((a, b) => b.date.localeCompare(a.date));
+  const stamps = TOURS.flatMap(t => (routes[t.id]?.stamps ?? []).map(st => ({ date: st.date, ink: getCity(t.area)?.palette.t ?? brand.coral }))).sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 20, gap: 12 }}>
@@ -118,7 +121,7 @@ const s = StyleSheet.create({
   card: { backgroundColor: neutral.surface, borderRadius: 22, overflow: 'hidden', ...shadow[2] },
   hero: { height: 112 },
   city: { position: 'absolute', left: 16, bottom: 10, fontFamily: font.serif, fontSize: 30, lineHeight: 34, color: '#fff', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 10 },
-  coll: { position: 'absolute', right: 12, bottom: 12, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingVertical: 5, paddingHorizontal: 6 },
+  coll: { position: 'absolute', right: 12, bottom: 12, flexDirection: 'row', gap: 2, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, padding: 3 },
   cardBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 },
   stats: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 6 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },

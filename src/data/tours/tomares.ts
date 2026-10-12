@@ -27,6 +27,7 @@ export const tomares: Tour = {
   region: 'Sevilla · Aljarafe',
   title: 'Tomares en 4 paradas',
   category: 'Historia y barrio',
+  symbol: 'house',
   intro: "Cuatro paradas a pie por Tomares, en el corazón del Aljarafe sevillano. Empiezas en la rotonda y terminas con un kebab.",
   palette: { t: '#B23A2E', t2: '#E8B33A', soft: '#F8E7E2', deep: '#4A1610', on: '#FFFFFF' },
   // Teja de la torre del Ayuntamiento (contraste 5,8:1 con el papel)
