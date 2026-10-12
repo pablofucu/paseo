@@ -8,7 +8,15 @@ const DIR = 'src/data/tours';
 const UA = { 'User-Agent': 'Paseo content builder (github.com/pablofucu/paseo)' };
 const FORCE = process.env.FORCE === '1';
 const strip = html => (html ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-const get = async url => { const r = await fetch(url, { headers: UA }); if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`); return r; };
+// Wikipedia limita la frecuencia (HTTP 429): se espera y se reintenta
+const get = async (url, tries = 5) => {
+  for (let i = 0; ; i++) {
+    const r = await fetch(url, { headers: UA });
+    if (r.ok) return r;
+    if (r.status !== 429 || i >= tries) throw new Error(`HTTP ${r.status} ${url}`);
+    await new Promise(res => setTimeout(res, (Number(r.headers.get('retry-after')) || 2 ** i * 2) * 1000));
+  }
+};
 
 for (const file of (await readdir(DIR)).filter(f => f.endsWith('.photos.json'))) {
   const spec = JSON.parse(await readFile(join(DIR, file), 'utf8'));
