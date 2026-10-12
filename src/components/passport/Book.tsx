@@ -16,6 +16,8 @@ const TURN_MS = 750;
  */
 const SEGMENTS = [0.4, 0.24, 0.2, 0.16];
 const JOINTS = [0, 0.22, 0.33, 0.45];
+/** Las hojas que no pueden girar ahora van de una pieza: cada tramo vuelve a dibujar la hoja entera */
+const WHOLE = [1];
 /** Curva total del borde en el punto más alto del giro (grados) */
 const BEND = { paper: 46, cover: 9 };
 /** Distancia de la cámara en anchos de hoja: más cerca, más se acerca el borde de la hoja al levantarse */
@@ -178,7 +180,8 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
         {/* Sin recortar: la hoja sale del lomo hacia el espectador y sigue más allá del borde */}
         <Animated.View style={[{ width: spread ? width * 2 : width, height }, camera]}>
           {visible.map(({ l, i }) => (
-            <Page key={l.key} i={i} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
+            // Solo se parten en tramos las dos hojas del lomo, las únicas que el próximo giro puede mover
+            <Page key={l.key} i={i} strips={i === index || i === index - 1} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
               {l.front}
             </Page>
           ))}
@@ -205,6 +208,7 @@ interface PageProps {
   index: SharedValue<number>;
   spread: boolean;
   stiff: boolean;
+  strips: boolean;
   width: number;
   height: number;
   left: number;
@@ -212,7 +216,7 @@ interface PageProps {
   children: ReactNode;
 }
 
-const Page = memo(function Page({ i, deg, turning, index, spread, stiff, width, height, left, back, children }: PageProps) {
+const Page = memo(function Page({ i, deg, turning, index, spread, stiff, strips, width, height, left, back, children }: PageProps) {
   const perspective = width * DEPTH;
   // Cada estilo lee los valores compartidos directamente: así Reanimated sabe de qué depende
   const leaf = useAnimatedStyle(() => {
@@ -222,26 +226,30 @@ const Page = memo(function Page({ i, deg, turning, index, spread, stiff, width, 
     return {
       // Encima la que gira; luego las pasadas (la última arriba) y las por pasar (la siguiente arriba)
       zIndex: t ? 1000 : flipped ? i : 500 - i,
-      // Con una sola hoja, las ya pasadas quedan fuera de la pantalla
-      opacity: !spread && flipped && !t ? 0 : 1,
+      // No se dibuja lo que no puede verse: con una sola hoja, las ya pasadas quedan fuera de
+      // la pantalla; y debajo de la hoja de al lado (o de la anterior en doble página) no asoma nada
+      opacity: !t && (i > index.value + 1 || i < index.value - (spread ? 2 : 0)) ? 0 : 1,
       transform: [{ perspective }, { rotateY: `${a}deg` }],
     };
   });
-  const seg = { i, deg, turning, index, stiff, width, height, perspective, front: children, back };
+  const cuts = strips ? SEGMENTS : WHOLE;
+  const seg = { cuts, i, deg, turning, index, stiff, width, height, perspective, front: children, back };
   return (
-    <Animated.View style={[{ position: 'absolute', left, top: 0, width: edges(width)[1], height, transformOrigin: 'left center' }, leaf]}>
+    <Animated.View style={[{ position: 'absolute', left, top: 0, width: edges(width, cuts)[1], height, transformOrigin: 'left center' }, leaf]}>
       <Segment k={0} {...seg} />
     </Animated.View>
   );
 });
 
 /** Bordes de los tramos en píxeles enteros, para que no se abran rendijas entre ellos */
-function edges(width: number) {
+function edges(width: number, cuts: number[]) {
   let acc = 0;
-  return [0, ...SEGMENTS.map(f => Math.round((acc += f) * width))];
+  return [0, ...cuts.map(f => Math.round((acc += f) * width))];
 }
 
 interface SegmentProps {
+  /** Fracciones del ancho de cada tramo */
+  cuts: number[];
   k: number;
   i: number;
   deg: SharedValue<number>;
@@ -259,10 +267,10 @@ interface SegmentProps {
  * Un tramo de la hoja: recorta su franja del anverso y del reverso, y lleva
  * colgado el siguiente tramo de su borde derecho, doblado un poco más.
  */
-function Segment({ k, i, deg, turning, index, stiff, width, height, perspective, front, back }: SegmentProps) {
-  const e = edges(width);
+function Segment({ cuts, k, i, deg, turning, index, stiff, width, height, perspective, front, back }: SegmentProps) {
+  const e = edges(width, cuts);
   const x = e[k], w = e[k + 1] - x;
-  const last = k === SEGMENTS.length - 1;
+  const last = k === cuts.length - 1;
   // Curva de la hoja que gira: más al levantarse que al posarse, y nada en reposo.
   // Hacia delante el borde se queda atrás (menos girado); hacia atrás, igual en sentido contrario.
   // Las funciones reciben los valores ya leídos: cada estilo los lee directamente para que Reanimated sepa de qué depende
@@ -283,35 +291,40 @@ function Segment({ k, i, deg, turning, index, stiff, width, height, perspective,
   const face = useAnimatedStyle(() => ({ opacity: angle(turning.value, deg.value, index.value) > -90 ? 1 : 0 }));
   const rear = useAnimatedStyle(() => ({ opacity: angle(turning.value, deg.value, index.value) > -90 ? 0 : 1 }));
   // Sombra que recorre la cara mientras gira: los tramos más doblados, algo más oscuros
+  // Va aparte de la cara (que se guarda como textura) y solo sobre la cara que se ve
   const shade = useAnimatedStyle(() => {
     const t = turning.value;
-    return { opacity: t === i ? Math.min(1, Math.sin((-angle(t, deg.value, index.value) * Math.PI) / 180) * 0.9) : 0 };
+    const a = angle(t, deg.value, index.value);
+    return { opacity: t === i && a > -90 ? Math.min(1, Math.sin((-a * Math.PI) / 180) * 0.9) : 0 };
   });
   const shadeBack = useAnimatedStyle(() => {
     const t = turning.value;
-    return { opacity: t === i ? interpolate(-angle(t, deg.value, index.value), [90, 180], [0.7, 0], 'clamp') : 0 };
+    const a = angle(t, deg.value, index.value);
+    return { opacity: t === i && a <= -90 ? interpolate(-a, [90, 180], [0.7, 0], 'clamp') : 0 };
   });
   const joint = useAnimatedStyle(() => ({ transform: [{ perspective }, { rotateY: `${last ? 0 : JOINTS[k + 1] * bend(turning.value, deg.value, index.value)}deg` }] }));
   // Cada franja solapa 1 px con la siguiente para que no se vea la costura
   const clip = { position: 'absolute', left: 0, top: 0, width: last ? w : w + 1, height, overflow: 'hidden' } as const;
   const sheet = { position: 'absolute', left: -x, top: 0, width, height } as const;
+  // Cada cara se pinta una vez y se guarda como textura: al girar solo se mueve la textura, no se
+  // vuelven a dibujar los SVG del papel y los sellos en cada fotograma
   return (
     <>
-      <Animated.View style={[clip, face]}>
-        <View style={sheet}>
-          {front}
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shade, shade]} />
-        </View>
+      <Animated.View style={[clip, face]} renderToHardwareTextureAndroid shouldRasterizeIOS>
+        <View style={sheet}>{front}</View>
       </Animated.View>
-      <Animated.View style={[clip, rear]}>
-        <View style={[sheet, { transform: [{ scaleX: -1 }] }]}>
-          {back}
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shadeBack, shadeBack]} />
-        </View>
+      <Animated.View style={[clip, rear]} renderToHardwareTextureAndroid shouldRasterizeIOS>
+        <View style={[sheet, { transform: [{ scaleX: -1 }] }]}>{back}</View>
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[clip, shade]}>
+        <View style={[sheet, s.shade]} />
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[clip, shadeBack]}>
+        <View style={[sheet, s.shadeBack, { transform: [{ scaleX: -1 }] }]} />
       </Animated.View>
       {!last && (
         <Animated.View style={[{ position: 'absolute', left: w, top: 0, width: e[k + 2] - e[k + 1], height, transformOrigin: 'left center' }, joint]}>
-          <Segment {...{ i, deg, turning, index, stiff, width, height, perspective, front, back }} k={k + 1} />
+          <Segment {...{ cuts, i, deg, turning, index, stiff, width, height, perspective, front, back }} k={k + 1} />
         </Animated.View>
       )}
     </>

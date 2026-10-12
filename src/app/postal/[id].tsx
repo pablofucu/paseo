@@ -27,9 +27,8 @@ export default function PostalScreen() {
   const w = Math.min(width - 24, ((height - insets.top - insets.bottom - 200) * 928) / 628, 900);
   const flip = () => {
     const to = back ? 0 : 1;
-    const ms = reduced ? 0 : 640;
-    turn.value = withTiming(to, { duration: ms, easing: Easing.inOut(Easing.cubic) });
-    setTimeout(() => setBack(!back), ms / 2);
+    turn.value = withTiming(to, { duration: reduced ? 0 : 640, easing: Easing.inOut(Easing.cubic) });
+    setBack(!back);
   };
   const style = useAnimatedStyle(() => {
     const d = turn.value * 180;
@@ -38,6 +37,10 @@ export default function PostalScreen() {
     const lift = Math.sin(turn.value * Math.PI);
     return { transform: [{ perspective: 1400 }, { scale: 1 + lift * 0.06 }, { rotateY: `${d > 90 ? d - 180 : d}deg` }, { rotateZ: `${lift * -2}deg` }] };
   });
+  // Las dos caras están siempre montadas y se cambian en el hilo de UI justo en el canto (90°):
+  // si se esperase al render de React, durante un instante saldría la cara equivocada
+  const frontFace = useAnimatedStyle(() => ({ opacity: turn.value <= 0.5 ? 1 : 0 }));
+  const backFace = useAnimatedStyle(() => ({ opacity: turn.value > 0.5 ? 1 : 0 }));
 
   return (
     <View style={[s.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
@@ -48,7 +51,12 @@ export default function PostalScreen() {
         <Animated.View entering={rise(2)}>
         <Pressable accessibilityRole="button" accessibilityLabel={back ? 'Ver el anverso' : 'Dar la vuelta a la postal'} onPress={flip} style={{ marginTop: 18 }}>
           <Animated.View ref={card} collapsable={false} style={[{ width: w, height: postcardHeight(w) }, style]}>
-            <Postcard tour={tour} route={route} width={w} back={back} />
+            <Animated.View style={[StyleSheet.absoluteFill, frontFace]}>
+              <Postcard tour={tour} route={route} width={w} />
+            </Animated.View>
+            <Animated.View style={[StyleSheet.absoluteFill, backFace]}>
+              <Postcard tour={tour} route={route} width={w} back />
+            </Animated.View>
           </Animated.View>
         </Pressable>
         </Animated.View>
