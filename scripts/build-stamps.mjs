@@ -33,7 +33,7 @@ for (const f of readdirSync(new URL('design/stamps/', root)).filter(f => f.endsW
 
 // Paradas de cada ruta: su id, su sello y la ciudad (leídos de src/data/tours/*.ts)
 const stops = [];
-for (const f of readdirSync(new URL('src/data/tours/', root)).filter(f => /^[a-z]+\.ts$/.test(f) && f !== 'index.ts')) {
+for (const f of readdirSync(new URL('src/data/tours/', root)).filter(f => /^[a-z-]+\.ts$/.test(f) && f !== 'index.ts')) {
   const src = readFileSync(new URL(`src/data/tours/${f}`, root), 'utf8');
   const city = /\bcity: ['"]([^'"]+)['"]/.exec(src)[1];
   for (const m of src.matchAll(/\bid: ['"]([\w-]+)['"],(?:(?!\bid: ['"])[\s\S])*?\brubber: (\{[^}]*\})/g)) {

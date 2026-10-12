@@ -37,7 +37,10 @@ export const tomares: Tour = {
     art: require('../../../assets/postcards/tomares.jpg'),
     value: '4,50€',
     subtitle: 'LETRERO · AYUNTAMIENTO · PARROQUIA · ROYAL KING KEBAB',
-    stampFocus: { x: 0.36, y: 0.62 },
+  },
+  stamp: {
+    art: require('../../../assets/route-stamps/tomares-4-paradas.png'),
+    symbol: 'Una rama de olivo con sus aceitunas, el árbol del Aljarafe, y el número de paradas.',
   },
   emblemStop: 1,
   durationMin: 45,

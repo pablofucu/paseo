@@ -1,0 +1,38 @@
+{
+  "maestranza": {
+    "file": "Plaza_de_Toros_de_la_Maestranza.jpg",
+    "author": "Vincenzo venditti",
+    "license": "CC BY-SA 3.0 es",
+    "source": "https://commons.wikimedia.org/wiki/File:Plaza_de_Toros_de_la_Maestranza.jpg"
+  },
+  "caridad": {
+    "file": "Fachada_del_Hospital_de_la_Caridad.jpg",
+    "author": "Anual",
+    "license": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Fachada_del_Hospital_de_la_Caridad.jpg"
+  },
+  "san-telmo": {
+    "file": "Palacio_de_San_Telmo_(1681-1796).jpg",
+    "author": "José Luis Filpo Cabana",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Palacio_de_San_Telmo_(1681-1796).jpg"
+  },
+  "tabacos": {
+    "file": "Rectorado_universidad_de_sevilla_2024An001.jpg",
+    "author": "Anual",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Rectorado_universidad_de_sevilla_2024An001.jpg"
+  },
+  "plaza-espana": {
+    "file": "Plaza_de_España_(Sevilla)_-_01.jpg",
+    "author": "Carlos Delgado",
+    "license": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Plaza_de_Espa%C3%B1a_(Sevilla)_-_01.jpg"
+  },
+  "maria-luisa": {
+    "file": "Glorieta_de_los_hermanos_machado_pml_2012003.jpg",
+    "author": "Anual",
+    "license": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Glorieta_de_los_hermanos_machado_pml_2012003.jpg"
+  }
+}

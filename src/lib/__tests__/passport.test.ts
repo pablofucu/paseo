@@ -7,6 +7,18 @@ import { fechaRomana, fechaSello, rng, rubberDateXml } from '@/lib/rubber';
 import { sheetFor } from '@/lib/sheet';
 import { dropFinalStamps, migrateVisits, routeProgress, type UserRoute } from '@/store/passport';
 
+describe('postal y sello de ruta', () => {
+  it('cada ruta tiene su propio sello, distinto de la postal y de los de las demás rutas', () => {
+    const arts = TOURS.map(t => t.stamp.art);
+    for (const t of TOURS) {
+      expect(t.stamp.art).toBeTruthy();
+      expect(t.stamp.art).not.toBe(t.postcard.art);
+      expect(t.stamp.symbol.length).toBeGreaterThan(10);
+    }
+    expect(new Set(arts).size).toBe(TOURS.length);
+  });
+});
+
 describe('tinta de la ruta', () => {
   it('deja igual un acento que ya se lee (Tomares, 5,8:1)', () => {
     expect(tintaDeRuta('#9c3a24')).toBe('#9c3a24');
@@ -148,7 +160,7 @@ describe('ciudades y tours bloqueados', () => {
   it('Sevilla tiene sus tours (con Tomares) y Madrid solo tours de pago', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { toursIn } = require('@/data/tours') as typeof import('@/data/tours');
-    expect(toursIn('sevilla').open.map(t => t.city).sort()).toEqual(['Sevilla', 'Tomares']);
+    expect(toursIn('sevilla').open.map(t => t.city).sort()).toEqual(['Sevilla', 'Sevilla', 'Tomares']);
     expect(toursIn('madrid').open).toHaveLength(0);
     expect(toursIn('madrid').locked.length).toBeGreaterThan(0);
     for (const c of ['sevilla', 'madrid'] as const) for (const t of toursIn(c).locked) expect(t.eur).toBeGreaterThan(0);
