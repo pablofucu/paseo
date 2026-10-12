@@ -9,6 +9,15 @@ import { font } from '@/theme/fonts';
 
 /** Pasar hoja con los botones: rotateY 0 → −180° sobre el lomo en 750 ms; arranca suave, se acelera y se posa */
 const TURN_MS = 750;
+/**
+ * La hoja se curva como el papel: se parte en tramos (en fracciones del ancho,
+ * del lomo al borde) unidos por bisagras. Cada bisagra dobla una parte de la
+ * curva, más hacia el borde, que se queda atrás al levantarse la hoja.
+ */
+const SEGMENTS = [0.4, 0.24, 0.2, 0.16];
+const JOINTS = [0, 0.22, 0.33, 0.45];
+/** Curva total del borde en el punto más alto del giro (grados) */
+const BEND = { paper: 46, cover: 9 };
 /** Distancia de la cámara en anchos de hoja: más cerca, más se acerca el borde de la hoja al levantarse */
 const DEPTH = 3;
 const EASE = Easing.bezier(0.42, 0.05, 0.2, 1);
@@ -19,6 +28,8 @@ export interface Leaf {
   key: string;
   front: ReactNode;
   back: ReactNode;
+  /** Tapa de piel: apenas se curva al girar */
+  stiff?: boolean;
 }
 
 interface Props {
@@ -167,7 +178,7 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
         {/* Sin recortar: la hoja sale del lomo hacia el espectador y sigue más allá del borde */}
         <Animated.View style={[{ width: spread ? width * 2 : width, height }, camera]}>
           {visible.map(({ l, i }) => (
-            <Page key={l.key} i={i} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} width={width} height={height} left={spread ? width : 0} back={l.back}>
+            <Page key={l.key} i={i} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
               {l.front}
             </Page>
           ))}
@@ -193,6 +204,7 @@ interface PageProps {
   turning: SharedValue<number>;
   index: SharedValue<number>;
   spread: boolean;
+  stiff: boolean;
   width: number;
   height: number;
   left: number;
@@ -200,7 +212,7 @@ interface PageProps {
   children: ReactNode;
 }
 
-const Page = memo(function Page({ i, deg, turning, index, spread, width, height, left, back, children }: PageProps) {
+const Page = memo(function Page({ i, deg, turning, index, spread, stiff, width, height, left, back, children }: PageProps) {
   const perspective = width * DEPTH;
   // Cada estilo lee los valores compartidos directamente: así Reanimated sabe de qué depende
   const leaf = useAnimatedStyle(() => {
@@ -215,30 +227,96 @@ const Page = memo(function Page({ i, deg, turning, index, spread, width, height,
       transform: [{ perspective }, { rotateY: `${a}deg` }],
     };
   });
-  const front = useAnimatedStyle(() => {
-    const a = turning.value === i ? deg.value : i < index.value ? -180 : 0;
-    return { opacity: a > -90 ? 1 : 0 };
-  });
-  const rear = useAnimatedStyle(() => {
-    const a = turning.value === i ? deg.value : i < index.value ? -180 : 0;
-    return { opacity: a > -90 ? 0 : 1 };
-  });
-  // Sombra que recorre la cara mientras gira
-  const shade = useAnimatedStyle(() => ({ opacity: turning.value === i ? Math.sin((-deg.value * Math.PI) / 180) * 0.9 : 0 }));
-  const shadeBack = useAnimatedStyle(() => ({ opacity: turning.value === i ? interpolate(-deg.value, [90, 180], [0.7, 0]) : 0 }));
+  const seg = { i, deg, turning, index, stiff, width, height, perspective, front: children, back };
   return (
-    <Animated.View style={[{ position: 'absolute', left, top: 0, width, height, transformOrigin: 'left center' }, leaf]}>
-      <Animated.View style={[StyleSheet.absoluteFill, front]}>
-        {children}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shade, shade]} />
-      </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scaleX: -1 }] }, rear]}>
-        {back}
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shadeBack, shadeBack]} />
-      </Animated.View>
+    <Animated.View style={[{ position: 'absolute', left, top: 0, width: edges(width)[1], height, transformOrigin: 'left center' }, leaf]}>
+      <Segment k={0} {...seg} />
     </Animated.View>
   );
 });
+
+/** Bordes de los tramos en píxeles enteros, para que no se abran rendijas entre ellos */
+function edges(width: number) {
+  let acc = 0;
+  return [0, ...SEGMENTS.map(f => Math.round((acc += f) * width))];
+}
+
+interface SegmentProps {
+  k: number;
+  i: number;
+  deg: SharedValue<number>;
+  turning: SharedValue<number>;
+  index: SharedValue<number>;
+  stiff: boolean;
+  width: number;
+  height: number;
+  perspective: number;
+  front: ReactNode;
+  back: ReactNode;
+}
+
+/**
+ * Un tramo de la hoja: recorta su franja del anverso y del reverso, y lleva
+ * colgado el siguiente tramo de su borde derecho, doblado un poco más.
+ */
+function Segment({ k, i, deg, turning, index, stiff, width, height, perspective, front, back }: SegmentProps) {
+  const e = edges(width);
+  const x = e[k], w = e[k + 1] - x;
+  const last = k === SEGMENTS.length - 1;
+  // Curva de la hoja que gira: más al levantarse que al posarse, y nada en reposo.
+  // Hacia delante el borde se queda atrás (menos girado); hacia atrás, igual en sentido contrario.
+  // Las funciones reciben los valores ya leídos: cada estilo los lee directamente para que Reanimated sepa de qué depende
+  const bend = (t: number, d: number, idx: number) => {
+    'worklet';
+    if (t !== i) return 0;
+    const r = (-d * Math.PI) / 180;
+    const lag = i === idx ? 1 : -1;
+    return lag * (stiff ? BEND.cover : BEND.paper) * Math.sin(r) * (1 + 0.4 * Math.cos(r));
+  };
+  // Ángulo total de este tramo, para saber qué cara enseña y cuánta sombra lleva
+  let share = 0;
+  for (let j = 1; j <= k; j++) share += JOINTS[j];
+  const angle = (t: number, d: number, idx: number) => {
+    'worklet';
+    return (t === i ? d : i < idx ? -180 : 0) + share * bend(t, d, idx);
+  };
+  const face = useAnimatedStyle(() => ({ opacity: angle(turning.value, deg.value, index.value) > -90 ? 1 : 0 }));
+  const rear = useAnimatedStyle(() => ({ opacity: angle(turning.value, deg.value, index.value) > -90 ? 0 : 1 }));
+  // Sombra que recorre la cara mientras gira: los tramos más doblados, algo más oscuros
+  const shade = useAnimatedStyle(() => {
+    const t = turning.value;
+    return { opacity: t === i ? Math.min(1, Math.sin((-angle(t, deg.value, index.value) * Math.PI) / 180) * 0.9) : 0 };
+  });
+  const shadeBack = useAnimatedStyle(() => {
+    const t = turning.value;
+    return { opacity: t === i ? interpolate(-angle(t, deg.value, index.value), [90, 180], [0.7, 0], 'clamp') : 0 };
+  });
+  const joint = useAnimatedStyle(() => ({ transform: [{ perspective }, { rotateY: `${last ? 0 : JOINTS[k + 1] * bend(turning.value, deg.value, index.value)}deg` }] }));
+  // Cada franja solapa 1 px con la siguiente para que no se vea la costura
+  const clip = { position: 'absolute', left: 0, top: 0, width: last ? w : w + 1, height, overflow: 'hidden' } as const;
+  const sheet = { position: 'absolute', left: -x, top: 0, width, height } as const;
+  return (
+    <>
+      <Animated.View style={[clip, face]}>
+        <View style={sheet}>
+          {front}
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shade, shade]} />
+        </View>
+      </Animated.View>
+      <Animated.View style={[clip, rear]}>
+        <View style={[sheet, { transform: [{ scaleX: -1 }] }]}>
+          {back}
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, s.shadeBack, shadeBack]} />
+        </View>
+      </Animated.View>
+      {!last && (
+        <Animated.View style={[{ position: 'absolute', left: w, top: 0, width: e[k + 2] - e[k + 1], height, transformOrigin: 'left center' }, joint]}>
+          <Segment {...{ i, deg, turning, index, stiff, width, height, perspective, front, back }} k={k + 1} />
+        </Animated.View>
+      )}
+    </>
+  );
+}
 
 const s = StyleSheet.create({
   cast: { experimental_backgroundImage: 'linear-gradient(90deg, rgba(40,28,10,0.35), rgba(40,28,10,0) 55%)', borderRadius: 6 },
