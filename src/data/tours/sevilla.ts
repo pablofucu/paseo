@@ -31,6 +31,7 @@ export const sevilla: Tour = {
     art: require('../../../assets/postcards/sevilla.jpg'),
     value: '3,20€',
     subtitle: 'TORRE DEL ORO · ARCHIVO · GIRALDA · ALCÁZAR · SANTA CRUZ',
+    stampFocus: { x: 0.36, y: 0.42 },
   },
   emblemStop: 2,
   durationMin: 60,

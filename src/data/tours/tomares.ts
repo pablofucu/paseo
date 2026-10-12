@@ -37,6 +37,7 @@ export const tomares: Tour = {
     art: require('../../../assets/postcards/tomares.jpg'),
     value: '4,50€',
     subtitle: 'LETRERO · AYUNTAMIENTO · PARROQUIA · ROYAL KING KEBAB',
+    stampFocus: { x: 0.36, y: 0.62 },
   },
   emblemStop: 1,
   durationMin: 45,

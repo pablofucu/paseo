@@ -170,3 +170,25 @@ describe('paseo en curso', () => {
     expect(usePassport.getState().walk?.target).toBe(3);
   });
 });
+
+describe('rutas a medias', () => {
+  it('«Sigue donde lo dejaste» enseña las empezadas sin terminar, la última sellada primero, y cancelar borra la ruta', () => {
+    const { unfinishedRoutes, usePassport } = require('@/store/passport') as typeof import('@/store/passport'); // eslint-disable-line @typescript-eslint/no-require-imports
+    const [a, b] = TOURS;
+    const drop = { x: 0.5, y: 0.5, rot: 6, seed: 1 };
+    usePassport.getState().reset();
+    usePassport.getState().placeStamp(a.id, a.stops[0].id, drop);
+    usePassport.getState().placeStamp(b.id, b.stops[0].id, drop);
+    const ids = TOURS.map(t => t.id);
+    expect(unfinishedRoutes(ids, usePassport.getState().routes).sort()).toEqual([a.id, b.id].sort());
+    for (const st of b.stops.slice(1)) usePassport.getState().placeStamp(b.id, st.id, drop);
+    expect(unfinishedRoutes(ids, usePassport.getState().routes)).toEqual([a.id]);
+    usePassport.getState().startWalk(a.id, 1);
+    usePassport.getState().dropRoute(a.id);
+    const s = usePassport.getState();
+    expect(s.routes[a.id]).toBeUndefined();
+    expect(s.passport.pageOrder).toEqual([b.id]);
+    expect(s.walk).toBeNull();
+    expect(unfinishedRoutes(ids, s.routes)).toEqual([]);
+  });
+});

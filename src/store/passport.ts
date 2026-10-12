@@ -73,6 +73,8 @@ interface PassportState {
   arrive: (tourId: string, stopId: string) => boolean;
   placeStamp: (tourId: string, stopId: string, drop: Drop) => void;
   markPostcardSeen: (tourId: string) => void;
+  /** Cancelar una ruta: se borran sus sellos y su hoja del pasaporte, y se para el paseo si era esa */
+  dropRoute: (tourId: string) => void;
   reset: () => void;
 }
 
@@ -116,6 +118,15 @@ export const usePassport = create<PassportState>()(
         }),
       markPostcardSeen: tourId =>
         set(s => (s.routes[tourId] ? { routes: { ...s.routes, [tourId]: { ...s.routes[tourId], postcardSeen: true } } } : s)),
+      dropRoute: tourId =>
+        set(s => {
+          const { [tourId]: _dropped, ...routes } = s.routes;
+          return {
+            routes,
+            passport: { ...s.passport, pageOrder: s.passport.pageOrder.filter(id => id !== tourId) },
+            walk: s.walk?.tourId === tourId ? null : s.walk,
+          };
+        }),
       reset: () => set({ passport: freshPassport(), routes: {}, walk: null }),
     }),
     {
@@ -195,6 +206,15 @@ export function routeProgress(tourId: string, route: UserRoute | undefined) {
     completedAt: missing.length === 0 ? (route?.postcardUnlockedAt ?? route?.stamps.map(s => s.date).sort().at(-1) ?? null) : null,
     started: stamped.size > 0,
   };
+}
+
+/** Rutas empezadas y sin terminar, la del último sello primero (para «Sigue donde lo dejaste») */
+export function unfinishedRoutes(tourIds: string[], routes: Record<string, UserRoute>) {
+  const last = (id: string) => routes[id]?.stamps.map(s => s.date).sort().at(-1) ?? '';
+  return tourIds.filter(id => {
+    const p = routeProgress(id, routes[id]);
+    return p.started && !p.completed;
+  }).sort((a, b) => last(b).localeCompare(last(a)));
 }
 
 export const useRoute = (tourId: string | undefined) => usePassport(s => (tourId ? s.routes[tourId] : undefined));

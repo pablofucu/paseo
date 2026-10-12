@@ -93,6 +93,8 @@ export interface Tour {
     value: string;
     /** Subtítulo: las paradas separadas por « · » */
     subtitle: string;
+    /** Encuadre del sello de la ruta dentro de la ilustración (0–1): su sitio más reconocible */
+    stampFocus: { x: number; y: number };
   };
   /** Parada cuya foto sirve de portada del tour */
   emblemStop: number;
