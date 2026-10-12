@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MadridArt } from '@/components/CityArt';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { PressableScale, rise } from '@/components/motion';
-import { RouteMark, Stat } from '@/components/RouteCard';
+import { Stat } from '@/components/RouteCard';
+import { RouteStamp } from '@/components/RouteStamp';
 import { Scrim } from '@/components/Scrim';
 import { CITIES, getCity, getTour, toursIn, TOURS, type City } from '@/data/tours';
 import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
@@ -34,10 +35,10 @@ function CityCard({ city, routes }: { city: City; routes: Record<string, UserRou
         {cover ? <DuotoneImage source={cover.stops[cover.emblemStop].photo} palette={cover.palette} style={StyleSheet.absoluteFill} /> : city.id === 'madrid' ? <MadridArt /> : <View style={[StyleSheet.absoluteFill, { backgroundColor: p.deep }]} />}
         <Scrim color={p.deep} opacity={0.75} />
         <Text style={s.city}>{city.name}</Text>
-        {/* Una marca por ruta, con el color de la ciudad: las suyas con su progreso y las de pago en gris */}
+        {/* Un sello por ruta, con el dibujo de su postal: matasellado al completarla; los de pago, en blanco */}
         <View style={s.coll}>
-          {open.map((t, i) => <RouteMark key={t.id} symbol={t.symbol} color={p.t} progress={progress[i].done / progress[i].total} size={26} />)}
-          {locked.map(t => <RouteMark key={t.id} symbol={t.symbol} color={p.t} locked size={26} />)}
+          {open.map((t, i) => <RouteStamp key={t.id} tour={t} done={progress[i].done} total={progress[i].total} height={34} />)}
+          {locked.map(t => <RouteStamp key={t.id} height={34} />)}
         </View>
       </View>
       <View style={s.cardBody}>
@@ -121,7 +122,7 @@ const s = StyleSheet.create({
   card: { backgroundColor: neutral.surface, borderRadius: 22, overflow: 'hidden', ...shadow[2] },
   hero: { height: 112 },
   city: { position: 'absolute', left: 16, bottom: 10, fontFamily: font.serif, fontSize: 30, lineHeight: 34, color: '#fff', textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 10 },
-  coll: { position: 'absolute', right: 12, bottom: 12, flexDirection: 'row', gap: 2, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, padding: 3 },
+  coll: { position: 'absolute', right: 12, bottom: 10, flexDirection: 'row', gap: 6 },
   cardBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 },
   stats: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 6 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },

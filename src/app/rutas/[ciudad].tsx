@@ -5,7 +5,8 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LockedTourSheet } from '@/components/LockedTour';
 import { rise } from '@/components/motion';
-import { LockedRouteCard, RouteMark, TourRouteCard } from '@/components/RouteCard';
+import { LockedRouteCard, TourRouteCard } from '@/components/RouteCard';
+import { RouteStamp } from '@/components/RouteStamp';
 import { IconButton } from '@/components/ui';
 import { getCity, toursIn } from '@/data/tours';
 import type { LockedTour } from '@/data/types';
@@ -22,7 +23,6 @@ export default function CityRoutes() {
   const routes = usePassport(s => s.routes);
   const [sheet, setSheet] = useState<LockedTour | null>(null);
   const { open, locked } = toursIn((city?.id ?? ciudad) as CityId);
-  const color = city?.palette.t ?? neutral.ink;
   const progress = open.map(t => routeProgress(t.id, routes[t.id]));
   const completed = progress.filter(pr => pr.completed).length;
 
@@ -32,9 +32,9 @@ export default function CityRoutes() {
         <IconButton label="Volver" icon="back" onPress={() => router.back()} style={{ marginLeft: -4 }} />
         <Animated.Text entering={rise(1)} style={s.city}>{city?.name ?? 'Ciudad'}</Animated.Text>
         <Animated.View entering={rise(2)} style={s.dotsRow} accessible accessibilityLabel={`${completed} de ${open.length} rutas completadas`}>
-          <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-            {open.map((t, i) => <RouteMark key={t.id} symbol={t.symbol} color={color} progress={progress[i].done / progress[i].total} size={34} />)}
-            {locked.map(t => <RouteMark key={t.id} symbol={t.symbol} color={color} locked size={34} />)}
+          <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {open.map((t, i) => <RouteStamp key={t.id} tour={t} done={progress[i].done} total={progress[i].total} height={50} rotate={i % 2 ? 3 : -3} />)}
+            {locked.map(t => <RouteStamp key={t.id} height={50} />)}
           </View>
           {open.length > 0 && <Text style={s.count}><Text style={{ color: neutral.ink, fontFamily: font.black }}>{completed} de {open.length}</Text> hechas</Text>}
         </Animated.View>

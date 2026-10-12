@@ -27,7 +27,6 @@ export const tomares: Tour = {
   region: 'Sevilla · Aljarafe',
   title: 'Tomares en 4 paradas',
   category: 'Historia y barrio',
-  symbol: 'house',
   intro: "Cuatro paradas a pie por Tomares, en el corazón del Aljarafe sevillano. Empiezas en la rotonda y terminas con un kebab.",
   palette: { t: '#B23A2E', t2: '#E8B33A', soft: '#F8E7E2', deep: '#4A1610', on: '#FFFFFF' },
   // Teja de la torre del Ayuntamiento (contraste 5,8:1 con el papel)
@@ -38,6 +37,7 @@ export const tomares: Tour = {
     art: require('../../../assets/postcards/tomares.jpg'),
     value: '4,50€',
     subtitle: 'LETRERO · AYUNTAMIENTO · PARROQUIA · ROYAL KING KEBAB',
+    stampFocus: { x: 0.36, y: 0.62 },
   },
   emblemStop: 1,
   durationMin: 45,

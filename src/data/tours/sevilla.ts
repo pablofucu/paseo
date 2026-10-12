@@ -20,7 +20,6 @@ export const sevilla: Tour = {
   region: 'Andalucía · Casco antiguo',
   title: 'Del río a la judería',
   category: 'Historia y monumentos',
-  symbol: 'tower',
   intro: 'Cinco paradas por el corazón de Sevilla: del Guadalquivir a la Giralda y al laberinto de calles de Santa Cruz.',
   // Azul de azulejo y albero, los colores de la Sevilla monumental
   palette: { t: '#1F4FA8', t2: '#E5A823', soft: '#E4EAF7', deep: '#0F2650', on: '#FFFFFF' },
@@ -32,6 +31,7 @@ export const sevilla: Tour = {
     art: require('../../../assets/postcards/sevilla.jpg'),
     value: '3,20€',
     subtitle: 'TORRE DEL ORO · ARCHIVO · GIRALDA · ALCÁZAR · SANTA CRUZ',
+    stampFocus: { x: 0.36, y: 0.42 },
   },
   emblemStop: 2,
   durationMin: 60,

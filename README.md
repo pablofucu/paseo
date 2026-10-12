@@ -74,7 +74,7 @@ src/
     bienvenida.tsx           bienvenida y elección de idioma
     ciudad.tsx               elección de ciudad
     (tabs)/index.tsx         Inicio: las ciudades, con sus sellos y su colección
-    rutas/[ciudad].tsx       rutas de una ciudad: cada tour con su ruta dibujada; los de pago, bloqueados
+    rutas/[ciudad].tsx       rutas de una ciudad: cada tour con su ruta dibujada y su sello de correos; los de pago, bloqueados
     (tabs)/pasaporte.tsx     el pasaporte (libreta con hojas que se pasan)
     (tabs)/postales.tsx      tarjetero de postales y mapa
     postal/[id].tsx          postal a pantalla completa (vuelta y compartir)

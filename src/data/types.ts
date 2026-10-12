@@ -37,9 +37,6 @@ export const KIND_LABEL: Record<StopKind, string> = {
   food: 'Gastronomía',
 };
 
-/** Símbolo de una ruta, según de qué va: lo lleva su marca en la tarjeta de la ciudad y su sello */
-export type RouteSymbol = 'tower' | 'house' | 'jar' | 'brush' | 'crown' | 'book' | 'tree';
-
 export interface Stop {
   id: string;
   name: string;
@@ -76,7 +73,6 @@ export interface Tour {
   region: string;
   title: string;
   category: string;
-  symbol: RouteSymbol;
   intro: string;
   palette: TourPalette;
   /**
@@ -97,6 +93,8 @@ export interface Tour {
     value: string;
     /** Subtítulo: las paradas separadas por « · » */
     subtitle: string;
+    /** Encuadre del sello de la ruta dentro de la ilustración (0–1): su sitio más reconocible */
+    stampFocus: { x: number; y: number };
   };
   /** Parada cuya foto sirve de portada del tour */
   emblemStop: number;
@@ -121,7 +119,6 @@ export interface LockedTour {
   region: string;
   title: string;
   category: string;
-  symbol: RouteSymbol;
   intro: string;
   palette: TourPalette;
   durationMin: number;
