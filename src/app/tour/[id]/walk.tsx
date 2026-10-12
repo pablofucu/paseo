@@ -74,9 +74,11 @@ export default function Walk() {
   // Tramo actual: de la parada anterior a esta; para la primera, por calles desde donde estés
   const approach = useApproachRoute(origin, stop.coord);
   const leg = useMemo(() => {
+    // Pasada la última parada no hay tramo (el paseo se va a la pantalla final)
+    if (finished) return null;
     if (target > 0) return prepareLeg(route.legs[target - 1].line, route.legs[target - 1].steps);
     return approach.leg ? prepareLeg(approach.leg.line, approach.leg.steps) : null;
-  }, [route, target, approach.leg]);
+  }, [route, target, finished, approach.leg]);
   const quality = target > 0 ? route.quality : approach.quality;
 
   const sim = useMemo(() => ({ speed: simSpeed, paused: paused || !!manual, resumeFrom }), [simSpeed, paused, manual, resumeFrom]);

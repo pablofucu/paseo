@@ -10,8 +10,10 @@ import { neutral } from '@/theme/tokens';
  * Si una pantalla falla al pintarse, en lugar de cerrarse la app se ve esto,
  * con el mensaje del error para poder contarlo y arreglarlo.
  */
-export function ErrorScreen({ error, retry }: ErrorBoundaryProps) {
+export function ErrorScreen({ error: raw, retry }: ErrorBoundaryProps) {
   const insets = useSafeAreaInsets();
+  // Lo lanzado puede no ser un Error (un texto, null…): sin esto esta pantalla fallaría también
+  const error = raw instanceof Error ? raw : new Error(String(raw));
   return (
     <View style={[s.root, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 20 }]}>
       <Text style={s.over}>Algo ha fallado</Text>
