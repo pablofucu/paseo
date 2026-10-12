@@ -19,7 +19,7 @@
     "android": {
       "package": "app.paseo.tours",
       "adaptiveIcon": {
-        "backgroundColor": "#FAF6F0",
+        "backgroundColor": "#1D2B4F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -34,9 +34,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FAF6F0",
+          "backgroundColor": "#1D2B4F",
           "image": "./assets/splash-icon.png",
-          "imageWidth": 160
+          "imageWidth": 112
         }
       ],
       [

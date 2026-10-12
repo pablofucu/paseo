@@ -32,7 +32,7 @@ export default function Ciudad() {
       {change ? <IconButton label="Volver" icon="back" onPress={() => router.back()} /> : <View style={{ height: 44 }} />}
       <Animated.Text entering={rise(1)} style={[type.overline, { marginTop: 8 }]}>Paso 2 de 2</Animated.Text>
       <Animated.Text entering={rise(2)} style={[type.hero, { fontSize: 38, lineHeight: 42 }]}>¿Dónde paseamos?</Animated.Text>
-      <Animated.Text entering={appear(250)} style={[type.caption, { marginBottom: 6 }]}>Puedes cambiar de ciudad cuando quieras desde Inicio.</Animated.Text>
+      <Animated.Text entering={appear(250)} style={[type.caption, { marginBottom: 6 }]}>Puedes cambiar de ciudad cuando quieras desde Ajustes.</Animated.Text>
 
       {CITIES.map((c, i) => {
         const { open, locked } = toursIn(c.id);

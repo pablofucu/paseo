@@ -36,6 +36,7 @@ export function Chip({ children }: { children: ReactNode }) {
 const ICONS = {
   back: 'M15 5l-7 7 7 7',
   close: 'M6 6l12 12M18 6 6 18',
+  settings: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 4.5v5M9 14.5v5',
 } as const;
 
 export function IconButton({ label, icon, onPress, style }: { label: string; icon: keyof typeof ICONS; onPress: () => void; style?: ViewStyle }) {

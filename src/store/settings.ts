@@ -8,6 +8,12 @@ export type SimSpeed = 1 | 4 | 16;
 export type Language = 'es' | 'en';
 export type CityId = 'sevilla' | 'madrid';
 
+/** Idiomas que se ofrecen en la bienvenida y en Ajustes; el inglés aún no está hecho */
+export const LANGUAGES: { id: Language; name: string; note: string; ready: boolean }[] = [
+  { id: 'es', name: 'Español', note: 'Audios y textos en español', ready: true },
+  { id: 'en', name: 'English', note: 'Coming soon · Próximamente', ready: false },
+];
+
 interface SettingsState {
   /** Modo prueba: simula el paseo sin moverte y muestra controles para probar la app */
   testMode: boolean;

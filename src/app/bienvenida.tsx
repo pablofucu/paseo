@@ -5,14 +5,9 @@ import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useReducedMotio
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
-import { useSettings, type Language } from '@/store/settings';
+import { LANGUAGES, useSettings, type Language } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { brand } from '@/theme/tokens';
-
-const LANGS: { id: Language; name: string; note: string; ready: boolean }[] = [
-  { id: 'es', name: 'Español', note: 'Audios y textos en español', ready: true },
-  { id: 'en', name: 'English', note: 'Coming soon · Próximamente', ready: false },
-];
 
 /** Entrada suave: sube 14 px y aparece, sin rebote */
 const up = (delay: number, duration: number = DUR.slow) =>
@@ -75,7 +70,7 @@ export default function Bienvenida() {
 
       <View style={{ gap: 12 }}>
         <Animated.Text entering={up(950, DUR.base)} style={s.ask}>Elige tu idioma · Choose your language</Animated.Text>
-        {LANGS.map((l, i) => {
+        {LANGUAGES.map((l, i) => {
           const on = language === l.id;
           return (
             <Animated.View key={l.id} entering={up(1050 + i * 110)}>
