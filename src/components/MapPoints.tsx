@@ -1,13 +1,13 @@
 import { Marker } from '@maplibre/maplibre-react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
 import { POINT_ICON, POINTS, type MapPoint } from '@/data/points';
 import type { LngLat } from '@/data/types';
-import { distance, formatDistance } from '@/lib/geo';
+import { distance, formatDistance, projectOnRoute } from '@/lib/geo';
 import { LEAVE, nearbyPoint } from '@/lib/points';
 import { font } from '@/theme/fonts';
 import { shadow, type TourPalette } from '@/theme/tokens';
@@ -27,10 +27,34 @@ const BOX_H = ROUND + 40 + DOT;
 /** Muelle con un pelín de rebote: la foto se pasa un poco de tamaño y se posa */
 const OPEN = { damping: 13, stiffness: 300, mass: 0.8 } as const;
 
-export function MapPoints({ position, palette }: { position: LngLat | null; palette: TourPalette }) {
+/** Solo se pintan los puntos a menos de esto de la ruta o de ti (metros) */
+const VISIBLE_M = 500;
+/** La posición se agrupa en celdas de ~200 m para no recalcular qué puntos se ven en cada lectura del GPS */
+const CELL = 0.002;
+
+/**
+ * `corridor` son las polilíneas de la ruta; sin ella se ven todos los puntos.
+ */
+export function MapPoints({ position, palette, corridor }: { position: LngLat | null; palette: TourPalette; corridor?: LngLat[][] }) {
   const [near, setNear] = useState<string | null>(null);
   const [tapped, setTapped] = useState<string | null>(null);
   const dismissed = useRef(new Set<string>());
+
+  const onRoute = useMemo(
+    () => (corridor ? new Set(POINTS.filter(pt => corridor.some(l => l.length > 1 && projectOnRoute(l, pt.coord).offRoute <= VISIBLE_M)).map(pt => pt.id)) : null),
+    [corridor],
+  );
+  const cx = position ? Math.round(position[0] / CELL) : null;
+  const cy = position ? Math.round(position[1] / CELL) : null;
+  const aroundMe = useMemo(() => {
+    if (cx == null || cy == null) return null;
+    const c: LngLat = [cx * CELL, cy * CELL];
+    return new Set(POINTS.filter(pt => distance(c, pt.coord) <= VISIBLE_M).map(pt => pt.id));
+  }, [cx, cy]);
+  const visible = useMemo(
+    () => (onRoute ? POINTS.filter(pt => onRoute.has(pt.id) || aroundMe?.has(pt.id) || pt.id === near || pt.id === tapped) : POINTS),
+    [onRoute, aroundMe, near, tapped],
+  );
 
   useEffect(() => {
     if (!position) return;
@@ -39,32 +63,36 @@ export function MapPoints({ position, palette }: { position: LngLat | null; pale
       const pt = POINTS.find(x => x.id === id);
       if (!pt || distance(position, pt.coord) >= LEAVE) dismissed.current.delete(id);
     }
-    const next = nearbyPoint(POINTS, position, near, dismissed.current);
+    const next = nearbyPoint(visible, position, near, dismissed.current);
     if (next === near) return;
     setNear(next);
     if (next) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-  }, [position, near]);
+  }, [position, near, visible]);
 
   const open = tapped ?? near;
-  const toggle = (id: string) => {
+  const state = useRef({ open, near });
+  useEffect(() => { state.current = { open, near }; });
+  const toggle = useCallback((id: string) => {
     Haptics.selectionAsync().catch(() => {});
-    if (open === id) {
+    const cur = state.current;
+    if (cur.open === id) {
       setTapped(null);
-      if (near === id) { dismissed.current.add(id); setNear(null); }
+      if (cur.near === id) { dismissed.current.add(id); setNear(null); }
     } else {
       setTapped(id);
     }
-  };
+  }, []);
 
-  return POINTS.map((pt, i) => (
+  return visible.map((pt, i) => (
     <Marker key={pt.id} id={`point-${pt.id}`} lngLat={pt.coord} anchor="bottom">
       <PointPin
         point={pt}
         index={i}
         open={open === pt.id}
-        meters={position && open === pt.id ? distance(position, pt.coord) : null}
+        // Redondeado a 5 m: así el pin no se repinta con cada lectura del GPS
+        meters={position && open === pt.id ? Math.max(5, Math.round(distance(position, pt.coord) / 5) * 5) : null}
         palette={palette}
-        onPress={() => toggle(pt.id)}
+        onToggle={toggle}
       />
     </Marker>
   ));
@@ -77,14 +105,15 @@ interface PointPinProps {
   /** Distancia a ti, si está abierto */
   meters: number | null;
   palette: TourPalette;
-  onPress: () => void;
+  onToggle: (id: string) => void;
 }
 
 /**
  * Punto que se abre en foto. La caja tiene siempre el mismo tamaño y se ancla
  * por abajo, así el punto no se mueve en el mapa al abrirse.
  */
-function PointPin({ point, index, open, meters, palette: p, onPress }: PointPinProps) {
+const PointPin = memo(function PointPin({ point, index, open, meters, palette: p, onToggle }: PointPinProps) {
+  const onPress = useCallback(() => onToggle(point.id), [onToggle, point.id]);
   const reduced = useReducedMotion();
   const appear = useSharedValue(reduced ? 1 : 0);
   const o = useSharedValue(0);
@@ -114,7 +143,7 @@ function PointPin({ point, index, open, meters, palette: p, onPress }: PointPinP
           </View>
           <View style={[s.tag, { backgroundColor: p.deep }]}>
             <Text style={s.tagName} numberOfLines={1}>{point.name}</Text>
-            {meters != null && <Text style={[s.tagDist, { color: p.t2 }]}>{formatDistance(Math.max(5, Math.round(meters / 5) * 5))}</Text>}
+            {meters != null && <Text style={[s.tagDist, { color: p.t2 }]}>{formatDistance(meters)}</Text>}
           </View>
         </PressableScale>
       </Animated.View>
@@ -123,7 +152,7 @@ function PointPin({ point, index, open, meters, palette: p, onPress }: PointPinP
       </PressableScale>
     </View>
   );
-}
+});
 
 const s = StyleSheet.create({
   box: { width: BOX_W, height: BOX_H, alignItems: 'center', justifyContent: 'flex-end' },
