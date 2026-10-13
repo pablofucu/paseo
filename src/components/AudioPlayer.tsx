@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import type { NarrationPlayer } from '@/lib/useNarrationPlayer';
@@ -20,6 +20,21 @@ function waveFor(seed: string) {
     return 0.22 + 0.78 * env * (0.35 + (h % 100) / 154);
   });
 }
+
+/**
+ * Barras de la onda. Se pintan de nuevo solo cuando se enciende otra barra
+ * (44 como mucho por audio), no en cada tic del reloj.
+ */
+const WaveBars = memo(function WaveBars({ wave, lit, on }: { wave: number[]; lit: number; on: string }) {
+  return (
+    <>
+      {wave.map((h, i) => (
+        // pointerEvents none: el toque llega siempre a la onda entera, no a la barra, y la posición es la de toda la onda
+        <View key={i} pointerEvents="none" style={[s.bar, { height: `${Math.round(h * 100)}%`, backgroundColor: i < lit ? on : 'rgba(255,255,255,0.26)' }]} />
+      ))}
+    </>
+  );
+});
 
 function Skip({ back }: { back?: boolean }) {
   return (
@@ -51,7 +66,10 @@ export function AudioPlayer({ title, player }: { title: string; player: Narratio
   const [waveW, setWaveW] = useState(1);
   const [transcript, setTranscript] = useState(false);
   const progress = player.duration ? player.position / player.duration : 0;
+  const lit = Math.round(progress * BARS);
   const nextRate = RATES[(RATES.indexOf(player.rate) + 1) % RATES.length];
+  const rateText = (r: number) => String(r).replace('.', ',');
+  const seekTo = (x: number) => player.seek(Math.max(0, Math.min(1, x / waveW)) * player.duration);
 
   return (
     <View style={[s.box, { backgroundColor: p.deep }]}>
@@ -62,7 +80,7 @@ export function AudioPlayer({ title, player }: { title: string; player: Narratio
           <Rect x={16} y={14} width={5} height={7} rx={2} fill={p.t2} />
         </Svg>
         <Text style={s.title} numberOfLines={1}>{title}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Velocidad ${nextRate}`} onPress={() => player.setRate(nextRate)} style={s.rate} hitSlop={6}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Velocidad ${rateText(player.rate)} por`} accessibilityHint={`Cambia a ${rateText(nextRate)} por`} onPress={() => player.setRate(nextRate)} style={s.rate} hitSlop={6}>
           <Text style={s.rateText}>{String(player.rate).replace('.', ',')}×</Text>
         </Pressable>
       </View>
@@ -70,13 +88,14 @@ export function AudioPlayer({ title, player }: { title: string; player: Narratio
       <Pressable
         accessibilityRole="adjustable"
         accessibilityLabel="Posición del audio"
-        onLayout={e => setWaveW(e.nativeEvent.layout.width)}
-        onPress={e => player.seek((e.nativeEvent.locationX / waveW) * player.duration)}
+        accessibilityValue={{ min: 0, max: Math.round(player.duration), now: Math.round(player.position), text: `${fmt(player.position)} de ${fmt(player.duration)}` }}
+        accessibilityActions={[{ name: 'increment', label: 'Adelantar 15 segundos' }, { name: 'decrement', label: 'Atrasar 15 segundos' }]}
+        onAccessibilityAction={e => player.skip(e.nativeEvent.actionName === 'increment' ? 15 : -15)}
+        onLayout={e => setWaveW(e.nativeEvent.layout.width || 1)}
+        onPress={e => seekTo(e.nativeEvent.locationX)}
         style={s.wave}
       >
-        {wave.map((h, i) => (
-          <View key={i} style={[s.bar, { height: `${Math.round(h * 100)}%`, backgroundColor: i / BARS < progress ? p.t2 : 'rgba(255,255,255,0.26)' }]} />
-        ))}
+        <WaveBars wave={wave} lit={lit} on={p.t2} />
       </Pressable>
       <View style={s.times}>
         <Text style={s.time}>{fmt(player.position)}</Text>
@@ -101,19 +120,12 @@ export function AudioPlayer({ title, player }: { title: string; player: Narratio
       {transcript && (
         <Text style={s.tr}>
           {player.sentences.map((t, i) => (
-            <Text key={i} onPress={() => player.seek(sentenceStart(player, i))} style={i === player.index ? { color: '#fff', backgroundColor: 'rgba(255,255,255,0.12)' } : undefined}>{t} </Text>
+            <Text key={i} onPress={() => player.seek((player.starts[i] ?? 0) + 0.01)} style={i === player.index ? { color: '#fff', backgroundColor: 'rgba(255,255,255,0.12)' } : undefined}>{t} </Text>
           ))}
         </Text>
       )}
     </View>
   );
-}
-
-/** Segundo en que empieza la frase i (para saltar tocándola en la transcripción) */
-function sentenceStart(player: NarrationPlayer, i: number) {
-  const total = player.sentences.reduce((a, t) => a + t.length, 0) || 1;
-  const before = player.sentences.slice(0, i).reduce((a, t) => a + t.length, 0);
-  return (before / total) * player.duration + 0.01;
 }
 
 const s = StyleSheet.create({

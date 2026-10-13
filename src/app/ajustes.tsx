@@ -88,7 +88,17 @@ export default function Ajustes() {
         </PressableScale>
       </Section>
 
-      <Section title="Accesibilidad" i={3}>
+      <Section title="Información" i={3}>
+        <PressableScale accessibilityRole="button" accessibilityLabel="Créditos de las fotos" scaleTo={0.98} onPress={() => router.push('/creditos')} style={s.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.rowTitle}>Créditos de las fotos</Text>
+            <Text style={type.caption}>Autoría, licencia y fuente de cada foto</Text>
+          </View>
+          <Text style={s.go}>›</Text>
+        </PressableScale>
+      </Section>
+
+      <Section title="Accesibilidad" i={4}>
         <View style={s.row}>
           <View style={{ flex: 1 }}>
             <Text style={[s.rowTitle, rt]}>Texto grande</Text>
@@ -98,7 +108,7 @@ export default function Ajustes() {
         </View>
       </Section>
 
-      <Section title="Pruebas" i={4}>
+      <Section title="Pruebas" i={5}>
         <View style={s.row}>
           <View style={{ flex: 1 }}>
             <Text style={[s.rowTitle, rt]}>Modo prueba</Text>

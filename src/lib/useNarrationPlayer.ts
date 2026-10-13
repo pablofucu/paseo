@@ -3,16 +3,41 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /** Caracteres por segundo de la voz del sistema en español a velocidad 1 */
 const CPS = 14.5;
+/** Por encima de esta longitud, una frase se parte en comas y puntos y coma */
+const LONG = 90;
+/** Los trozos de una frase larga no bajan de esta longitud */
+const MIN_CHUNK = 40;
 
-/** Parte el guion en frases (la voz se lanza frase a frase para poder pausar y saltar). */
+/** Parte una frase larga por sus comas y puntos y coma, sin dejar trozos diminutos */
+function splitLong(sentence: string): string[] {
+  if (sentence.length <= LONG) return [sentence];
+  const clauses = sentence.match(/[^,;]+[,;]?\s*/g)?.map(c => c.trim()).filter(Boolean) ?? [sentence];
+  const out: string[] = [];
+  for (const c of clauses) {
+    const last = out.at(-1);
+    if (last !== undefined && (last.length < MIN_CHUNK || c.length < MIN_CHUNK / 2)) out[out.length - 1] = `${last} ${c}`;
+    else out.push(c);
+  }
+  return out;
+}
+
+/**
+ * Parte el guion en frases (la voz se lanza frase a frase para poder pausar y
+ * saltar). Las frases largas se parten además en comas y puntos y coma, para que
+ * al reanudar tras una pausa no se repita media oración.
+ */
 export function splitSentences(text: string): string[] {
-  return (text.match(/[^.!?…]+[.!?…]*["»”)]?\s*/g) ?? [text]).map(s => s.trim()).filter(Boolean);
+  return (text.match(/[^.!?…]+[.!?…]*["»”)]?\s*/g) ?? [text]).map(s => s.trim()).filter(Boolean).flatMap(splitLong);
 }
 
 export interface NarrationPlayer {
   sentences: string[];
+  /** Segundo (estimado) en que empieza cada frase */
+  starts: number[];
   index: number;
   playing: boolean;
+  /** El guion ha llegado al final (no es una simple pausa) */
+  ended: boolean;
   rate: number;
   position: number;
   duration: number;
@@ -34,6 +59,7 @@ export function useNarrationPlayer(text: string): NarrationPlayer {
   const [index, setIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [ended, setEnded] = useState(false);
   const token = useRef(0);
   /** La siguiente frase se lanza desde aquí al terminar la anterior */
   const nextRef = useRef<(i: number, r: number) => void>(() => {});
@@ -45,8 +71,8 @@ export function useNarrationPlayer(text: string): NarrationPlayer {
   const speakFrom = useCallback((i: number, r: number) => {
     const my = ++token.current;
     Speech.stop();
-    if (i >= sentences.length) { setPlaying(false); setIndex(sentences.length - 1); setElapsed(durs.at(-1) ?? 0); return; }
-    setIndex(i); setElapsed(0); setPlaying(true);
+    if (i >= sentences.length) { setPlaying(false); setEnded(true); setIndex(sentences.length - 1); setElapsed(durs.at(-1) ?? 0); return; }
+    setIndex(i); setElapsed(0); setPlaying(true); setEnded(false);
     Speech.speak(sentences[i], {
       language: 'es-ES',
       rate: r,
@@ -73,11 +99,11 @@ export function useNarrationPlayer(text: string): NarrationPlayer {
     let i = starts.findIndex((st, k) => clamped >= st && clamped < st + durs[k]);
     if (i < 0) i = sentences.length - 1;
     if (playing) speakFrom(i, rate);
-    else { setIndex(i); setElapsed(0); }
+    else { setIndex(i); setElapsed(0); setEnded(false); }
   }, [duration, starts, durs, sentences.length, playing, speakFrom, rate]);
   const position = (starts[index] ?? 0) + elapsed;
   const skip = useCallback((d: number) => seek(position + d), [seek, position]);
   const setRate = useCallback((r: number) => { setRateState(r); if (playing) speakFrom(index, r); }, [playing, speakFrom, index]);
 
-  return { sentences, index, playing, rate, position, duration, play, pause, toggle: playing ? pause : play, seek, skip, setRate };
+  return { sentences, starts, index, playing, ended, rate, position, duration, play, pause, toggle: playing ? pause : play, seek, skip, setRate };
 }

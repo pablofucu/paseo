@@ -1,4 +1,4 @@
-import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { Platform, Vibration } from 'react-native';
 
@@ -14,8 +14,20 @@ const SOURCES = {
 };
 const players: Partial<Record<keyof typeof SOURCES, AudioPlayer>> = {};
 
+/**
+ * Los sonidos son efectos: respetan el interruptor de silencio y se mezclan con
+ * la música del usuario en vez de pararla. Se configura una sola vez.
+ */
+let modeSet = false;
+function configureAudio() {
+  if (modeSet) return;
+  modeSet = true;
+  setAudioModeAsync({ playsInSilentMode: false, interruptionMode: 'mixWithOthers' }).catch(() => { modeSet = false; });
+}
+
 function play(name: keyof typeof SOURCES, volume = 1) {
   try {
+    configureAudio();
     const p = (players[name] ??= createAudioPlayer(SOURCES[name]));
     p.volume = volume;
     p.seekTo(0).catch(() => {});

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
@@ -9,6 +10,7 @@ import { DUR, EASE_OUT, rise } from '@/components/motion';
 import { OfflinePack } from '@/components/OfflinePack';
 import { Postcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
+import { RouteStamp } from '@/components/RouteStamp';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
@@ -45,6 +47,10 @@ export default function Cover() {
   };
   const cell = tour.stops.length > 4 ? 300 * 0.21 : 300 * 0.25;
   const { onScroll, photo, veil } = useHeroMotion(HERO);
+  // Parada abierta en la vista previa (foto y sello de goma)
+  const [preview, setPreview] = useState<number | null>(null);
+  const shown = preview == null ? null : tour.stops[preview];
+  const shownStamp = shown && saved?.stamps.find(x => x.stopId === shown.id);
 
   return (
     <TourThemeProvider palette={p}>
@@ -70,13 +76,16 @@ export default function Cover() {
 
           <Text style={[type.headline, s.h]}>Paradas</Text>
           {tour.stops.map((st, i) => (
-            <Animated.View key={st.id} entering={rise(i + 3)} style={s.stop}>
-              <View style={[s.pin, { borderColor: p.t }]}><Text style={[s.pinText, { color: p.t }]}>{i + 1}</Text></View>
-              <DuotoneImage source={st.photo} palette={p} style={s.thumb} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.stopName}>{st.name}</Text>
-                <Text style={type.caption}>{i === 0 ? 'Inicio' : KIND_LABEL[st.kind]}</Text>
-              </View>
+            <Animated.View key={st.id} entering={rise(i + 3)}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Parada ${i + 1}: ${st.name}. Ver foto y sello`} onPress={() => setPreview(i)} style={({ pressed }) => [s.stop, pressed && { opacity: 0.6 }]}>
+                <View style={[s.pin, { borderColor: p.t }]}><Text style={[s.pinText, { color: p.t }]}>{i + 1}</Text></View>
+                <DuotoneImage source={st.thumb} palette={p} style={s.thumb} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.stopName}>{st.name}</Text>
+                  <Text style={type.caption}>{i === 0 ? 'Inicio' : KIND_LABEL[st.kind]}</Text>
+                </View>
+                <Text style={s.chev}>›</Text>
+              </Pressable>
             </Animated.View>
           ))}
           <Text style={[type.headline, s.h]}>Sellos que puedes conseguir</Text>
@@ -99,6 +108,12 @@ export default function Cover() {
             })}
           </View>
 
+          <Text style={[type.headline, s.h]}>Sello de la ruta</Text>
+          <View style={s.routeStamp}>
+            <RouteStamp tour={tour} done={prog.done} total={prog.total} height={132} rotate={-3} />
+            <Text style={[type.body, { flex: 1 }]}>{tour.stamp.symbol}</Text>
+          </View>
+
           <Text style={[type.headline, s.h]}>Tu postal</Text>
           <Pressable accessibilityRole="button" disabled={!prog.completed} onPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} style={{ alignItems: 'center', gap: 6 }}>
             <Postcard tour={tour} route={saved} width={300} />
@@ -107,6 +122,27 @@ export default function Cover() {
 
         </Animated.View>
       </Animated.ScrollView>
+ 
+      <Modal visible={shown != null} transparent animationType="fade" onRequestClose={() => setPreview(null)} statusBarTranslucent>
+        <Pressable accessibilityRole="button" accessibilityLabel="Cerrar la vista previa" onPress={() => setPreview(null)} style={s.backdrop}>
+          {shown && (
+            <View style={s.card}>
+              <DuotoneImage source={shown.photo} palette={p} style={s.cardPhoto} />
+              <View style={s.cardBody}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[type.overline, { color: p.t }]}>Parada {(preview ?? 0) + 1} de {tour.stops.length} · {KIND_LABEL[shown.kind]}</Text>
+                  <Text style={s.stopName}>{shown.name}</Text>
+                  <Text style={type.caption}>{shown.arriveHint}</Text>
+                </View>
+                <View style={{ opacity: shownStamp ? 1 : 0.3 }}>
+                  <RubberStamp tour={tour} stop={shown} date={shownStamp?.date ?? new Date().toISOString()} width={stampBox(shown.rubber.shape, 96).w} height={stampBox(shown.rubber.shape, 96).h} />
+                </View>
+              </View>
+              <Text style={s.cardHint}>{shownStamp ? 'Sello conseguido' : 'Sello por conseguir: se pone al llegar a la parada'}</Text>
+            </View>
+          )}
+        </Pressable>
+      </Modal>
       <IconButton label="Volver" icon="back" onPress={() => router.back()} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
       {/* El botón de empezar aparece con una subida corta cuando la ficha ya está en pantalla */}
       <Animated.View entering={FadeInDown.delay(300).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
@@ -140,6 +176,13 @@ const s = StyleSheet.create({
   pinText: { fontFamily: font.black, fontSize: 15 },
   thumb: { width: 46, height: 46, borderRadius: 12 },
   stopName: { fontFamily: font.black, fontSize: 15.5, color: neutral.ink },
+  chev: { fontFamily: font.black, fontSize: 24, color: neutral.ink3 },
+  routeStamp: { flexDirection: 'row', alignItems: 'center', gap: 18, paddingVertical: 4 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(20,16,12,0.6)', justifyContent: 'center', padding: 22 },
+  card: { backgroundColor: neutral.bg, borderRadius: 22, overflow: 'hidden' },
+  cardPhoto: { height: 220 },
+  cardBody: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
+  cardHint: { fontFamily: font.bold, fontSize: 12.5, color: neutral.ink3, paddingHorizontal: 16, paddingBottom: 16, marginTop: -4 },
   restart: { alignSelf: 'center', paddingTop: 10 },
   restartText: { fontFamily: font.heavy, fontSize: 14, color: neutral.ink2, textDecorationLine: 'underline' },
   cta: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 14, backgroundColor: neutral.bg, borderTopWidth: 1, borderTopColor: neutral.line },

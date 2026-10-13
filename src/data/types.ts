@@ -37,6 +37,20 @@ export const KIND_LABEL: Record<StopKind, string> = {
   food: 'Gastronomía',
 };
 
+/**
+ * Autoría de una foto. Con `source: 'pendiente'` todavía no se ha comprobado
+ * quién es el autor ni la licencia: solo se enseña en la pantalla de créditos.
+ */
+export interface PhotoCredit {
+  author: string;
+  license: string;
+  /** Enlace a la página de la foto (Wikimedia Commons) o 'pendiente' */
+  source: string;
+}
+
+export const CREDIT_PENDING = 'pendiente';
+export const creditPending = (c?: PhotoCredit) => !c || c.source === CREDIT_PENDING;
+
 export interface Stop {
   id: string;
   name: string;
@@ -44,8 +58,10 @@ export interface Stop {
   /** Sello de goma de la parada */
   rubber: RubberArt;
   photo: ImageSourcePropType;
+  /** Miniatura de 160 px de la foto (assets/tours/<ruta>/thumbs, la genera scripts/fetch-photos.mjs) */
+  thumb: ImageSourcePropType;
   /** Autoría y licencia de la foto (fotos libres de Wikimedia Commons) */
-  photoCredit?: { author: string; license: string };
+  photoCredit: PhotoCredit;
   coord: LngLat;
   arriveHint: string;
   audioTitle: string;
@@ -53,7 +69,13 @@ export interface Stop {
   look: string;
   p2: string;
   fact: string;
+  /** Pie de la foto */
   captions: string[];
+  /**
+   * Guion completo para la voz, si hace falta escribirlo distinto de la ficha.
+   * Si falta, se lee la ficha con los números y siglos en letras (src/lib/spoken.ts).
+   */
+  spoken?: string;
 }
 
 export interface OnTheWay {
@@ -63,6 +85,8 @@ export interface OnTheWay {
   text: string;
   /** Lo que se cuenta al tocarla; si falta, se lee `text` */
   story?: string;
+  /** Lo que lee la voz, si hace falta distinto de `story`; si falta, se leen con las cifras en letras */
+  spoken?: string;
 }
 
 export interface Tour {

@@ -1,7 +1,7 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut, useReducedMotion } from 'react-native-reanimated';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeIn, FadeInDown, FadeOut, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DuotoneImage } from '@/components/DuotoneImage';
@@ -12,19 +12,32 @@ import { StampPlacer } from '@/components/passport/StampPlacer';
 import { RubberStamp } from '@/components/RubberStamp';
 import { Scrim } from '@/components/Scrim';
 import { GhostButton, IconButton, PrimaryButton } from '@/components/ui';
-import { KIND_LABEL } from '@/data/types';
+import { getTour } from '@/data/tours';
+import { creditPending, KIND_LABEL, type Tour } from '@/data/types';
 import { SHEET_RATIO, stampBox } from '@/lib/sheet';
+import { prefetchPhoto } from '@/lib/prefetch';
+import { stopScript } from '@/lib/spoken';
+import { useAutoPause } from '@/lib/useAutoPause';
 import { useNarrationPlayer } from '@/lib/useNarrationPlayer';
-import { useTourParam } from '@/lib/useTour';
 import { usePassport, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral, radius } from '@/theme/tokens';
 import { TourThemeProvider } from '@/theme/TourTheme';
 import { type } from '@/theme/type';
 
-/** La galería muestra la foto con cuatro encuadres */
-const CROPS = [{ x: 0.5, y: 0.5, zoom: 1 }, { x: 0.25, y: 0.35, zoom: 1.8 }, { x: 0.75, y: 0.4, zoom: 1.8 }, { x: 0.5, y: 0.8, zoom: 1.5 }];
 const HERO = 330;
+
+/** Late suavemente para llamar la atención sobre «Poner el sello» al acabar el audio */
+function Pulse({ on, children }: { on: boolean; children: ReactNode }) {
+  const reduced = useReducedMotion();
+  const k = useSharedValue(1);
+  useEffect(() => {
+    if (on && !reduced) k.set(withRepeat(withSequence(withTiming(1.035, { duration: 650 }), withTiming(1, { duration: 650 })), -1));
+    else { cancelAnimation(k); k.set(withTiming(1, { duration: 150 })); }
+  }, [on, reduced, k]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: k.value }] }));
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
 
 /**
  * Una parada. Se abre encima del mapa (al llegar, o tocando su pin) y al
@@ -32,9 +45,17 @@ const HERO = 330;
  * pone al final, con «Poner el sello», y solo si de verdad has llegado.
  */
 export default function StopScreen() {
-  const tour = useTourParam();
-  const params = useLocalSearchParams<{ n: string; arrived?: string }>();
-  const n = Number(params.n);
+  const params = useLocalSearchParams<{ id: string; n: string }>();
+  const tour = getTour(params.id);
+  // Un enlace roto no debe cerrar la app: a Inicio si no hay ruta, a la portada de la ruta si no hay parada
+  if (!tour) return <Redirect href="/" />;
+  const n = /^\d+$/.test(params.n ?? '') ? Number(params.n) : -1;
+  if (n < 0 || n >= tour.stops.length) return <Redirect href={{ pathname: '/tour/[id]', params: { id: tour.id } }} />;
+  return <Stop tour={tour} n={n} />;
+}
+
+function Stop({ tour, n }: { tour: Tour; n: number }) {
+  const params = useLocalSearchParams<{ arrived?: string }>();
   const stop = tour.stops[n];
   const p = tour.palette;
   const insets = useSafeAreaInsets();
@@ -56,12 +77,15 @@ export default function StopScreen() {
   const [placing, setPlacing] = useState(false);
   const [justStamped, setJustStamped] = useState(false);
   const [banner, setBanner] = useState(arrivedNow);
-  const [gal, setGal] = useState(0);
   const [color, setColor] = useState(false);
   const [ctaH, setCtaH] = useState(90);
   const sheetW = Math.floor(Math.min(width - 48, (height - insets.top - insets.bottom - 260) * SHEET_RATIO, 440));
-  const script = `${stop.name}. ${stop.p1} Fíjate en ${stop.look.charAt(0).toLowerCase()}${stop.look.slice(1)} ${stop.p2} ¿Sabías que…? ${stop.fact}`;
-  const player = useNarrationPlayer(script);
+  const player = useNarrationPlayer(stopScript(stop));
+  // Sin voz cuando otra pantalla tapa la parada o la app queda en segundo plano
+  useAutoPause(player.pause);
+  // La foto de la siguiente parada ya está en caché cuando se abra
+  const nextPhoto = tour.stops[n + 1]?.photo;
+  useEffect(() => { prefetchPhoto(nextPhoto); }, [nextPhoto]);
 
   // Al llegar, el aviso baja, se va solo y el audio arranca
   const playRef = useRef(player.play);
@@ -87,23 +111,25 @@ export default function StopScreen() {
     setJustStamped(true);
     advanceWalk();
   };
-  const crop = CROPS[gal];
   const look = stampBox(stop.rubber.shape, 84 / 0.325);
 
   return (
     <TourThemeProvider palette={p}>
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: 130 + insets.bottom }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Siguiente foto" onPress={() => setGal(g => (g + 1) % CROPS.length)} style={s.gallery}>
+        <View style={s.gallery}>
           <Animated.View style={[StyleSheet.absoluteFill, hero]}>
-            <DuotoneImage source={stop.photo} palette={p} duotone={!color} zoom={crop.zoom} focus={crop} style={StyleSheet.absoluteFill} />
+            <DuotoneImage source={stop.photo} palette={p} duotone={!color} style={StyleSheet.absoluteFill} />
           </Animated.View>
           <Scrim opacity={0.55} />
           <Scrim opacity={0.35} from="top" style={{ height: 110 }} />
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: neutral.bg }, heroShade]} />
-          <Animated.Text key={gal} entering={FadeIn.duration(DUR.base).easing(EASE_OUT)} style={s.cap} numberOfLines={1}>{stop.captions[gal] ?? ''}</Animated.Text>
-          <View style={s.dots}>{CROPS.map((_, i) => <View key={i} style={[s.dot, i === gal && s.dotOn]} />)}</View>
-        </Pressable>
-        {stop.photoCredit && <Text style={s.credit}>Foto: {stop.photoCredit.author} · {stop.photoCredit.license} · Wikimedia Commons</Text>}
+          <Text style={s.cap} numberOfLines={1}>{stop.captions[0] ?? ''}</Text>
+        </View>
+        {!creditPending(stop.photoCredit) && (
+          <Pressable accessibilityRole="link" accessibilityLabel={`Foto de ${stop.photoCredit.author}, licencia ${stop.photoCredit.license}. Abre la fuente`} onPress={() => Linking.openURL(stop.photoCredit.source).catch(() => {})} hitSlop={{ top: 6, bottom: 10 }}>
+            <Text style={s.credit}>Foto: {stop.photoCredit.author} · {stop.photoCredit.license} · Wikimedia Commons</Text>
+          </Pressable>
+        )}
 
         <View style={s.body}>
           <Animated.Text entering={rise(1)} style={[type.overline, { color: p.t }]}>Parada {n + 1} de {tour.stops.length} · {KIND_LABEL[stop.kind]}</Animated.Text>
@@ -128,7 +154,7 @@ export default function StopScreen() {
       </Animated.ScrollView>
 
       <IconButton label="Volver al mapa" icon="close" onPress={close} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
-      <Pressable accessibilityRole="button" onPress={() => setColor(v => !v)} style={[s.colorBtn, { top: insets.top + 14 }]}>
+      <Pressable accessibilityRole="switch" accessibilityLabel="Ver la foto en color" accessibilityState={{ checked: color }} onPress={() => setColor(v => !v)} style={[s.colorBtn, { top: insets.top + 14 }]}>
         <Text style={s.colorText}>{color ? 'Duotono' : 'Ver en color'}</Text>
       </Pressable>
 
@@ -142,7 +168,12 @@ export default function StopScreen() {
       {/* Abajo: sellar al final de la parada, seguir a la siguiente o volver al mapa */}
       <Animated.View entering={FadeIn.delay(250).duration(DUR.base).easing(EASE_OUT)} onLayout={e => setCtaH(e.nativeEvent.layout.height)} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
         {canStamp ? (
-          <PrimaryButton label="Poner el sello" onPress={() => { player.pause(); setPlacing(true); }} />
+          <>
+            {player.ended && !placing && <Text style={s.need}>Audio terminado: ya puedes poner tu sello</Text>}
+            <Pulse on={player.ended && !placing}>
+              <PrimaryButton label="Poner el sello" onPress={() => { player.pause(); setPlacing(true); }} />
+            </Pulse>
+          </>
         ) : mine && visitedHere && !current ? (
           <PrimaryButton label={last ? 'Terminar tour' : 'Ir a la siguiente parada'} onPress={close} />
         ) : current && walk.arrived === stop.id ? (
@@ -156,7 +187,7 @@ export default function StopScreen() {
       </Animated.View>
 
       {/* Salir de la guía al mapa, en la misma esquina que el botón «Guía» del mapa */}
-      {onWalk && !placing && <GuideButton to="map" photo={stop.photo} palette={p} onPress={close} style={{ bottom: ctaH + 12 }} />}
+      {onWalk && !placing && <GuideButton to="map" photo={stop.thumb} palette={p} onPress={close} style={{ bottom: ctaH + 12 }} />}
 
       {placing && (
         <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(260)} style={[StyleSheet.absoluteFill, s.place, { backgroundColor: p.deep, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 20 }]}>
@@ -180,13 +211,10 @@ export default function StopScreen() {
 
 const s = StyleSheet.create({
   gallery: { height: HERO, overflow: 'hidden' },
-  cap: { position: 'absolute', left: 16, right: 16, bottom: 30, color: '#fff', fontFamily: font.heavy, fontSize: 12.5 },
-  dots: { position: 'absolute', bottom: 12, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,.55)' },
-  dotOn: { width: 20, backgroundColor: '#fff' },
+  cap: { position: 'absolute', left: 16, right: 16, bottom: 14, color: '#fff', fontFamily: font.heavy, fontSize: 12.5 },
   colorBtn: { position: 'absolute', right: 16, height: 32, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.92)', justifyContent: 'center' },
   colorText: { fontFamily: font.black, fontSize: 12.5, color: neutral.ink },
-  credit: { fontFamily: font.bold, fontSize: 10.5, color: neutral.ink3, paddingHorizontal: 18, paddingTop: 6 },
+  credit: { fontFamily: font.bold, fontSize: 12, color: neutral.ink3, paddingHorizontal: 18, paddingTop: 6, textDecorationLine: 'underline' },
   body: { padding: 18, gap: 14, backgroundColor: neutral.bg },
   look: { flexDirection: 'row', gap: 12, borderRadius: 18, padding: 12, alignItems: 'center' },
   lookOver: { fontFamily: font.black, fontSize: 11.5, letterSpacing: 1, textTransform: 'uppercase' },

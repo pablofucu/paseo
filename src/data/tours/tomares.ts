@@ -1,9 +1,11 @@
-import type { LngLat, Tour } from '../types';
+import { CREDIT_PENDING, type LngLat, type PhotoCredit, type Tour } from '../types';
 import type { RouteStep } from '@/lib/routing';
 import geo from './tomares.geo.json';
 
 /** Ubicaciones y ruta fija: src/data/tours/tomares.geo.json (la ruta la genera el workflow «Contenido») */
 const coord = (id: string) => geo.stops.find(s => s.id === id)!.coord as LngLat;
+/** Fotos propias del proyecto sin autoría ni licencia comprobadas: se enseñan solo en Ajustes › Créditos de las fotos */
+const PENDIENTE: PhotoCredit = { author: 'pendiente', license: 'pendiente', source: CREDIT_PENDING };
 
 /*
  * Ubicaciones (buscadas en octubre de 2026):
@@ -50,8 +52,10 @@ export const tomares: Tour = {
     id: "rotonda",
     name: "Rotonda de la Arboleda",
     kind: "public",
-    rubber: { shape: 'oval', title: 'BIENVENIDOS A', place: 'SEVILLA' },
+    rubber: { shape: 'oval', title: 'BIENVENIDOS A', place: 'TOMARES' },
     photo: require('../../../assets/tours/tomares/rotonda.jpg'),
+    thumb: require('../../../assets/tours/tomares/thumbs/rotonda.jpg'),
+    photoCredit: PENDIENTE,
     coord: coord("rotonda"),
     arriveHint: "Busca las letras blancas TOMARES sobre el césped.",
     audioTitle: "Bienvenido a Tomares",
@@ -67,11 +71,13 @@ export const tomares: Tour = {
     kind: "civic",
     rubber: { shape: 'octagon', title: 'AYUNTAMIENTO', label: 'HACIENDA SANTA ANA' },
     photo: require('../../../assets/tours/tomares/ayuntamiento.jpg'),
+    thumb: require('../../../assets/tours/tomares/thumbs/ayuntamiento.jpg'),
+    photoCredit: PENDIENTE,
     coord: coord("ayuntamiento"),
     arriveHint: "Mira arriba: la torre mirador con dos arcos.",
     audioTitle: "La Hacienda de Santa Ana",
     p1: "El Ayuntamiento ocupa la antigua Hacienda de Santa Ana. Es un edificio blanco encalado con tejado de teja, como tantas haciendas del Aljarafe.",
-    look: "La puerta central en arco y en los balcones de forja.",
+    look: "La puerta central, en arco, y los balcones de forja.",
     p2: "El arquitecto sevillano Guillermo Vázquez Consuegra rehabilitó la hacienda para convertirla en casa consistorial. Hoy el jardín funciona como vestíbulo del edificio.",
     fact: "Una hacienda del Aljarafe solía tener una zona de trabajo, con producción de aceite, y otra de vivienda.",
     captions: ["Torre mirador", "Puerta en arco", "Balcones de forja", "Palmeras delante"],
@@ -82,21 +88,25 @@ export const tomares: Tour = {
     kind: "religious",
     rubber: { shape: 'circle', title: 'PARROQUIA DE BELÉN' },
     photo: require('../../../assets/tours/tomares/iglesia.jpg'),
+    thumb: require('../../../assets/tours/tomares/thumbs/iglesia.jpg'),
+    photoCredit: PENDIENTE,
     coord: coord("iglesia"),
     arriveHint: "Localiza la espadaña con campanas y la torre del reloj.",
     audioTitle: "La Virgen de Belén",
     p1: "Esta es la parroquia del pueblo. La fachada es blanca y las molduras rojo almagra la enmarcan. La portada en arco lleva el rótulo con su nombre.",
     look: "El retablo de azulejos con una Virgen, en la fachada.",
     p2: "Nuestra Señora de Belén es la patrona de Tomares. La espadaña luce remates en espiral. En la plaza, los naranjos dan sombra y aroma.",
-    fact: "Nuestra Señora de Belén es la patrona de Tomares, y el patrón es San Sebastián.",
+    fact: "El nombre Belén recuerda a Betlehem, la ciudad donde la tradición cristiana sitúa el nacimiento de Jesús.",
     captions: ["Fachada almagra", "Espadaña y campanas", "Retablo de azulejos", "Naranjos en la plaza"],
   },
   {
     id: "kebab",
     name: "Royal King Kebab",
     kind: "food",
-    rubber: { shape: 'rect', title: 'ROYAL KING KEBAB', place: 'SEVILLA' },
+    rubber: { shape: 'rect', title: 'ROYAL KING KEBAB' },
     photo: require('../../../assets/tours/tomares/kebab.jpg'),
+    thumb: require('../../../assets/tours/tomares/thumbs/kebab.jpg'),
+    photoCredit: PENDIENTE,
     coord: coord("kebab"),
     arriveHint: "Busca la ventana con arco de herradura azul.",
     audioTitle: "Parada final: kebab",
@@ -110,8 +120,8 @@ export const tomares: Tour = {
   legs: geo.legs as LngLat[][],
   legSteps: geo.steps as RouteStep[][],
   onTheWay: [
-    { afterStop: 0, name: "Aljarafe", text: "De camino: el Aljarafe, junto a Sevilla" },
-    { afterStop: 1, name: "Tesoro Tomares", text: "De camino: el Tesoro de Tomares, de 2016" },
-    { afterStop: 2, name: "Patrón y patrona", text: "De camino: Belén y San Sebastián" },
+    { afterStop: 0, name: "Aljarafe", text: "De camino: el Aljarafe, junto a Sevilla", story: "El Aljarafe es la comarca de colinas que se asoma a Sevilla desde el oeste. El olivar y el aceite han sido durante siglos su seña de identidad." },
+    { afterStop: 1, name: "Tesoro Tomares", text: "De camino: el Tesoro de Tomares, de 2016", story: "En 2016, unas obras sacaron a la luz en Tomares un gran tesoro de monedas romanas de bronce del siglo IV, uno de los mayores hallazgos de este tipo en Europa." },
+    { afterStop: 2, name: "La patrona", text: "De camino: la Virgen de Belén", story: "La parroquia que acabas de ver está dedicada a Nuestra Señora de Belén, la patrona de Tomares. Su nombre aparece en el rótulo de la portada." },
   ],
 };

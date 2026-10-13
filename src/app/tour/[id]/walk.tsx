@@ -19,6 +19,7 @@ import type { LngLat, Tour } from '@/data/types';
 import { cumulative, distance, formatDistance, pointAlong, projectOnRoute, walkingMinutes } from '@/lib/geo';
 import { accuracySlack, ARRIVE_RADIUS_M, arrivalAllowed, instruction, prepareLeg } from '@/lib/guidance';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
+import { wayScript } from '@/lib/spoken';
 import { usePausedWalk } from '@/lib/pausedWalk';
 import { useGuide } from '@/lib/useGuide';
 import { useNarration } from '@/lib/useNarration';
@@ -168,9 +169,10 @@ function WalkScreen({ tour }: { tour: Tour }) {
     setFollow(true);
   }, [target]);
   const openStop = useCallback((n: number) => {
+    narration.stop();
     setSelected(null);
     router.push({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(n) } });
-  }, [tour.id]);
+  }, [tour.id, narration]);
   const onSelectStop = useCallback((i: number) => setSelected(v => (v === i ? null : i)), []);
   // La primera posición GPS marca el inicio del camino hasta la parada (si no estás a cientos de km)
   if (!sequential && !finished && source === 'gps' && position && gpsOrigin?.target !== target && !farStart) setGpsOrigin({ target, from: position });
@@ -408,7 +410,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
 
         <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: sheetH + 14 }} />
         {/* Entrar y salir de la guía de la parada visitada */}
-        {visited && selected == null && <GuideButton to="guide" photo={visited.photo} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
+        {visited && selected == null && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
         {!follow && selected == null && (
           <PressableScale accessibilityRole="button" accessibilityLabel="Centrar en mí" onPress={() => setFollow(true)} scaleTo={0.94} style={[s.center, { bottom: sheetH + (visited ? 72 : 14) }]}>
             <Svg width={18} height={18} viewBox="0 0 24 24">
@@ -462,7 +464,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
         {/* Hoja inferior (y, después, encima de ella la ventana de la parada elegida en el mapa) */}
         <Animated.View entering={FadeInDown.delay(150).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })} onLayout={e => setSheetH(e.nativeEvent.layout.height)} style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
           {showWay && (
-            <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(way!.story ?? way!.text.replace(/^De camino:\s*/i, '')))} style={[s.way, { backgroundColor: p.soft }]}>
+            <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(wayScript(way!)))} style={[s.way, { backgroundColor: p.soft }]}>
               <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>
               <Text style={[s.wayText, { color: p.deep }]} numberOfLines={1}>{way!.text}</Text>
             </Pressable>

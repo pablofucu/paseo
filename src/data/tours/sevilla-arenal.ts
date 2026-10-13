@@ -1,20 +1,20 @@
-import type { LngLat, Tour } from '../types';
+import { CREDIT_PENDING, type LngLat, type PhotoCredit, type Tour } from '../types';
 import type { RouteStep } from '@/lib/routing';
 import credits from './sevilla-arenal.credits.json';
 import geo from './sevilla-arenal.geo.json';
 
 /** Ubicaciones y ruta fija: src/data/tours/sevilla-arenal.geo.json (la ruta y las fotos las genera el workflow «Contenido») */
 const coord = (id: string) => geo.stops.find(s => s.id === id)!.coord as LngLat;
-const credit = (id: string) => {
-  const c = (credits as Record<string, { author: string; license: string } | undefined>)[id];
-  return c && { author: c.author, license: c.license };
+const credit = (id: string): PhotoCredit => {
+  const c = (credits as Record<string, PhotoCredit | undefined>)[id];
+  return c ? { author: c.author, license: c.license, source: c.source } : { author: 'pendiente', license: 'pendiente', source: CREDIT_PENDING };
 };
 
 /*
  * Coordenadas APROXIMADAS (octubre de 2026), tomadas de la puerta o el punto
  * desde el que se mira cada sitio: Puerta del Príncipe en el Paseo de Colón,
  * jardín de Mañara frente a la Caridad, portada de San Telmo en la Avenida de
- * Roma, portada de la Fábrica de Tabacos en la calle San Fernando, centro de
+ * Roma, Fábrica de Tabacos (el punto del camino junto a su fachada, donde acaba el tramo), centro de
  * la Plaza de España y Pabellón Mudéjar en la Plaza de América. Comprobarlas
  * sobre el terreno. Fotos: imagen principal de cada artículo de Wikipedia
  * (Wikimedia Commons), con su autoría en sevilla-arenal.credits.json.
@@ -51,6 +51,7 @@ export const sevillaArenal: Tour = {
       kind: 'tradition',
       rubber: { shape: 'circle', title: 'REAL MAESTRANZA' },
       photo: require('../../../assets/tours/sevilla-arenal/maestranza.jpg'),
+      thumb: require('../../../assets/tours/sevilla-arenal/thumbs/maestranza.jpg'),
       photoCredit: credit('maestranza'),
       coord: coord('maestranza'),
       arriveHint: 'Busca la portada de piedra con un balcón de hierro: es la Puerta del Príncipe.',
@@ -67,6 +68,7 @@ export const sevillaArenal: Tour = {
       kind: 'religious',
       rubber: { shape: 'rect', title: 'HOSPITAL DE LA CARIDAD' },
       photo: require('../../../assets/tours/sevilla-arenal/caridad.jpg'),
+      thumb: require('../../../assets/tours/sevilla-arenal/thumbs/caridad.jpg'),
       photoCredit: credit('caridad'),
       coord: coord('caridad'),
       arriveHint: 'Mira la fachada blanca: tiene cinco paneles de azulejo azul.',
@@ -83,6 +85,7 @@ export const sevillaArenal: Tour = {
       kind: 'civic',
       rubber: { shape: 'octagon', title: 'SAN TELMO', label: 'PORTADA BARROCA' },
       photo: require('../../../assets/tours/sevilla-arenal/san-telmo.jpg'),
+      thumb: require('../../../assets/tours/sevilla-arenal/thumbs/san-telmo.jpg'),
       photoCredit: credit('san-telmo'),
       coord: coord('san-telmo'),
       arriveHint: 'Delante tienes una portada de piedra de tres pisos, llena de columnas.',
@@ -99,6 +102,7 @@ export const sevillaArenal: Tour = {
       kind: 'civic',
       rubber: { shape: 'rect', title: 'FÁBRICA DE TABACOS' },
       photo: require('../../../assets/tours/sevilla-arenal/tabacos.jpg'),
+      thumb: require('../../../assets/tours/sevilla-arenal/thumbs/tabacos.jpg'),
       photoCredit: credit('tabacos'),
       coord: coord('tabacos'),
       arriveHint: 'Busca la figura alada con una trompeta en lo alto de la portada.',
@@ -115,6 +119,7 @@ export const sevillaArenal: Tour = {
       kind: 'monument',
       rubber: { shape: 'oval', title: 'PLAZA DE ESPAÑA' },
       photo: require('../../../assets/tours/sevilla-arenal/plaza-espana.jpg'),
+      thumb: require('../../../assets/tours/sevilla-arenal/thumbs/plaza-espana.jpg'),
       photoCredit: credit('plaza-espana'),
       coord: coord('plaza-espana'),
       arriveHint: 'Ponte en el centro: el edificio te rodea en un gran semicírculo.',
@@ -131,6 +136,7 @@ export const sevillaArenal: Tour = {
       kind: 'public',
       rubber: { shape: 'circle', title: 'PARQUE DE MARÍA LUISA' },
       photo: require('../../../assets/tours/sevilla-arenal/maria-luisa.jpg'),
+      thumb: require('../../../assets/tours/sevilla-arenal/thumbs/maria-luisa.jpg'),
       photoCredit: credit('maria-luisa'),
       coord: coord('maria-luisa'),
       arriveHint: 'Estás en la Plaza de América: busca la torre del Pabellón Mudéjar y las palomas.',
