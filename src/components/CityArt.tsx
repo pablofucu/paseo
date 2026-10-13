@@ -4,10 +4,9 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import type { CityId } from '@/store/settings';
 import { neutral, type TourPalette } from '@/theme/tokens';
 
-const MADRID: TourPalette = { t: '#B5462E', t2: '#F2C14E', soft: '#F7E4DD', deep: '#4A1A10', on: '#FFFFFF' };
 
 /** Madrid aún no tiene fotos: la Puerta de Alcalá y la cúpula del Metrópolis en línea */
-function MadridArt() {
+function MadridArt({ palette: MADRID }: { palette: TourPalette }) {
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: MADRID.deep }]}>
       <Svg width="100%" height="100%" viewBox="0 0 360 180" preserveAspectRatio="xMidYMax slice">
@@ -38,9 +37,9 @@ function GenericArt({ palette }: { palette: TourPalette }) {
 }
 
 /** Dibujo de portada de una ciudad según su id; las que no tienen el suyo usan el común */
-const ART: Partial<Record<CityId, () => ReactElement>> = { madrid: MadridArt };
+const ART: Partial<Record<CityId, (p: { palette: TourPalette }) => ReactElement>> = { madrid: MadridArt };
 
 export function CityArt({ id, palette }: { id: string; palette: TourPalette }) {
   const Art = ART[id as CityId];
-  return Art ? <Art /> : <GenericArt palette={palette} />;
+  return Art ? <Art palette={palette} /> : <GenericArt palette={palette} />;
 }

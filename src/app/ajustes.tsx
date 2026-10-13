@@ -104,7 +104,7 @@ export default function Ajustes() {
             <Text style={[s.rowTitle, rt]}>Texto grande</Text>
             <Text style={type.caption}>Agranda los textos de la app, además del tamaño de letra del sistema.</Text>
           </View>
-          <Switch accessibilityLabel="Texto grande" value={largeText} onValueChange={on => { lightTap(); setLargeText(on); }} trackColor={{ true: brand.coral, false: neutral.line }} thumbColor={neutral.white} />
+          <Switch accessibilityLabel="Texto grande" value={largeText} onValueChange={on => { lightTap(); setLargeText(on); }} trackColor={{ true: brand.primary, false: neutral.line }} thumbColor={neutral.white} />
         </View>
       </Section>
 
@@ -114,11 +114,11 @@ export default function Ajustes() {
             <Text style={[s.rowTitle, rt]}>Modo prueba</Text>
             <Text style={type.caption}>Recorre los tours sin moverte: paseo simulado, velocidad, llegar a la parada o tocar el mapa para moverte.</Text>
           </View>
-          <Switch accessibilityLabel="Modo prueba" value={testMode} onValueChange={setTestMode} trackColor={{ true: brand.coral, false: neutral.line }} thumbColor={neutral.white} />
+          <Switch accessibilityLabel="Modo prueba" value={testMode} onValueChange={setTestMode} trackColor={{ true: brand.primary, false: neutral.line }} thumbColor={neutral.white} />
         </View>
         {testMode && (
           <Pressable accessibilityRole="button" accessibilityHint="Te pregunta antes de borrar nada" onPress={confirmReset} style={[s.row, s.divider]}>
-            <Text style={[s.rowTitle, rt, { color: brand.coralDark }]}>Borrar el pasaporte (sellos y postales)</Text>
+            <Text style={[s.rowTitle, rt, { color: brand.primaryDark }]}>Borrar el pasaporte (sellos y postales)</Text>
           </Pressable>
         )}
       </Section>
@@ -131,11 +131,11 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12, minHeight: 56 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: neutral.line },
   rowTitle: { fontFamily: font.black, fontSize: 15.5, color: neutral.ink },
-  code: { width: 40, height: 40, borderRadius: 12, backgroundColor: brand.coral, alignItems: 'center', justifyContent: 'center' },
+  code: { width: 40, height: 40, borderRadius: 12, backgroundColor: brand.primary, alignItems: 'center', justifyContent: 'center' },
   codeOff: { backgroundColor: 'transparent', borderWidth: 1.5, borderStyle: 'dashed', borderColor: neutral.line },
   codeText: { fontFamily: font.black, fontSize: 13, color: neutral.white, letterSpacing: 1 },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: neutral.line, alignItems: 'center', justifyContent: 'center' },
-  radioOn: { borderColor: brand.coral },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: brand.coral },
-  go: { fontFamily: font.black, fontSize: 26, color: brand.coral },
+  radioOn: { borderColor: brand.primary },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: brand.primary },
+  go: { fontFamily: font.black, fontSize: 26, color: brand.primary },
 });

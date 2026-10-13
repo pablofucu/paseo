@@ -4,6 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { TourBanner } from '@/components/TourBanner';
 import { useHeroMotion } from '@/components/HeroMotion';
 import { Scrim } from '@/components/Scrim';
 import { DUR, EASE_OUT, rise } from '@/components/motion';
@@ -57,7 +58,7 @@ export default function Cover() {
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
         <View style={{ height: HERO, overflow: 'hidden' }}>
           <Animated.View style={[StyleSheet.absoluteFill, photo]}>
-            <DuotoneImage source={tour.stops[tour.emblemStop].photo} palette={p} style={StyleSheet.absoluteFill} />
+            <TourBanner tour={tour} />
           </Animated.View>
           <Scrim opacity={0.5} />
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: neutral.bg }, veil]} />

@@ -30,11 +30,10 @@ export const tomares: Tour = {
   title: 'Tomares en 4 paradas',
   category: 'Historia y barrio',
   intro: "Cuatro paradas a pie por Tomares, en el corazón del Aljarafe sevillano. Empiezas en la rotonda y terminas con un kebab.",
-  palette: { t: '#B23A2E', t2: '#E8B33A', soft: '#F8E7E2', deep: '#4A1610', on: '#FFFFFF' },
-  // Teja de la torre del Ayuntamiento (contraste 5,8:1 con el papel)
-  accent: '#9c3a24',
-  // Ladrillo, ocre tostado, vino y verde botella: tampones de la misma familia cálida
-  inks: ['#9c3a24', '#7d5212', '#6e2a4a', '#2f5a48'],
+  // Verde de los naranjos y olivos del Aljarafe (h 142), con el amarillo sol común
+  palette: { t: '#0B7900', t2: '#FEC84B', soft: '#E4F4E1', deep: '#11310E', on: '#FFFFFF' },
+  accent: '#0b7900',
+  inks: ['#0a6802', '#774a03', '#5242a3', '#912455'],
   postcard: {
     art: require('../../../assets/postcards/tomares.jpg'),
     value: '4,50€',
@@ -44,7 +43,7 @@ export const tomares: Tour = {
     art: require('../../../assets/route-stamps/tomares-4-paradas.png'),
     symbol: 'Una rama de olivo con sus aceitunas, el árbol del Aljarafe, y el número de paradas.',
   },
-  emblemStop: 1,
+  banner: require('../../../assets/banners/tomares.jpg'),
   durationMin: 45,
   price: 'free',
   stops: [

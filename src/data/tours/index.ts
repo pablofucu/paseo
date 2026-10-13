@@ -1,3 +1,4 @@
+import type { ImageSourcePropType } from 'react-native';
 import type { CityId } from '@/store/settings';
 import type { TourPalette } from '@/theme/tokens';
 import type { LockedTour, Tour } from '../types';
@@ -20,12 +21,14 @@ export interface City {
   palette: TourPalette;
   /** Tour cuya foto emblema sirve de portada; sin él, la tarjeta se dibuja */
   coverTour?: string;
+  /** Ilustración a todo color para «Elegir ciudad» (assets/banners/ciudad-<ciudad>.jpg) */
+  art?: ImageSourcePropType;
 }
 
 /** Ciudades del selector, con sus tours disponibles y los de pago bloqueados */
 export const CITIES: City[] = [
-  { id: 'sevilla', name: 'Sevilla', region: 'Andalucía', palette: sevilla.palette, coverTour: sevilla.id },
-  { id: 'madrid', name: 'Madrid', region: 'Comunidad de Madrid', palette: { t: '#B5462E', t2: '#F2C14E', soft: '#F7E4DD', deep: '#4A1A10', on: '#FFFFFF' } },
+  { id: 'sevilla', name: 'Sevilla', region: 'Andalucía', palette: sevilla.palette, coverTour: sevilla.id, art: require('../../../assets/banners/ciudad-sevilla.jpg') },
+  { id: 'madrid', name: 'Madrid', region: 'Comunidad de Madrid', palette: { t: '#A92963', t2: '#FEC84B', soft: '#FEE8EE', deep: '#431829', on: '#FFFFFF' } },
 ];
 
 export const getCity = (id: string) => CITIES.find(c => c.id === id);

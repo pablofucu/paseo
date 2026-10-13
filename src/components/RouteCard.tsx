@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, G, LinearGradient, Path, Polyline, Rect, Stop } from 'react-native-svg';
-import { DuotoneImage } from '@/components/DuotoneImage';
+import { TourBanner } from '@/components/TourBanner';
 import { euros } from '@/components/LockedTour';
 import { PressableScale } from '@/components/motion';
 import { RouteStamp } from '@/components/RouteStamp';
@@ -164,7 +164,7 @@ export function TourRouteCard({ tour, route, startMeters }: { tour: Tour; route:
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={label} scaleTo={0.975} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: tour.id } })} style={s.card}>
       <View style={s.hero} onLayout={e => setW(e.nativeEvent.layout.width)}>
-        <DuotoneImage source={tour.stops[tour.emblemStop].photo} palette={p} style={StyleSheet.absoluteFill} />
+        <TourBanner tour={tour} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.12)' }]} />
         <RouteLine width={w} palette={p} stamped={stamped} />
         <RouteStamp tour={tour} done={prog.done} total={prog.total} height={60} rotate={4} style={s.corner} />

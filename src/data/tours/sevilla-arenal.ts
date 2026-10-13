@@ -27,11 +27,10 @@ export const sevillaArenal: Tour = {
   title: 'Del Arenal a la Plaza de España',
   category: 'Historia y monumentos',
   intro: 'Seis paradas desde la plaza de toros, junto al río, hasta la Plaza de España y el Parque de María Luisa, los escenarios de la Exposición de 1929.',
-  // Ladrillo de la Plaza de España y albero
-  palette: { t: '#A8432C', t2: '#E5A823', soft: '#F6E3DC', deep: '#44170D', on: '#FFFFFF' },
-  accent: '#a8432c',
-  // Ladrillo, azul de azulejo, oro, verde de alicatado, terracota y añil
-  inks: ['#a8432c', '#1f4fa8', '#86600f', '#2c6152', '#7a3424', '#4a3a8c'],
+  // Ámbar del albero y el ladrillo (h 70), con el amarillo sol común
+  palette: { t: '#8A5601', t2: '#FEC84B', soft: '#FCECD9', deep: '#3B2301', on: '#FFFFFF' },
+  accent: '#8a5601',
+  inks: ['#774a03', '#5242a3', '#912455', '#046070', '#0a6802', '#1d5596'],
   postcard: {
     art: require('../../../assets/postcards/sevilla-arenal.jpg'),
     value: '3,90€',
@@ -41,7 +40,7 @@ export const sevillaArenal: Tour = {
     art: require('../../../assets/route-stamps/sevilla-arenal.png'),
     symbol: 'Una carabela sobre un azulejo con el año 1929: el puerto de Indias del Arenal y la Exposición Iberoamericana.',
   },
-  emblemStop: 4,
+  banner: require('../../../assets/banners/sevilla-arenal.jpg'),
   durationMin: 90,
   price: 'free',
   stops: [

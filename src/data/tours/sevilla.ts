@@ -21,12 +21,12 @@ export const sevilla: Tour = {
   title: 'Del río a la judería',
   category: 'Historia y monumentos',
   intro: 'Cinco paradas por el corazón de Sevilla: del Guadalquivir a la Giralda y al laberinto de calles de Santa Cruz.',
-  // Azul de azulejo y albero, los colores de la Sevilla monumental
-  palette: { t: '#1F4FA8', t2: '#E5A823', soft: '#E4EAF7', deep: '#0F2650', on: '#FFFFFF' },
-  // Azul de los azulejos sevillanos
-  accent: '#1f4fa8',
-  // Oro del río, azul de azulejo, terracota, verde de alicatado y añil
-  inks: ['#86600f', '#1f4fa8', '#7a3424', '#2c6152', '#4a3a8c'],
+  // Paleta «rueda con sol»: todas las rutas comparten luz e intensidad (OKLCH L 0.50, C 0.17)
+  // y el amarillo sol como acento; Sevilla centro es el turquesa del río (h 214)
+  palette: { t: '#086F81', t2: '#FEC84B', soft: '#D9F4FB', deep: '#022F37', on: '#FFFFFF' },
+  accent: '#086f81',
+  // Tintas de parada: los cinco tonos de la rueda, más oscuros (L 0.45)
+  inks: ['#046070', '#0a6802', '#774a03', '#5242a3', '#912455'],
   postcard: {
     art: require('../../../assets/postcards/sevilla.jpg'),
     value: '3,20€',
@@ -36,7 +36,7 @@ export const sevilla: Tour = {
     art: require('../../../assets/route-stamps/sevilla-centro.png'),
     symbol: 'El Giraldillo, la veleta que corona la Giralda, sobre el azul del azulejo y el lema NO8DO de la ciudad.',
   },
-  emblemStop: 2,
+  banner: require('../../../assets/banners/sevilla.jpg'),
   durationMin: 60,
   price: 'free',
   stops: [
