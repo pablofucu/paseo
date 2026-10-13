@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { STAMP_ART } from '@/data/stamps/images';
-import { TOURS } from '@/data/tours';
+import { LOCKED_TOURS, TOURS } from '@/data/tours';
 import { creditPending } from '@/data/types';
 import { distance } from '@/lib/geo';
 
@@ -11,6 +11,13 @@ const MAX_M = 40;
 const root = join(__dirname, '../../..');
 
 describe('contenido de las rutas', () => {
+  it('los tours de pago con sello dibujado lo tienen también en blanco y negro', () => {
+    for (const t of LOCKED_TOURS.filter(l => l.stamp)) {
+      expect(existsSync(join(root, 'assets/route-stamps/gray', `${t.id}.png`))).toBe(true);
+    }
+  });
+
+
   for (const tour of TOURS) {
     describe(tour.id, () => {
       it('tiene sello de ruta y postal', () => {
@@ -19,6 +26,10 @@ describe('contenido de las rutas', () => {
         expect(tour.postcard.art).toBeTruthy();
         expect(tour.postcard.value).toBeTruthy();
         expect(tour.postcard.subtitle).toBeTruthy();
+      });
+
+      it('tiene su sello de ruta en blanco y negro (scripts/shrink-assets.py)', () => {
+        expect(existsSync(join(root, 'assets/route-stamps/gray', `${tour.id}.png`))).toBe(true);
       });
 
       it('cada parada tiene sello de goma, foto, miniatura y crédito (o «pendiente»)', () => {

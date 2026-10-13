@@ -7,13 +7,16 @@ Reduce el peso de las imágenes que se pintan pequeñas (usa Pillow; sharp no es
   - assets/postcards/mid/*.jpg: 832 px, para las postales de la lista (la de 1664 px solo a pantalla completa).
   - assets/postcards/blur/*.jpg: la silueta ya difuminada de las postales sin ganar (antes se
     difuminaba en el móvil con blurRadius, y en Android es lento).
+  - assets/route-stamps/gray/*.png: el sello de cada ruta en blanco y negro, para los que aún no se
+    han conseguido o no se han comprado (el filtro de gris de React Native no funciona en iOS ni en
+    Android antiguos).
 Se puede repetir sin problema: solo toca lo que aún es más grande. Si se vuelven a hornear los sellos
 con scripts/build-stamps.mjs, hay que volver a pasarlo.
 
     python3 scripts/shrink-assets.py
 """
 from pathlib import Path
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
 STAMP_W = 400
@@ -49,3 +52,9 @@ for f in sorted((ROOT / 'assets/postcards').glob('*.jpg')):
     # Como el blurRadius de 22 que se usaba sobre la miniatura de 416 px, a la mitad de tamaño
     im.resize((BLUR_W, h), Image.LANCZOS).filter(ImageFilter.GaussianBlur(6)).save(blurs / f.name, quality=80, optimize=True)
     print('mediana y difuminada', f.name)
+
+grays = ROOT / 'assets/route-stamps/gray'
+grays.mkdir(exist_ok=True)
+for f in sorted((ROOT / 'assets/route-stamps').glob('*.png')):
+    ImageOps.grayscale(Image.open(f).convert('RGB')).save(grays / f.name, optimize=True)
+    print('sello en gris', f.name)

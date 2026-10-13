@@ -171,7 +171,7 @@ export interface LockedTour {
   banner?: ImageSourcePropType;
   /**
    * Sello de correos exclusivo de la ruta (como `Tour.stamp`), si ya está
-   * dibujado: se enseña desvaído con el candado. Sin él, solo el candado.
+   * dibujado: se enseña en blanco y negro con el candado. Sin él, solo el candado.
    */
   stamp?: { art: ImageSourcePropType; symbol: string };
 }

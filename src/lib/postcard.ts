@@ -1,12 +1,12 @@
 import type { ImageSourcePropType } from 'react-native';
 import { PAPEL_POSTAL } from '@/lib/ink';
-import { postmarkXml, rng } from '@/lib/rubber';
+import { rng } from '@/lib/rubber';
 
 /*
  * Postal de una ruta (guía de sellos, § 08): 900 × 600, papel #f5eedb con
  * grano y sombra suave, perforado r 8 cada 24 px, ilustración 832 × 444 en
- * (34, 34), marco doble en el acento, «ESPAÑA», valor, título, subtítulo y
- * matasellos. La ilustración es una imagen (con la textura de imprenta ya
+ * (34, 34), marco doble en el acento, «ESPAÑA», valor, título y subtítulo
+ * (el matasellos va solo en el reverso, sobre el sello). La ilustración es una imagen (con la textura de imprenta ya
  * aplicada); esto genera el papel de debajo y lo que va encima.
  */
 
@@ -60,11 +60,10 @@ export function postcardPaperXml(id: string) {
   );
 }
 
-/** Lo que va encima de la ilustración: marco, «ESPAÑA», valor, título, subtítulo y matasellos */
-export function postcardFaceXml({ id, title, subtitle, value, accent, city, date }: { id: string; title: string; subtitle: string; value: string; accent: string; city: string; date: string }) {
+/** Lo que va encima de la ilustración: marco, «ESPAÑA», valor, título y subtítulo (sin matasellos encima del dibujo) */
+export function postcardFaceXml({ title, subtitle, value, accent }: { title: string; subtitle: string; value: string; accent: string }) {
   const titleSize = Math.min(30, 760 / Math.max(1, title.length) / 0.68);
   const subSize = Math.min(13, 820 / Math.max(1, subtitle.length) / 0.68 - 4 * 0.5);
-  const mark = postmarkXml({ city, date }).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '').replace(/id="/g, `id="${id}`).replace(/href="#/g, `href="#${id}`);
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-14 -10 928 628">` +
     `<g fill="none" stroke="${accent}"><rect x="26" y="26" width="848" height="460" stroke-width="4"/><rect x="33.5" y="33.5" width="833" height="445" stroke-width="1.4"/></g>` +
@@ -74,7 +73,6 @@ export function postcardFaceXml({ id, title, subtitle, value, accent, city, date
     `<text x="850" y="462" text-anchor="end" font-family="Fraunces_800ExtraBold" font-size="24" fill="#fff">${esc(value)}</text>` +
     `<text x="450" y="532" text-anchor="middle" font-family="Fraunces_800ExtraBold" font-size="${titleSize.toFixed(1)}" letter-spacing="1.5" fill="${accent}">${esc(title.toUpperCase())}</text>` +
     `<text x="450" y="560" text-anchor="middle" font-family="Nunito_800ExtraBold" font-size="${subSize.toFixed(1)}" letter-spacing="4" fill="${accent}">${esc(subtitle)}</text>` +
-    `<g transform="translate(621 39) scale(1.35)">${mark}</g>` +
     '</svg>'
   );
 }
