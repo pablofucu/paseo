@@ -36,6 +36,7 @@ export function Chip({ children }: { children: ReactNode }) {
 const ICONS = {
   back: 'M15 5l-7 7 7 7',
   close: 'M6 6l12 12M18 6 6 18',
+  map: 'M9 5 3.5 7v12L9 17l6 2 5.5-2V5L15 7zM9 5v12M15 7v12',
   settings: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 4.5v5M9 14.5v5',
 } as const;
 
