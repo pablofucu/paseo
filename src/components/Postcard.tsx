@@ -6,7 +6,6 @@ import type { Tour } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { PAPEL_POSTAL, tintaDeRuta } from '@/lib/ink';
 import { POSTCARD, POSTCARD_BLUR, POSTCARD_MID, POSTCARD_THUMB, postcardBlankXml, postcardFaceXml } from '@/lib/postcard';
-import { postmarkXml } from '@/lib/rubber';
 import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
@@ -25,7 +24,7 @@ interface Props {
   tour: Tour;
   route: UserRoute | undefined;
   width: number;
-  /** Reverso: mensaje con el resumen de la ruta y sello matasellado */
+  /** Reverso: mensaje con el resumen de la ruta y su sello, sin matasellos */
   back?: boolean;
 }
 
@@ -84,7 +83,6 @@ function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserR
   const note = route?.note?.trim();
   const meters = tour.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
   const when = new Date(date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-  const mark = useMemo(() => postmarkXml({ city: tour.city, date }), [tour.city, date]);
   const fs = (n: number) => Math.max(9, n * k);
   // Sello de carta: el sello exclusivo de la ruta, no un trozo de la postal
   const stampW = 150 * k, stampH = 190 * k;
@@ -103,9 +101,6 @@ function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserR
         <View style={{ flex: 1, overflow: 'hidden', borderWidth: 2, borderColor: accent }}>
           <Image source={tour.stamp.art} style={StyleSheet.absoluteFill} contentFit="cover" />
         </View>
-      </View>
-      <View style={[s.abs, { right: 120 * k, top: 120 * k }]} pointerEvents="none">
-        <SvgXml xml={mark} width={170 * 1.35 * k} height={90 * 1.35 * k} />
       </View>
       {note ? (
         <Text style={[s.abs, s.hand, { left: 560 * k, right: 60 * k, top: 248 * k, fontSize: fs(38), lineHeight: 70 * k }]} numberOfLines={3}>{note}</Text>
