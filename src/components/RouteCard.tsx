@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, G, LinearGradient, Path, Polyline, Rect, Stop } from 'react-native-svg';
-import { TourBanner } from '@/components/TourBanner';
+import { Image } from 'expo-image';
+import Svg, { Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { BANNER_POSITION, TourBanner } from '@/components/TourBanner';
 import { euros } from '@/components/LockedTour';
 import { PressableScale } from '@/components/motion';
 import { RouteStamp } from '@/components/RouteStamp';
@@ -14,9 +15,8 @@ import { font } from '@/theme/fonts';
 import { brand, functional, neutral, radius, shadow, type TourPalette } from '@/theme/tokens';
 
 /*
- * Piezas del modelo G («ruta dibujada sobre foto») para elegir ciudad y tour:
- * cada tour enseña su ruta como una línea de paradas encima de su foto, con
- * las paradas selladas rellenas y el sello de la ruta (de su postal) en la esquina.
+ * Piezas para elegir ciudad y tour: cada tour enseña su ilustración de
+ * portada, limpia, con el sello de la ruta en la esquina.
  */
 
 export const HERO = 112;
@@ -85,42 +85,6 @@ export function Trail({ minutes, color }: { minutes: number; color: string }) {
   );
 }
 
-/* ── Ruta dibujada ───────────────────────────────────────────────── */
-
-/**
- * La ruta como una línea en zigzag de parada en parada, dejando sitio a la
- * derecha para el sello. Hecho: línea continua y paradas rellenas; por hacer:
- * línea de puntos y paradas en blanco; la siguiente parada, más grande.
- */
-function RouteLine({ width, palette, stamped, dim }: { width: number; palette: TourPalette; stamped: boolean[]; dim?: boolean }) {
-  const n = stamped.length;
-  if (!width || n < 2) return null;
-  const x0 = 22, x1 = width - 90;
-  const pts = stamped.map((_, i) => {
-    const up = i % 2 === 1;
-    const jitter = ((i * 7) % 9) - 4;
-    return [x0 + (i * (x1 - x0)) / (n - 1), (up ? 45 : 68) + jitter] as const;
-  });
-  const next = stamped.indexOf(false);
-  const started = stamped.some(Boolean);
-  // Sin empezar, la salida va destacada; a medias, la parada que toca
-  const current = next === -1 ? -1 : started ? next : 0;
-  const solidTo = next === -1 ? n - 1 : started ? next : 0;
-  const line = (from: number, to: number) => pts.slice(from, to + 1).map(p => p.join(',')).join(' ');
-  return (
-    <Svg width={width} height={HERO} style={StyleSheet.absoluteFill} opacity={dim ? 0.75 : 1}>
-      {solidTo < n - 1 && <Polyline points={line(solidTo, n - 1)} fill="none" stroke={neutral.white} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 8" />}
-      {solidTo > 0 && <Polyline points={line(0, solidTo)} fill="none" stroke={neutral.white} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />}
-      {pts.map(([x, y], i) => {
-        const end = i === 0 || i === n - 1;
-        if (i === current) return <Circle key={i} cx={x} cy={y} r={started ? 9.5 : 8.5} fill={palette.t2} stroke={neutral.white} strokeWidth={3} />;
-        if (stamped[i]) return <Circle key={i} cx={x} cy={y} r={end ? 7 : 6} fill={palette.t} stroke={neutral.white} strokeWidth={3} />;
-        return <Circle key={i} cx={x} cy={y} r={end ? 7 : 5.5} fill={neutral.white} stroke={palette.t} strokeWidth={3} />;
-      })}
-    </Svg>
-  );
-}
-
 /** Fondo dibujado (sin foto): degradado de la paleta */
 function Drawn({ palette }: { palette: TourPalette }) {
   return (
@@ -147,13 +111,11 @@ function Tag({ label, bg, color, icon }: { label: string; bg: string; color: str
 
 /* ── Tarjetas de tour ────────────────────────────────────────────── */
 
-/** Tour que se puede hacer: su foto en duotono con la ruta encima, y debajo título, estado y datos */
+/** Tour que se puede hacer: su ilustración, y debajo título, estado y datos */
 export function TourRouteCard({ tour, route, startMeters }: { tour: Tour; route: UserRoute | undefined; /** Distancia al inicio de la ruta, si se sabe dónde estás */ startMeters?: number | null }) {
-  const [w, setW] = useState(0);
   const p = tour.palette;
   const prog = routeProgress(tour.id, route);
-  const stamped = stopInks(tour, route).map(Boolean);
-  const next = stamped.indexOf(false);
+  const next = stopInks(tour, route).indexOf(null);
   const near = startLabel(startMeters);
   // Solo el precio: si la ruta está hecha o a medias ya lo dicen el sello y la línea
   const tag = tour.price === 'free'
@@ -163,10 +125,8 @@ export function TourRouteCard({ tour, route, startMeters }: { tour: Tour; route:
 
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={label} scaleTo={0.975} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: tour.id } })} style={s.card}>
-      <View style={s.hero} onLayout={e => setW(e.nativeEvent.layout.width)}>
+      <View style={s.hero}>
         <TourBanner tour={tour} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.12)' }]} />
-        <RouteLine width={w} palette={p} stamped={stamped} />
         <RouteStamp tour={tour} done={prog.done} total={prog.total} height={60} rotate={4} style={s.corner} />
       </View>
       <View style={s.body}>
@@ -184,16 +144,16 @@ export function TourRouteCard({ tour, route, startMeters }: { tour: Tour; route:
   );
 }
 
-/** Tour de pago bloqueado: sin foto, la ruta dibujada sobre su paleta, velada, con el candado y el precio */
+/** Tour de pago bloqueado: su ilustración (o su paleta, si aún no tiene) velada, con el candado y el precio */
 export function LockedRouteCard({ tour, onPress }: { tour: LockedTour; onPress: () => void }) {
-  const [w, setW] = useState(0);
   const p = tour.palette;
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={`${tour.title}, tour de pago bloqueado, ${euros(tour.eur)}`} scaleTo={0.975} onPress={onPress} style={s.card}>
-      <View style={s.hero} onLayout={e => setW(e.nativeEvent.layout.width)}>
-        <Drawn palette={p} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(29,43,79,0.5)' }]} />
-        <RouteLine width={w} palette={p} stamped={Array(tour.stops).fill(false)} dim />
+      <View style={s.hero}>
+        {tour.banner
+          ? <Image source={tour.banner} style={[StyleSheet.absoluteFill, { backgroundColor: p.deep }]} contentFit="cover" contentPosition={BANNER_POSITION} accessibilityIgnoresInvertColors />
+          : <Drawn palette={p} />}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(29,43,79,0.35)' }]} />
         <RouteStamp locked={tour} height={60} rotate={4} style={s.corner} />
       </View>
       <View style={s.body}>

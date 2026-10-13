@@ -1,13 +1,9 @@
-// Hornea la portada de cada ruta (assets/banners/<tour>.jpg): una ilustración
-// con la textura de tinta de las postales, teñida con los colores de la ruta
-// por luminancia (deep → t → claro → soft), para que todas las portadas se
-// lean como una familia aunque vengan de dibujos distintos.
-//
-// Sevilla usa su ilustración propia (design/banners/sevilla.svg, la dibuja
-// scripts/draw-banner-sevilla.mjs); las demás rutas, el dibujo de su postal.
-// En «Elegir ciudad» va la ilustración de la ciudad a todo color
-// (assets/banners/ciudad-<ciudad>.jpg).
-// Los colores se leen de la paleta de cada ruta en src/data/tours/<tour>.ts.
+// Hornea la portada de cada tour (assets/banners/<tour>.jpg) con la textura
+// de tinta de las postales. Cada tour tiene su ilustración propia
+// (design/banners/<tour>.svg, la dibuja scripts/draw-banner-<tour>.mjs con las
+// piezas de scripts/banner-kit.mjs): una escena con algunos de sus sitios en
+// la que manda el color de acento del tour, con colores de apoyo.
+// En «Elegir ciudad» va la ilustración de la ciudad (assets/banners/ciudad-<ciudad>.jpg).
 //
 // Necesita Playwright con Chromium: node scripts/render-banners.cjs
 const { chromium } = require('playwright');
@@ -15,11 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const BANNERS = {
-  sevilla: 'design/banners/sevilla.svg',
-  tomares: 'design/postcards/tomares-4-paradas.svg',
-  'sevilla-arenal': 'design/postcards/sevilla-arenal.svg',
-};
+const BANNERS = ['sevilla-centro', 'sevilla-arenal', 'tomares-4-paradas', 'triana', 'murillo', 'austrias', 'letras', 'retiro-prado'];
 // Portadas de ciudad para «Elegir ciudad»: el mismo dibujo a todo color, sin teñir
 const CITIES = { sevilla: 'design/banners/sevilla.svg' };
 // La misma tinta de imprenta que scripts/render-postcards.cjs. Debajo va el
@@ -36,41 +28,24 @@ const INK = `<filter id="tinta" x="-3%" y="-3%" width="106%" height="106%">
 <feDisplacementMap in="entintado" in2="warp" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
 </filter>`;
 
-const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
-const mix = (a, b, t) => a.map((v, i) => v * (1 - t) + b[i] * t);
-function palette(id) {
-  const src = fs.readFileSync(path.join(root, 'src/data/tours', `${id}.ts`), 'utf8');
-  const m = src.match(/palette:\s*\{([^}]*)\}/);
-  const get = k => m[1].match(new RegExp(`\\b${k}:\\s*'(#[0-9A-Fa-f]{6})'`))[1];
-  return { t: get('t'), soft: get('soft'), deep: get('deep') };
-}
-// Mapa de degradado: luminancia → deep, t, un claro entre t y soft, soft
-function gradientMap(p) {
-  const stops = [rgb(p.deep), rgb(p.t), mix(rgb(p.t), rgb(p.soft), 0.4), rgb(p.soft)];
-  const ch = i => stops.map(s => s[i].toFixed(4)).join(' ');
-  return `<filter id="tono" color-interpolation-filters="sRGB">
-<feColorMatrix type="matrix" values="0.299 0.587 0.114 0 0 0.299 0.587 0.114 0 0 0.299 0.587 0.114 0 0 0 0 0 1 0"/>
-<feComponentTransfer><feFuncR type="table" tableValues="${ch(0)}"/><feFuncG type="table" tableValues="${ch(1)}"/><feFuncB type="table" tableValues="${ch(2)}"/></feComponentTransfer>
-</filter>`;
-}
-
-(async () => {
+module.exports = { INK };
+if (require.main === module) (async () => {
   const b = await chromium.launch();
   const p = await b.newPage();
   fs.mkdirSync(path.join(root, 'assets/banners'), { recursive: true });
   let seed = 23;
   const jobs = [
-    ...Object.entries(BANNERS).map(([id, file]) => ({ file, out: `${id}.jpg`, tone: gradientMap(palette(id)) })),
-    ...Object.entries(CITIES).map(([id, file]) => ({ file, out: `ciudad-${id}.jpg`, tone: null })),
+    ...BANNERS.map(id => ({ file: `design/banners/${id}.svg`, out: `${id}.jpg` })),
+    ...Object.entries(CITIES).map(([id, file]) => ({ file, out: `ciudad-${id}.jpg` })),
   ];
-  for (const { file, out, tone } of jobs) {
+  for (const { file, out } of jobs) {
     const art = fs.readFileSync(path.join(root, file), 'utf8');
     const [, w, h] = art.match(/viewBox="0 0 (\d+) (\d+)"/).map(Number);
     const inner = art.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
     const under = inner.replace(/id="([^"]+)"/g, 'id="u-$1"').replace(/url\(#([^)]+)\)/g, 'url(#u-$1)');
     const ink = INK.replace('SEED11', seed + 11).replace('SEED5', seed + 5).replace('SEED', seed);
     await p.setViewportSize({ width: w, height: h });
-    await p.setContent(`<html><body style="margin:0"><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs>${ink}${tone ?? ''}</defs><g${tone ? ' filter="url(#tono)"' : ''}><rect width="${w}" height="${h}" fill="#f5eedb"/><g opacity="0.75">${under}</g><g filter="url(#tinta)">${inner}</g></g></svg></body></html>`);
+    await p.setContent(`<html><body style="margin:0"><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs>${ink}</defs><g><rect width="${w}" height="${h}" fill="#f5eedb"/><g opacity="0.75">${under}</g><g filter="url(#tinta)">${inner}</g></g></svg></body></html>`);
     await p.waitForTimeout(300);
     await p.screenshot({ path: path.join(root, 'assets/banners', out), type: 'jpeg', quality: 86 });
     seed += 13;

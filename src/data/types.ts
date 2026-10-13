@@ -167,6 +167,8 @@ export interface LockedTour {
   eur: number;
   /** Foto de portada, si hay; si no, la tarjeta se pinta con la paleta */
   cover?: ImageSourcePropType;
+  /** Ilustración de portada (assets/banners/<tour>.jpg), como `Tour.banner` */
+  banner?: ImageSourcePropType;
   /**
    * Sello de correos exclusivo de la ruta (como `Tour.stamp`), si ya está
    * dibujado: se enseña en blanco y negro con el candado. Sin él, solo el candado.

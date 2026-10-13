@@ -3,10 +3,12 @@ import { StyleSheet, type ImageStyle, type StyleProp } from 'react-native';
 import type { Tour } from '@/data/types';
 
 /**
- * Portada de una ruta: su ilustración teñida con los colores de la ruta.
- * Se encuadra por arriba para que en las tarjetas bajas se vea lo alto de
- * la escena (la Giralda en Sevilla) y no solo el primer término.
+ * Encuadre de las portadas: en las tarjetas bajas se ve la franja central
+ * (y ≈ 110…400 de 600), donde cada ilustración pone sus monumentos.
  */
+export const BANNER_POSITION = { top: '35%' } as const;
+
+/** Portada de una ruta: su ilustración, con el color de acento de la ruta como color principal. */
 export function TourBanner({ tour, style }: { tour: Tour; style?: StyleProp<ImageStyle> }) {
-  return <Image source={tour.banner} style={[StyleSheet.absoluteFill, { backgroundColor: tour.palette.deep }, style]} contentFit="cover" contentPosition={{ top: '6%' }} transition={150} accessibilityIgnoresInvertColors />;
+  return <Image source={tour.banner} style={[StyleSheet.absoluteFill, { backgroundColor: tour.palette.deep }, style]} contentFit="cover" contentPosition={BANNER_POSITION} transition={150} accessibilityIgnoresInvertColors />;
 }
