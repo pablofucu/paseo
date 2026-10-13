@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { forwardRef, type ReactNode } from 'react';
 import { Pressable, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -8,6 +9,9 @@ import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue,
  * suavemente) y los muelles están amortiguados del todo. Los rebotes se
  * guardan para lo físico: el sello que cae y la hoja del pasaporte.
  */
+
+/** Vibración ligera al elegir algo (ciudad, idioma, confirmar); en dispositivos sin motor no hace nada */
+export const lightTap = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); };
 
 /** Curva de salida suave (tipo «ease-out quint»): arranca con energía y se posa sin pasarse */
 export const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1);
