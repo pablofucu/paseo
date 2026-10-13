@@ -95,7 +95,7 @@ export interface Tour {
     art: ImageSourcePropType;
     /** Valor facial, como en un sello de carta («4,50€») */
     value: string;
-    /** Subtítulo: las paradas separadas por « · » */
+    /** Pie de la escena en una frase corta («ATARDECER EN EL GUADALQUIVIR», en mayúsculas como se imprime), no la lista de paradas */
     subtitle: string;
   };
   /**
@@ -140,4 +140,6 @@ export interface LockedTour {
   eur: number;
   /** Foto de portada, si hay; si no, la tarjeta se pinta con la paleta */
   cover?: ImageSourcePropType;
+  /** Sello de correos exclusivo de la ruta (design/route-stamps/<id>.svg), como el de Tour.stamp */
+  stamp?: { art: ImageSourcePropType; symbol: string };
 }
