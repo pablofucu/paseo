@@ -40,6 +40,40 @@
     "author": "Laurent, J., photographer",
     "license": "Public domain",
     "source": "https://commons.wikimedia.org/wiki/File:Sevilla._Vista_general_del_palacio_de_San_Telmo_desde_el_rio_-_J._Laurent._Madrid._LCCN94512217.jpg",
-    "year": 1860
+    "year": 1860,
+    "crop": [
+      0.07,
+      0.2,
+      0.07,
+      0.15
+    ]
+  },
+  "maestranza@antes": {
+    "file": "Un_lance_en_la_plaza_de_toros.jpg",
+    "author": "José Jiménez Aranda",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Un_lance_en_la_plaza_de_toros.jpg",
+    "year": 1880
+  },
+  "tabacos@antes": {
+    "file": "Fábrica_de_Tabacos_de_Sevilla_(litografía).jpg",
+    "author": "F. J. Parcerisa",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:F%C3%A1brica_de_Tabacos_de_Sevilla_(litograf%C3%ADa).jpg",
+    "year": 1856
+  },
+  "plaza-espana@antes": {
+    "file": "Minas_de_Riotinto._Plaza_de_la_Constitución_(1905).jpg",
+    "author": "Unknown authorUnknown author",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Minas_de_Riotinto._Plaza_de_la_Constituci%C3%B3n_(1905).jpg",
+    "year": 1905
+  },
+  "maria-luisa@antes": {
+    "file": "Sevilla-jardines-del-palacio-de-Sant-Telmo-1878.jpg",
+    "author": "Jean Laurent",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Sevilla-jardines-del-palacio-de-Sant-Telmo-1878.jpg",
+    "year": 1878
   }
 }

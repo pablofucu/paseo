@@ -34,20 +34,45 @@
     "author": "Rijksmuseum",
     "license": "CC0",
     "source": "https://commons.wikimedia.org/wiki/File:La_torre_del_Oro,_Sevilla,_Spanje,_RP-F-00-6077.jpg",
-    "year": 1850
+    "year": 1850,
+    "crop": [
+      0.06,
+      0.12,
+      0.06,
+      0.1
+    ]
   },
   "giralda@antes": {
     "file": "Sevilla._Vista_general_de_la_Catedral_desde_el_Alcazar_-_J._Laurent._Madrid._LCCN94512157.jpg",
     "author": "Laurent, J., photographer",
     "license": "Public domain",
     "source": "https://commons.wikimedia.org/wiki/File:Sevilla._Vista_general_de_la_Catedral_desde_el_Alcazar_-_J._Laurent._Madrid._LCCN94512157.jpg",
-    "year": 1860
+    "year": 1860,
+    "crop": [
+      0.06,
+      0.075,
+      0.06,
+      0.13
+    ]
   },
   "alcazar@antes": {
-    "file": "Sevilla._Vista_general_de_la_Catedral_desde_el_Alcazar_-_J._Laurent._Madrid._LCCN94512157.jpg",
+    "file": "Sevilla._Fachada_del_palacio_del_Alcazar_-_J._Laurent._Madrid._LCCN94512165.jpg",
     "author": "Laurent, J., photographer",
     "license": "Public domain",
-    "source": "https://commons.wikimedia.org/wiki/File:Sevilla._Vista_general_de_la_Catedral_desde_el_Alcazar_-_J._Laurent._Madrid._LCCN94512157.jpg",
-    "year": 1860
+    "source": "https://commons.wikimedia.org/wiki/File:Sevilla._Fachada_del_palacio_del_Alcazar_-_J._Laurent._Madrid._LCCN94512165.jpg",
+    "year": 1860,
+    "crop": [
+      0.06,
+      0.075,
+      0.06,
+      0.13
+    ]
+  },
+  "archivo@antes": {
+    "file": "Carnaval_en_la_Lonja_de_Sevilla,_de_Joaquín_Domínguez_Bécquer_(Museo_del_Romanticismo,_Madrid).jpg",
+    "author": "Joaquín Domínguez Bécquer",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Carnaval_en_la_Lonja_de_Sevilla,_de_Joaqu%C3%ADn_Dom%C3%ADnguez_B%C3%A9cquer_(Museo_del_Romanticismo,_Madrid).jpg",
+    "year": 1841
   }
 }
