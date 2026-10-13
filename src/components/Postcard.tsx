@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import type { Tour } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
-import { tintaDeRuta } from '@/lib/ink';
-import { POSTCARD, postcardBlankXml, postcardFaceXml } from '@/lib/postcard';
+import { PAPEL_POSTAL, tintaDeRuta } from '@/lib/ink';
+import { POSTCARD, POSTCARD_THUMB, postcardBlankXml, postcardFaceXml } from '@/lib/postcard';
 import { postmarkXml } from '@/lib/rubber';
 import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
@@ -40,7 +40,9 @@ export function Postcard({ tour, route, width, back }: Props) {
   const k = width / VB.w;
   const height = postcardHeight(width);
   const accent = tintaDeRuta(tour.accent);
-  const date = route?.postcardUnlockedAt;
+  // Solo se ve la ilustración si la ruta está completa de verdad (si el tour gana una parada, vuelve a quedar a medias)
+  const prog = routeProgress(tour.id, route);
+  const date = prog.completedAt;
   const face = useMemo(
     () => (date ? postcardFaceXml({ id, title: tour.title, subtitle: tour.postcard.subtitle, value: tour.postcard.value, accent, city: tour.city, date }) : postcardBlankXml({ title: tour.title, accent })),
     [id, date, tour, accent],
@@ -49,26 +51,23 @@ export function Postcard({ tour, route, width, back }: Props) {
 
   if (back) return <PostcardBack tour={tour} route={route} width={width} accent={accent} />;
 
-  const prog = routeProgress(tour.id, route);
+  // Lo que se pinta pequeño (pin, ventana del mapa) usa la miniatura
+  const artSource = width < 200 ? (POSTCARD_THUMB[tour.id] ?? tour.postcard.art) : tour.postcard.art;
+  const reveal = prog.total ? prog.done / prog.total : 0;
   return (
     <View style={{ width, height }}>
       <Paper width={width} height={height} />
       {date ? (
-        <Image source={tour.postcard.art} style={[s.abs, art]} contentFit="cover" accessibilityLabel={`Ilustración de la postal ${tour.title}`} />
+        <Image source={artSource} style={[s.abs, art]} contentFit="cover" accessibilityLabel={`Ilustración de la postal ${tour.title}`} />
       ) : (
-        <View style={[s.abs, art, s.blank]}>
-          <Text style={[s.blankOver, { fontSize: Math.max(10, 15 * k * 1.6) }]}>
-            {prog.started ? `${prog.done} de ${prog.total} paradas` : 'Sin empezar'}
-          </Text>
-          <View style={s.dots}>
-            {tour.stops.map(st => {
-              const on = route?.stamps.some(x => x.stopId === st.id);
-              return <View key={st.id} style={[s.dot, { borderColor: accent, backgroundColor: on ? accent : 'transparent' }]} />;
-            })}
-          </View>
-          <Text style={[s.blankText, { fontSize: Math.max(11, 13 * k * 1.6) }]}>
-            Completa la ruta para revelar la postal
-          </Text>
+        // Sin ganar: la escena asoma difuminada y se va aclarando con cada sello
+        <View
+          accessible
+          accessibilityLabel={`Postal ${tour.title} sin ganar: ${prog.started ? `${prog.done} de ${prog.total} paradas` : 'sin empezar'}`}
+          style={[s.abs, art, s.blank]}
+        >
+          <Image source={POSTCARD_THUMB[tour.id] ?? tour.postcard.art} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={30 - reveal * 16} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: PAPEL_POSTAL, opacity: 0.94 - reveal * 0.72 }]} />
         </View>
       )}
       <SvgXml xml={face} width={width} height={height} style={StyleSheet.absoluteFill} />
@@ -80,7 +79,9 @@ function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserR
   const k = width / VB.w;
   const height = postcardHeight(width);
   const owner = usePassport(s => s.passport.owner);
-  const date = route?.postcardUnlockedAt ?? new Date().toISOString();
+  const [today] = useState(() => new Date().toISOString());
+  const date = routeProgress(tour.id, route).completedAt ?? today;
+  const note = route?.note?.trim();
   const meters = tour.legs.reduce((a, l) => a + cumulative(l).at(-1)!, 0);
   const when = new Date(date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
   const mark = useMemo(() => postmarkXml({ city: tour.city, date }), [tour.city, date]);
@@ -106,6 +107,9 @@ function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserR
       <View style={[s.abs, { right: 120 * k, top: 120 * k }]} pointerEvents="none">
         <SvgXml xml={mark} width={170 * 1.35 * k} height={90 * 1.35 * k} />
       </View>
+      {note ? (
+        <Text style={[s.abs, s.hand, { left: 560 * k, right: 60 * k, top: 248 * k, fontSize: fs(38), lineHeight: 70 * k }]} numberOfLines={3}>{note}</Text>
+      ) : null}
       {[300, 370, 440].map(y => <View key={y} style={[s.abs, { left: 560 * k, right: 60 * k, top: y * k, height: 1.5, backgroundColor: 'rgba(90,67,32,0.3)' }]} />)}
     </View>
   );
@@ -113,11 +117,8 @@ function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserR
 
 const s = StyleSheet.create({
   abs: { position: 'absolute' },
-  blank: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16 },
-  blankOver: { fontFamily: font.black, letterSpacing: 1.5, textTransform: 'uppercase', color: '#7d705a' },
-  blankText: { fontFamily: font.bold, color: '#9a8c6e', textAlign: 'center' },
-  dots: { flexDirection: 'row', gap: 6 },
-  dot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
+  blank: { overflow: 'hidden', backgroundColor: PAPEL_POSTAL },
   msg: { fontFamily: font.serifBold, color: '#3a3226' },
+  hand: { fontFamily: font.hand, color: '#2f3f6b', transform: [{ rotate: '-2deg' }] },
   msgSmall: { fontFamily: font.bold, color: '#6f6450' },
 });

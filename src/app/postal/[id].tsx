@@ -1,27 +1,60 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { appear, rise } from '@/components/motion';
 import { Postcard, postcardHeight } from '@/components/Postcard';
+import { FONDO_POSTAL } from '@/components/PostcardUnlock';
+import { ShareMat } from '@/components/ShareMat';
 import { IconButton } from '@/components/ui';
 import { getTour } from '@/data/tours';
+import type { Tour } from '@/data/types';
 import { sharePostcard } from '@/lib/share';
-import { useRoute } from '@/store/passport';
+import { routeProgress, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
 /** Postal a pantalla completa: se le da la vuelta tocándola y se comparte */
 export default function PostalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const tour = getTour(id)!;
-  const route = useRoute(id);
+  const tour = getTour(id);
+  return tour ? <Postal tour={tour} /> : <Aviso title="Esta postal no existe" text="Quizá la ruta ya no está en la app." />;
+}
+
+/** Pantalla de aviso: postal desconocida o todavía sin ganar */
+function Aviso({ title, text, action }: { title: string; text: string; action?: { label: string; onPress: () => void } }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[s.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
+      <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
+      <View style={s.center}>
+        <Text style={s.title}>{title}</Text>
+        <Text style={[s.hint, { textAlign: 'center', paddingHorizontal: 32 }]}>{text}</Text>
+      </View>
+      {action && (
+        <View style={s.row}>
+          <Pressable accessibilityRole="button" onPress={action.onPress} style={[s.btn, { backgroundColor: '#fff' }]}>
+            <Text style={s.btnText}>{action.label}</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function Postal({ tour }: { tour: Tour }) {
+  const route = useRoute(tour.id);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduced = useReducedMotion();
   const [back, setBack] = useState(false);
+  /** Mientras la postal gira no se comparte: la captura saldría a medio giro */
+  const [flipping, setFlipping] = useState(false);
+  const flipTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(flipTimer.current), []);
   const turn = useSharedValue(0);
   const card = useRef<View>(null);
+  const earned = routeProgress(tour.id, route).completed;
 
   // Cabe a lo ancho, o a lo alto en horizontal
   const w = Math.min(width - 24, ((height - insets.top - insets.bottom - 200) * 928) / 628, 900);
@@ -29,6 +62,11 @@ export default function PostalScreen() {
     const to = back ? 0 : 1;
     turn.value = withTiming(to, { duration: reduced ? 0 : 640, easing: Easing.inOut(Easing.cubic) });
     setBack(!back);
+    if (!reduced) {
+      setFlipping(true);
+      clearTimeout(flipTimer.current);
+      flipTimer.current = setTimeout(() => setFlipping(false), 700);
+    }
   };
   const style = useAnimatedStyle(() => {
     const d = turn.value * 180;
@@ -42,6 +80,28 @@ export default function PostalScreen() {
   const frontFace = useAnimatedStyle(() => ({ opacity: turn.value <= 0.5 ? 1 : 0 }));
   const backFace = useAnimatedStyle(() => ({ opacity: turn.value > 0.5 ? 1 : 0 }));
 
+  // Una postal sin ganar no se enseña ni se comparte
+  if (!earned) {
+    return (
+      <Aviso
+        title="Aún no es tuya"
+        text={`Completa «${tour.title}» para ganar su postal.`}
+        action={{ label: 'Ver la ruta', onPress: () => router.replace({ pathname: '/tour/[id]', params: { id: tour.id } }) }}
+      />
+    );
+  }
+
+  // Una postal sin ganar no se enseña ni se comparte
+  if (!earned) {
+    return (
+      <Aviso
+        title="Aún no es tuya"
+        text={`Completa «${tour.title}» para ganar su postal.`}
+        action={{ label: 'Ver la ruta', onPress: () => router.replace({ pathname: '/tour/[id]', params: { id: tour.id } }) }}
+      />
+    );
+  }
+
   return (
     <View style={[s.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
       <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
@@ -50,7 +110,8 @@ export default function PostalScreen() {
         <Animated.Text entering={appear(180)} style={s.title}>{tour.title}</Animated.Text>
         <Animated.View entering={rise(2)}>
         <Pressable accessibilityRole="button" accessibilityLabel={back ? 'Ver el anverso' : 'Dar la vuelta a la postal'} onPress={flip} style={{ marginTop: 18 }}>
-          <Animated.View ref={card} collapsable={false} style={[{ width: w, height: postcardHeight(w) }, style]}>
+          <ShareMat ref={card} tour={tour}>
+          <Animated.View style={[{ width: w, height: postcardHeight(w) }, style]}>
             <Animated.View style={[StyleSheet.absoluteFill, frontFace]}>
               <Postcard tour={tour} route={route} width={w} />
             </Animated.View>
@@ -58,6 +119,7 @@ export default function PostalScreen() {
               <Postcard tour={tour} route={route} width={w} back />
             </Animated.View>
           </Animated.View>
+          </ShareMat>
         </Pressable>
         </Animated.View>
         <Text style={s.hint}>Toca la postal para darle la vuelta</Text>
@@ -66,7 +128,7 @@ export default function PostalScreen() {
         <Pressable accessibilityRole="button" onPress={flip} style={[s.btn, s.ghost]}>
           <Text style={[s.btnText, { color: '#fff' }]}>{back ? 'Ver el anverso' : 'Dar la vuelta'}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => sharePostcard(card, tour.title)} style={[s.btn, { backgroundColor: '#fff' }]}>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: flipping }} disabled={flipping} onPress={() => sharePostcard(card, tour.title)} style={[s.btn, { backgroundColor: '#fff' }, flipping && { opacity: 0.5 }]}>
           <Text style={s.btnText}>Compartir</Text>
         </Pressable>
       </View>
@@ -75,7 +137,7 @@ export default function PostalScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#1d1a15' },
+  root: { flex: 1, backgroundColor: FONDO_POSTAL },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   over: { fontFamily: font.black, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)' },
   title: { fontFamily: font.serif, fontSize: 26, color: '#fff', textAlign: 'center', paddingHorizontal: 20 },
