@@ -2,10 +2,48 @@
   "_info": "Fotos libres de la imagen principal del artículo de Wikipedia. Las descarga scripts/fetch-photos.mjs (workflow 'Contenido') con su autoría y licencia.",
   "dir": "assets/tours/sevilla",
   "photos": [
-    { "id": "torre-oro", "wiki": "es:Torre del Oro" },
-    { "id": "archivo", "wiki": "es:Archivo General de Indias" },
-    { "id": "giralda", "wiki": "es:Giralda" },
-    { "id": "alcazar", "wiki": "es:Real Alcázar de Sevilla" },
-    { "id": "elvira", "wiki": "es:Barrio de Santa Cruz (Sevilla)" }
+    {
+      "id": "torre-oro",
+      "wiki": "es:Torre del Oro"
+    },
+    {
+      "id": "archivo",
+      "wiki": "es:Archivo General de Indias"
+    },
+    {
+      "id": "giralda",
+      "wiki": "es:Giralda"
+    },
+    {
+      "id": "alcazar",
+      "wiki": "es:Real Alcázar de Sevilla"
+    },
+    {
+      "id": "elvira",
+      "wiki": "es:Barrio de Santa Cruz (Sevilla)"
+    }
+  ],
+  "_then": "Fotos antiguas («Así era»): de dominio público. Con «search» el script elige la más antigua; con «file» se fija el archivo de Commons.",
+  "then": [
+    {
+      "id": "torre-oro",
+      "search": "Torre del Oro Sevilla Laurent"
+    },
+    {
+      "id": "archivo",
+      "search": "Casa Lonja Sevilla Laurent"
+    },
+    {
+      "id": "giralda",
+      "search": "Giralda Sevilla Laurent"
+    },
+    {
+      "id": "alcazar",
+      "search": "Alcázar Sevilla Laurent"
+    },
+    {
+      "id": "elvira",
+      "search": "Plaza Doña Elvira Sevilla"
+    }
   ]
 }
