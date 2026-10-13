@@ -46,11 +46,25 @@ describe('contenido de las rutas', () => {
         }
       });
 
+      it('las fotos antiguas («Así era») son de dominio público y anteriores a 1940', () => {
+        for (const st of tour.stops.filter(x => x.then)) {
+          const t = st.then!;
+          expect(t.photo).toBeTruthy();
+          expect(t.title).toBeTruthy();
+          expect(t.text).toBeTruthy();
+          expect(t.year).toBeGreaterThanOrEqual(1839);
+          expect(t.year).toBeLessThanOrEqual(1940);
+          expect(t.credit.license).toMatch(/public domain|^pd|cc0/i);
+          expect(t.credit.source).toMatch(/^https:\/\//);
+        }
+      });
+
       it('los archivos de foto y miniatura existen', () => {
         const file = { 'tomares-4-paradas': 'tomares', 'sevilla-centro': 'sevilla' }[tour.id] ?? tour.id;
         const src = readFileSync(join(root, 'src/data/tours', `${file}.ts`), 'utf8');
         const paths = [...src.matchAll(/require\('([^']*assets\/tours\/[^']+\.jpg)'\)/g)].map(m => join(root, 'src/data/tours', m[1]));
-        expect(paths.length).toBe(tour.stops.length * 2);
+        // Foto y miniatura de cada parada, más las fotos antiguas de «Así era»
+        expect(paths.length).toBe(tour.stops.length * 2 + tour.stops.filter(st => st.then).length);
         for (const f of paths) expect({ f, existe: existsSync(f) }).toEqual({ f, existe: true });
       });
 

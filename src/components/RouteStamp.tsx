@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 import type { LockedTour, Tour } from '@/data/types';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
@@ -27,18 +27,6 @@ function perforated(w: number, h: number, r: number) {
   edge(w, t => [w - t, h], [0, h]);
   edge(h, t => [0, h - t], [0, 0]);
   return d + ' Z';
-}
-
-/** Matasellos: un círculo y tres ondas, como el de las postales */
-function Postmark({ w, h }: { w: number; h: number }) {
-  return (
-    <Svg width={w * 1.25} height={h * 0.62} viewBox="0 0 60 30" style={{ position: 'absolute', left: -w * 0.32, top: h * 0.2 }} pointerEvents="none">
-      <G fill="none" stroke={neutral.ink} strokeOpacity={0.82} strokeWidth={2.2}>
-        <Circle cx={20} cy={15} r={11} />
-        <Path d="M34 7c5 3 9-3 14 0s9-3 14 0M34 15c5 3 9-3 14 0s9-3 14 0M34 23c5 3 9-3 14 0s9-3 14 0" />
-      </G>
-    </Svg>
-  );
 }
 
 /**
@@ -95,7 +83,7 @@ interface Props {
  * Sello de una ruta: un sello de correos dentado con su dibujo exclusivo
  * (`tour.stamp`), que simboliza la ruta entera. No es un trozo de la postal.
  * Sin conseguir (o sin comprar, con candado) se ve en blanco y negro; al
- * completarla, a todo color y con el matasellos.
+ * completarla, a todo color y limpio (sin matasellos encima).
  */
 export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotate = 0, style }: Props) {
   const w = Math.round(h * 0.82);
@@ -128,7 +116,6 @@ export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotat
           <Lock size={h * 0.32} />
         )}
       </View>
-      {completed && <Postmark w={w} h={h} />}
     </View>
   );
 }

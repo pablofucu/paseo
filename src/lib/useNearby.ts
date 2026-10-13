@@ -27,3 +27,19 @@ export function useNearby(): LngLat | null {
   );
   return pos;
 }
+
+/**
+ * Pide el permiso de ubicación (solo en primer plano) y devuelve dónde estás.
+ * Para llamarla al tocar un botón («Centrar en mí»), nunca al abrir una pantalla.
+ * Null si se deniega el permiso o no hay posición.
+ */
+export async function askNearby(): Promise<LngLat | null> {
+  try {
+    const perm = await Location.requestForegroundPermissionsAsync();
+    if (!perm.granted) return null;
+    const p = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    return [p.coords.longitude, p.coords.latitude];
+  } catch {
+    return null;
+  }
+}
