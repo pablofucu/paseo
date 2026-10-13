@@ -64,6 +64,7 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
   const saved = useRoute(tour.id);
   const walk = usePassport(s => s.walk);
   const advanceWalk = usePassport(s => s.advanceWalk);
+  const arrive = usePassport(s => s.arrive);
   const mine = saved?.stamps.find(x => x.stopId === stop.id);
   const pageNumber = Math.max(0, usePassport(s => s.passport.pageOrder.indexOf(tour.id))) + 2;
   const arrivedNow = params.arrived === '1' || params.arrived === 'repeat';
@@ -180,7 +181,13 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
           <PrimaryButton label={last ? 'Terminar tour' : 'Siguiente parada'} onPress={next} />
         ) : (
           <>
-            {current && !mine && <Text style={s.need}>Llega a la parada para poner el sello</Text>}
+            {current && !mine && (
+              <>
+                <Text style={s.need}>Llega a la parada para poner el sello</Text>
+                {/* Respaldo si el GPS falla: el usuario confirma que está en la parada */}
+                <PrimaryButton label="Estoy aquí: poner el sello" onPress={() => { arrive(tour.id, stop.id); }} />
+              </>
+            )}
             <GhostButton label="Volver al mapa" onPress={close} />
           </>
         )}

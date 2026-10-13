@@ -1,15 +1,59 @@
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { router, Stack, usePathname, useRootNavigationState } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { getTour } from '@/data/tours';
+import '@/lib/arrivalWatch';
+import { usePassport } from '@/store/passport';
 import { fontAssets } from '@/theme/fonts';
 import { useSettingsHydrated } from '@/store/settings';
 import { brand, neutral } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
+
+// Se carga solo en nativo y a la hora de usarlo: el módulo no existe en la web
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const notifications = () => require('expo-notifications') as typeof import('expo-notifications');
+
+/**
+ * Toque en el aviso de llegada: si el paseo sigue en esa parada se registra la
+ * llegada y se abre su guía con el audio; si no, se vuelve al mapa del paseo.
+ */
+function ArrivalTap() {
+  const ready = !!useRootNavigationState()?.key;
+  const pathname = usePathname();
+  const at = useRef(pathname);
+  useEffect(() => { at.current = pathname; }, [pathname]);
+  useEffect(() => {
+    if (!ready || Platform.OS === 'web') return;
+    let N: ReturnType<typeof notifications>;
+    try { N = notifications(); } catch { return; }
+    const handled = new Set<string>();
+    const open = (r: import('expo-notifications').NotificationResponse | null) => {
+      const req = r?.notification.request;
+      if (!req || req.identifier !== 'arrival' || handled.has(`${req.identifier}${r.notification.date}`)) return;
+      handled.add(`${req.identifier}${r.notification.date}`);
+      N.clearLastNotificationResponseAsync().catch(() => {});
+      const { tourId, n } = req.content.data as { tourId?: string; n?: number };
+      const tour = tourId ? getTour(tourId) : undefined;
+      if (!tourId || !tour) return;
+      if (!at.current.startsWith(`/tour/${tourId}`)) router.push({ pathname: '/tour/[id]/walk', params: { id: tourId } });
+      const { walk, arrive } = usePassport.getState();
+      const stop = typeof n === 'number' ? tour.stops[n] : undefined;
+      if (walk?.tourId !== tourId || walk.target !== n || !stop) return;
+      const repeat = arrive(tourId, stop.id);
+      router.push({ pathname: '/tour/[id]/stop/[n]', params: { id: tourId, n: String(n), arrived: repeat ? 'repeat' : '1' } });
+    };
+    N.getLastNotificationResponseAsync().then(open).catch(() => {});
+    const sub = N.addNotificationResponseReceivedListener(open);
+    return () => sub.remove();
+  }, [ready]);
+  return null;
+}
 
 export default function RootLayout() {
   const [loaded, fontError] = useFonts(fontAssets);
@@ -23,6 +67,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="auto" />
+        <ArrivalTap />
         {/*
           Transiciones: las pantallas nuevas entran desde la derecha con la de
           debajo desplazándose en paralaje (como en iOS, también en Android) y
