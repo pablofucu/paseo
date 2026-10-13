@@ -133,8 +133,11 @@ export interface Tour {
     /** Qué representa y por qué simboliza la ruta */
     symbol: string;
   };
-  /** Parada cuya foto sirve de portada del tour */
-  emblemStop: number;
+  /**
+   * Portada de la ruta: una ilustración teñida con su paleta, no una foto
+   * (assets/banners/<tour>.jpg, horneada por scripts/render-banners.cjs).
+   */
+  banner: ImageSourcePropType;
   durationMin: number;
   price: 'free' | { eur: number };
   stops: Stop[];

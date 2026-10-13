@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { DuotoneImage } from '@/components/DuotoneImage';
+import { TourBanner } from '@/components/TourBanner';
 import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
 import { getTour } from '@/data/tours';
 import { usePausedWalk } from '@/lib/pausedWalk';
@@ -45,7 +45,7 @@ export function ResumeStrip({ tourIds }: { tourIds: string[] }) {
   return (
     <Animated.View layout={LinearTransition.duration(DUR.base).easing(EASE_OUT)} exiting={FadeOut.duration(200)} style={[s.strip, { backgroundColor: p.deep }]}>
       <View style={s.thumb}>
-        <DuotoneImage source={tour.stops[tour.emblemStop].photo} palette={p} style={StyleSheet.absoluteFill} />
+        <TourBanner tour={tour} />
       </View>
       {asking ? (
         <Animated.View key="ask" entering={FadeIn.duration(DUR.fast)} style={s.text}>

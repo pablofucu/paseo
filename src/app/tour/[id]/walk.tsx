@@ -31,7 +31,7 @@ import { canSkip, nextTarget } from '@/lib/walkPlan';
 import { usePassport } from '@/store/passport';
 import { useSettings, type SimSpeed } from '@/store/settings';
 import { font } from '@/theme/fonts';
-import { functional, neutral, radius, shadow } from '@/theme/tokens';
+import { brand, functional, neutral, radius, shadow } from '@/theme/tokens';
 import { TourThemeProvider } from '@/theme/TourTheme';
 
 const line = (coords: LngLat[]): GeoJSON.Feature<GeoJSON.LineString> => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } });
@@ -552,9 +552,9 @@ const s = StyleSheet.create({
   centerText: { fontFamily: font.black, fontSize: 14, color: neutral.ink },
   test: { position: 'absolute', left: 12, right: 12, backgroundColor: 'rgba(28,26,23,0.86)', borderRadius: 18, padding: 10, gap: 8 },
   testRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  testTitle: { flex: 1, fontFamily: font.black, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: '#FFC53D' },
+  testTitle: { flex: 1, fontFamily: font.black, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: brand.sun },
   testChip: { height: 34, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.14)', justifyContent: 'center' },
-  testOn: { backgroundColor: '#F25C3B' },
+  testOn: { backgroundColor: brand.primary },
   testChipText: { fontFamily: font.black, fontSize: 13, color: '#fff' },
   testHint: { fontFamily: font.bold, fontSize: 11.5, color: 'rgba(255,255,255,0.75)' },
   popWrap: { position: 'absolute', left: 12, right: 12 },

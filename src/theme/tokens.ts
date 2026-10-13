@@ -1,34 +1,36 @@
 // Tokens de Paseo. Fuera de los tours la app usa la paleta de marca;
 // dentro de un tour, todo lee la paleta de ese tour (TourPalette).
 
+// Paleta «rueda con sol»: el color de marca es el turquesa de Sevilla y el sol,
+// el amarillo que comparten todas las rutas como acento.
 export const brand = {
-  coral: '#F25C3B',
-  coralDark: '#C9401F',
-  sun: '#FFC53D',
-  sky: '#3D8BFD',
-  navy: '#1D2B4F',
-  rose: '#F7A7B8',
+  primary: '#086F81',
+  primaryDark: '#022F37',
+  sun: '#FEC84B',
+  sky: '#2A80E2',
+  navy: '#18274B',
+  rose: '#D7506E',
 } as const;
 
 export const neutral = {
-  ink: '#1C1A17',
-  ink2: '#5A544C',
-  ink3: '#7A7369',
-  line: '#E8E2D8',
+  ink: '#111A2D',
+  ink2: '#384258',
+  ink3: '#60697B',
+  line: '#D8E3E9',
   surface: '#FFFFFF',
   /** Blanco para texto y trazos sobre fotos o fondos oscuros */
   white: '#FFFFFF',
   /** Fondo de la postal (pantalla oscura) */
-  night: '#1D1A15',
-  bg: '#FAF6F0',
-  bg2: '#F2EDE4',
-  paper: '#FBF6EC',
+  night: '#0D1528',
+  bg: '#F0F9FB',
+  bg2: '#E2F1F8',
+  paper: '#F6FBFD',
 } as const;
 
 export const functional = {
-  me: '#2D7FF9',
-  premium: '#1D2B4F',
-  gold: '#F5B731',
+  me: '#2A80E2',
+  premium: '#18274B',
+  gold: '#FEC84B',
   warn: '#E39B0B',
   warnSoft: '#FFF3D6',
   /** Texto sobre warnSoft */
@@ -51,17 +53,17 @@ export interface TourPalette {
 }
 
 export const brandPalette: TourPalette = {
-  t: brand.coral,
+  t: brand.primary,
   t2: brand.sun,
-  soft: '#FDE8E1',
-  deep: '#5C1E0E',
+  soft: '#D9F4FB',
+  deep: brand.primaryDark,
   on: '#FFFFFF',
 };
 
 export const radius = { sm: 10, md: 16, lg: 24, pill: 999 } as const;
 
 export const shadow = {
-  1: { shadowColor: '#1C1A17', shadowOpacity: 0.08, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-  2: { shadowColor: '#1C1A17', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  3: { shadowColor: '#1C1A17', shadowOpacity: 0.2, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
+  1: { shadowColor: '#111A2D', shadowOpacity: 0.08, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  2: { shadowColor: '#111A2D', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  3: { shadowColor: '#111A2D', shadowOpacity: 0.2, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
 } as const;

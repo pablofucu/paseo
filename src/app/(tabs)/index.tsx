@@ -4,7 +4,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CityArt } from '@/components/CityArt';
 import { Compass } from '@/components/Compass';
-import { DuotoneImage } from '@/components/DuotoneImage';
+import { TourBanner } from '@/components/TourBanner';
 import { PressableScale, rise } from '@/components/motion';
 import { ResumeStrip } from '@/components/ResumeStrip';
 import { Stat } from '@/components/RouteCard';
@@ -42,7 +42,7 @@ function CityCard({ city, routes, pos }: { city: City; routes: Record<string, Us
       style={s.card}
     >
       <View style={s.hero}>
-        {cover ? <DuotoneImage source={cover.stops[cover.emblemStop].photo} palette={cover.palette} style={StyleSheet.absoluteFill} /> : <CityArt id={city.id} palette={p} />}
+        {cover ? <TourBanner tour={cover} /> : <CityArt id={city.id} palette={p} />}
         <Scrim color={p.deep} opacity={0.75} />
         <Text style={s.city}>{city.name}</Text>
         {/* Un sello por ruta, con el dibujo de su postal: matasellado al completarla; los de pago, en blanco */}
@@ -84,14 +84,14 @@ export default function Home() {
     return m != null && m <= NEARBY_MAX_M ? m : null;
   });
   // Tu colección: todos los sellos, los más recientes delante
-  const stamps = TOURS.flatMap(t => (routes[t.id]?.stamps ?? []).map(st => ({ date: st.date, ink: getCity(t.area)?.palette.t ?? brand.coral }))).sort((a, b) => b.date.localeCompare(a.date));
+  const stamps = TOURS.flatMap(t => (routes[t.id]?.stamps ?? []).map(st => ({ date: st.date, ink: getCity(t.area)?.palette.t ?? brand.primary }))).sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 20, gap: 12 }}>
       <Animated.View entering={rise(0)} style={s.top}>
         <View style={s.brandRow} accessible accessibilityRole="header" accessibilityLabel="Paseo">
-          <Compass size={28} ring={brand.coral} needle={brand.navy} />
-          <Text style={[type.overline, { color: brand.coral }]}>Paseo</Text>
+          <Compass size={28} ring={brand.primary} needle={brand.navy} />
+          <Text style={[type.overline, { color: brand.primary }]}>Paseo</Text>
         </View>
         <View style={{ flex: 1 }} />
         <IconButton label="Ajustes" icon="settings" onPress={() => router.push('/ajustes')} style={s.settings} />

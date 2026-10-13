@@ -118,11 +118,11 @@ const s = StyleSheet.create({
   lang: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 22, backgroundColor: neutral.white },
   langOn: { borderWidth: 2, borderColor: brand.sun },
   langOff: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderStyle: 'dashed' },
-  code: { width: 48, height: 48, borderRadius: 14, backgroundColor: brand.coral, alignItems: 'center', justifyContent: 'center' },
+  code: { width: 48, height: 48, borderRadius: 14, backgroundColor: brand.primary, alignItems: 'center', justifyContent: 'center' },
   codeText: { fontFamily: font.black, fontSize: 16, color: neutral.white, letterSpacing: 1 },
   langName: { fontFamily: font.serifBold, fontSize: 22, color: brand.navy },
   langNote: { fontFamily: font.bold, fontSize: 13, color: neutral.ink2, marginTop: 1 },
   start: { minHeight: 56, paddingVertical: 8, borderRadius: 999, backgroundColor: brand.sun, alignItems: 'center', justifyContent: 'center' },
   startText: { fontFamily: font.black, fontSize: 18, color: brand.navy },
-  go: { fontFamily: font.black, fontSize: 28, color: brand.coral, marginRight: 4 },
+  go: { fontFamily: font.black, fontSize: 28, color: brand.primary, marginRight: 4 },
 });
