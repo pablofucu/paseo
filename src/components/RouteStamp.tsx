@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
-import type { Tour } from '@/data/types';
+import type { LockedTour, Tour } from '@/data/types';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
 
@@ -53,6 +53,8 @@ function Lock({ size }: { size: number }) {
 interface Props {
   /** Sin tour: sello en blanco con candado (tour de pago, todavía sin ilustración) */
   tour?: Tour;
+  /** Tour de pago bloqueado: su sello desvaído con el candado si ya está dibujado (`stamp`); si no, solo el candado */
+  locked?: LockedTour;
   /** Sellos puestos / paradas */
   done?: number;
   total?: number;
@@ -67,7 +69,7 @@ interface Props {
  * (`tour.stamp`), que simboliza la ruta entera. No es un trozo de la postal.
  * A medias se ve desvaído; al completarla, a todo color y con el matasellos.
  */
-export function RouteStamp({ tour, done = 0, total = 1, height: h, rotate = 0, style }: Props) {
+export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotate = 0, style }: Props) {
   const w = Math.round(h * 0.82);
   const r = Math.max(1.6, h / 22);
   const pad = r + Math.max(1.5, h / 26);
@@ -79,12 +81,18 @@ export function RouteStamp({ tour, done = 0, total = 1, height: h, rotate = 0, s
       <Svg width={w} height={h} style={StyleSheet.absoluteFill}>
         <Path d={perforated(w, h, r)} fill="#fff" />
       </Svg>
-      <View style={[s.inner, { left: pad, top: pad, width: iw, height: ih }, !tour && s.blank]}>
+      <View style={[s.inner, { left: pad, top: pad, width: iw, height: ih }, !tour && !locked?.stamp && s.blank]}>
         {tour ? (
           <>
             <Image source={tour.stamp.art} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={`Sello de la ruta ${tour.title}`} />
             {!completed && <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(251,246,236,0.5)' }]} />}
             {!completed && done > 0 && h >= 44 && <Text style={[s.count, { fontSize: h / 6 }]}>{done}/{total}</Text>}
+          </>
+        ) : locked?.stamp ? (
+          <>
+            <Image source={locked.stamp.art} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={`Sello de la ruta ${locked.title}, bloqueado`} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(251,246,236,0.72)' }]} />
+            <View style={s.lockBadge}><Lock size={h * 0.3} /></View>
           </>
         ) : (
           <Lock size={h * 0.32} />
@@ -99,5 +107,6 @@ const s = StyleSheet.create({
   shadow: { shadowColor: '#1C1A17', shadowOpacity: 0.18, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
   inner: { position: 'absolute', overflow: 'hidden' },
   blank: { backgroundColor: neutral.paper, borderWidth: 1.2, borderStyle: 'dashed', borderColor: '#CFC6B8', alignItems: 'center', justifyContent: 'center' },
+  lockBadge: { position: 'absolute', right: 2, bottom: 2 },
   count: { position: 'absolute', right: 2, bottom: 1, fontFamily: font.black, color: neutral.ink, textShadowColor: 'rgba(255,255,255,0.9)', textShadowRadius: 3 },
 });
