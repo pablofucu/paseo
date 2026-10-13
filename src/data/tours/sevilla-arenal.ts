@@ -30,7 +30,7 @@ export const sevillaArenal: Tour = {
   // Ámbar del albero y el ladrillo (h 70), con el amarillo sol común
   palette: { t: '#8A5601', t2: '#FEC84B', soft: '#FCECD9', deep: '#3B2301', on: '#FFFFFF' },
   accent: '#8a5601',
-  inks: ['#774a03', '#5242a3', '#912455', '#046070', '#0a6802', '#774a03'],
+  inks: ['#774a03', '#5242a3', '#912455', '#046070', '#0a6802', '#1d5596'],
   postcard: {
     art: require('../../../assets/postcards/sevilla-arenal.jpg'),
     value: '3,90€',
