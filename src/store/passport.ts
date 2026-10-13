@@ -54,6 +54,8 @@ export interface ActiveWalk {
   arrived: string | null;
   /** Última parada visitada: su guía se puede abrir y cerrar desde el botón del mapa */
   guide: number | null;
+  /** Paradas saltadas a propósito: siguen sin sellar y se pueden sellar luego */
+  skipped?: string[];
 }
 
 /** Dónde soltó el usuario el sello (sin la fecha, que la pone la app) */
@@ -66,7 +68,9 @@ interface PassportState {
   walk: ActiveWalk | null;
   setOwner: (owner: string) => void;
   /** Empieza (o retoma) el paseo hacia la parada `target` */
-  startWalk: (tourId: string, target: number) => void;
+  startWalk: (tourId: string, target: number, skipped?: string[]) => void;
+  /** Saltar la parada `stopId` e ir a `target` (queda sin sellar) */
+  skipStop: (stopId: string, target: number) => void;
   /** Tras la parada actual, a por la siguiente (las paradas van en orden) */
   advanceWalk: () => void;
   /** Saltar hasta una parada más adelante (la ruta queda incompleta) */
@@ -99,7 +103,9 @@ export const usePassport = create<PassportState>()(
       routes: {},
       walk: null,
       setOwner: owner => set(s => ({ passport: { ...s.passport, owner: owner.slice(0, 24) } })),
-      startWalk: (tourId, target) => set({ walk: { tourId, target, arrived: null, guide: null } }),
+      startWalk: (tourId, target, skipped) => set({ walk: { tourId, target, arrived: null, guide: null, ...(skipped?.length ? { skipped } : {}) } }),
+      skipStop: (stopId, target) =>
+        set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null, skipped: s.walk.skipped?.includes(stopId) ? s.walk.skipped : [...(s.walk.skipped ?? []), stopId] } } : s)),
       advanceWalk: () => set(s => (s.walk ? { walk: { ...s.walk, target: s.walk.target + 1, arrived: null } } : s)),
       goTo: target => set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null } } : s)),
       endWalk: () => set({ walk: null }),

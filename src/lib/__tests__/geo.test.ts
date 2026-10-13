@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { bearing, cumulative, distance, formatDistance, maneuvers, pointAlong, projectOnRoute, turnAngle } from '../geo';
-import { guide, instruction, prepareLeg } from '../guidance';
+import { bearing, cumulative, destination, distance, formatDistance, maneuvers, pointAlong, projectOnRoute, turnAngle } from '../geo';
+import { arrivalAllowed, guide, instruction, prepareLeg } from '../guidance';
 import type { LngLat } from '@/data/types';
 
 // Una «L» de unos 110 m hacia el norte y luego 90 m hacia el este, en Tomares
@@ -52,6 +52,25 @@ describe('geo', () => {
     expect(formatDistance(123)).toBe('120 m');
     expect(formatDistance(1234)).toBe('1,2 km');
   });
+
+  it('pasa a km desde 995 m (no «1000 m»)', () => {
+    expect(formatDistance(994)).toBe('990 m');
+    expect(formatDistance(995)).toBe('1,0 km');
+    expect(formatDistance(999)).toBe('1,0 km');
+  });
+
+  it('calcula un punto a cierta distancia y rumbo', () => {
+    const q = destination(A, 90, 100);
+    expect(distance(A, q)).toBeGreaterThan(99.5);
+    expect(distance(A, q)).toBeLessThan(100.5);
+    expect(bearing(A, q)).toBeCloseTo(90, 0);
+  });
+
+  it('con minAlong la proyección no retrocede', () => {
+    // Un punto sobre el primer tramo, pero ya se iba por el segundo
+    const back = projectOnRoute(L, [-6.046, 37.3724], cumulative(L), 100);
+    expect(back.along).toBeGreaterThanOrEqual(100);
+  });
 });
 
 describe('guidance', () => {
@@ -82,5 +101,42 @@ describe('guidance', () => {
     const g = guide(leg, [-6.0452, 37.3722]); // ~70 m al este del primer tramo
     expect(g.offRoute).toBe(true);
     expect(instruction(g, 'x').text).toBe('Te has salido de la ruta');
+  });
+
+  it('histéresis: sales a más de 40 m y vuelves a menos de 25 m', () => {
+    const at = (m: number): LngLat => [-6.046 + m / 88000, 37.3722]; // m metros al este del primer tramo
+    expect(guide(leg, at(32)).offRoute).toBe(false);
+    expect(guide(leg, at(32), undefined, { wasOff: true }).offRoute).toBe(true);
+    expect(guide(leg, at(20), undefined, { wasOff: true }).offRoute).toBe(false);
+    expect(guide(leg, at(45)).offRoute).toBe(true);
+  });
+
+  it('con mala precisión del GPS se ensanchan los umbrales', () => {
+    const p: LngLat = [-6.046 + 50 / 88000, 37.3722];
+    expect(guide(leg, p).offRoute).toBe(true);
+    expect(guide(leg, p, undefined, { accuracy: 40 }).offRoute).toBe(false);
+  });
+
+  it('no retrocede por el temblor del GPS', () => {
+    const ahead = guide(leg, [-6.046, 37.3728]);
+    const jitter = guide(leg, [-6.046, 37.3727], undefined, { prevAlong: ahead.along });
+    expect(jitter.along).toBeGreaterThanOrEqual(ahead.along - 20);
+  });
+
+  it('avisa a 60 m de la parada, antes de llegar', () => {
+    const g = guide(leg, [-6.0455, 37.373]);
+    expect(g.near || g.arrived).toBe(true);
+    expect(guide(leg, [-6.046, 37.3722]).near).toBe(false);
+  });
+
+  it('paradas muy juntas: la siguiente espera a que te muevas o pase un rato', () => {
+    const a: LngLat = [-6.046, 37.373];
+    const b: LngLat = [-6.04596, 37.373]; // ~3 m
+    const last = { at: 1000, coord: a, stopCoord: a };
+    expect(arrivalAllowed(null, b, a, 2000)).toBe(true);
+    expect(arrivalAllowed(last, b, a, 5000)).toBe(false);
+    expect(arrivalAllowed(last, b, a, 1000 + 46000)).toBe(true);
+    expect(arrivalAllowed(last, b, destination(a, 0, 20), 5000)).toBe(true);
+    expect(arrivalAllowed(last, destination(a, 0, 80), a, 5000)).toBe(true);
   });
 });

@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
 import { getTour } from '@/data/tours';
+import { usePausedWalk } from '@/lib/pausedWalk';
 import { routeProgress, unfinishedRoutes, usePassport } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral, radius } from '@/theme/tokens';
@@ -20,16 +21,24 @@ export function ResumeStrip({ tourIds }: { tourIds: string[] }) {
   const startWalk = usePassport(s => s.startWalk);
   const dropRoute = usePassport(s => s.dropRoute);
   const [asking, setAsking] = useState(false);
-  const id = unfinishedRoutes(tourIds, routes)[0];
+  const pausedWalk = usePausedWalk(s => s.paused);
+  const clearPause = usePausedWalk(s => s.clear);
+  // Un paseo en pausa va primero; si su ruta ya no existe, se ignora
+  const pausedTour = pausedWalk && tourIds.includes(pausedWalk.tourId) ? getTour(pausedWalk.tourId) : undefined;
+  const id = pausedTour ? pausedTour.id : unfinishedRoutes(tourIds, routes)[0];
   const tour = id ? getTour(id) : undefined;
   if (!tour) return null;
   const route = routes[tour.id];
   const prog = routeProgress(tour.id, route);
-  const next = tour.stops.findIndex(st => !route?.stamps.some(x => x.stopId === st.id));
+  const firstMissing = tour.stops.findIndex(st => !route?.stamps.some(x => x.stopId === st.id));
+  const paused = pausedTour && pausedWalk && pausedWalk.target < tour.stops.length ? pausedWalk : null;
+  const next = paused ? paused.target : firstMissing;
+  if (next < 0) return null;
   const p = tour.palette;
 
   const resume = () => {
-    startWalk(tour.id, next);
+    startWalk(tour.id, next, paused?.skipped);
+    clearPause();
     router.push({ pathname: '/tour/[id]/walk', params: { id: tour.id, target: String(next) } });
   };
 
@@ -43,7 +52,7 @@ export function ResumeStrip({ tourIds }: { tourIds: string[] }) {
           <Text style={s.title} numberOfLines={1}>¿Cancelar la ruta?</Text>
           <Text style={s.sub} numberOfLines={2}>Se borran sus {prog.done} {prog.done === 1 ? 'sello' : 'sellos'} del pasaporte.</Text>
           <View style={s.askRow}>
-            <PressableScale accessibilityRole="button" accessibilityHint="Borra los sellos de esta ruta del pasaporte. No se puede deshacer" onPress={() => { lightTap(); setAsking(false); dropRoute(tour.id); }} style={[s.askBtn, { backgroundColor: neutral.white }]}>
+            <PressableScale accessibilityRole="button" accessibilityHint="Borra los sellos de esta ruta del pasaporte. No se puede deshacer" onPress={() => { lightTap(); setAsking(false); clearPause(); dropRoute(tour.id); }} style={[s.askBtn, { backgroundColor: neutral.white }]}>
               <Text maxFontSizeMultiplier={1.3} style={[s.askText, { color: p.deep }]}>Cancelar ruta</Text>
             </PressableScale>
             <Pressable accessibilityRole="button" onPress={() => setAsking(false)} hitSlop={6} style={s.askBtn}>
@@ -54,7 +63,7 @@ export function ResumeStrip({ tourIds }: { tourIds: string[] }) {
       ) : (
         <>
           <Animated.View key="info" entering={FadeIn.duration(DUR.fast)} style={s.text}>
-            <Text maxFontSizeMultiplier={1.3} style={s.kicker}>Sigue donde lo dejaste</Text>
+            <Text maxFontSizeMultiplier={1.3} style={s.kicker}>{paused ? 'Paseo en pausa' : 'Sigue donde lo dejaste'}</Text>
             <Text style={s.title} numberOfLines={1}>{tour.title}</Text>
             <Text style={s.sub} numberOfLines={1}>Parada {next + 1} de {prog.total} · {tour.stops[next].name}</Text>
           </Animated.View>
