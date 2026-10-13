@@ -43,7 +43,7 @@ export const tomares: Tour = {
     art: require('../../../assets/route-stamps/tomares-4-paradas.png'),
     symbol: 'Una rama de olivo con sus aceitunas, el árbol del Aljarafe, y el número de paradas.',
   },
-  banner: require('../../../assets/banners/tomares.jpg'),
+  banner: require('../../../assets/banners/tomares-4-paradas.jpg'),
   durationMin: 45,
   price: 'free',
   stops: [
