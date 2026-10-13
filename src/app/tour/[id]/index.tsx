@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { useHeroMotion } from '@/components/HeroMotion';
 import { Scrim } from '@/components/Scrim';
 import { DUR, EASE_OUT, rise } from '@/components/motion';
 import { OfflinePack } from '@/components/OfflinePack';
+import { TourMapPreview } from '@/components/TourMapPreview';
 import { Postcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { RouteStamp } from '@/components/RouteStamp';
@@ -39,6 +40,8 @@ export default function Cover() {
   const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
   const p = tour.palette;
   const ink = inkOf(tour);
+  const routeLines = useMemo(() => route.legs.map(l => l.line), [route]);
+  const stampedIds = useMemo(() => new Set(saved?.stamps.map(x => x.stopId)), [saved]);
 
   // Cada parada se sella una vez: si la ruta está a medias, se sigue por la primera sin sellar
   const nextStop = prog.started && !prog.allStamped ? tour.stops.findIndex(st => !saved?.stamps.some(x => x.stopId === st.id)) : -1;
@@ -75,6 +78,9 @@ export default function Cover() {
           <Text style={type.body}>{tour.intro}</Text>
           <OfflinePack tour={tour} />
 
+          <View style={{ marginTop: 14 }}>
+            <TourMapPreview tour={tour} lines={routeLines} stamped={stampedIds} />
+          </View>
           <Text style={[type.headline, s.h]}>Paradas</Text>
           {tour.stops.map((st, i) => (
             <Animated.View key={st.id} entering={rise(i + 3)}>
