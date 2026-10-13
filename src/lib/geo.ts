@@ -12,6 +12,13 @@ export function distance(a: LngLat, b: LngLat): number {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/** Punto a `meters` de `from` en la dirección `bearingDeg` (0 = norte), con la misma proyección plana local que `projectOnRoute`. */
+export function destination(from: LngLat, bearingDeg: number, meters: number): LngLat {
+  const kx = Math.cos(rad(from[1])) * rad(1) * R;
+  const ky = rad(1) * R;
+  return [from[0] + (Math.sin(rad(bearingDeg)) * meters) / kx, from[1] + (Math.cos(rad(bearingDeg)) * meters) / ky];
+}
+
 /** Rumbo inicial de a hacia b, en grados 0–360 (0 = norte). */
 export function bearing(a: LngLat, b: LngLat): number {
   const y = Math.sin(rad(b[0] - a[0])) * Math.cos(rad(b[1]));
@@ -57,12 +64,16 @@ export interface RouteProjection {
 /**
  * Proyecta una posición sobre la ruta. Para tramos urbanos cortos basta con
  * una proyección plana local (equirectangular) alrededor del usuario.
+ * Con `minAlong` solo se miran los tramos que acaban después de esos metros:
+ * así el punto no retrocede por el temblor del GPS (ni salta a otro lado de
+ * una ruta que se cruza consigo misma).
  */
-export function projectOnRoute(line: LngLat[], p: LngLat, cum = cumulative(line)): RouteProjection {
+export function projectOnRoute(line: LngLat[], p: LngLat, cum = cumulative(line), minAlong = 0): RouteProjection {
   const kx = Math.cos(rad(p[1])) * rad(1) * R;
   const ky = rad(1) * R;
   let best: RouteProjection = { along: 0, offRoute: Infinity, snapped: line[0] };
   for (let i = 1; i < line.length; i++) {
+    if (cum[i] < minAlong) continue;
     const a = line[i - 1];
     const b = line[i];
     const ax = (a[0] - p[0]) * kx, ay = (a[1] - p[1]) * ky;
@@ -74,7 +85,7 @@ export function projectOnRoute(line: LngLat[], p: LngLat, cum = cumulative(line)
     const d = Math.hypot(qx, qy);
     if (d < best.offRoute) {
       best = {
-        along: cum[i - 1] + (cum[i] - cum[i - 1]) * t,
+        along: Math.max(minAlong, cum[i - 1] + (cum[i] - cum[i - 1]) * t),
         offRoute: d,
         snapped: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t],
       };
@@ -111,7 +122,8 @@ export function maneuvers(line: LngLat[], cum = cumulative(line)): Maneuver[] {
 /** «120 m», «1,2 km» o «Ahora» */
 export function formatDistance(m: number): string {
   if (m < 8) return 'Ahora';
-  if (m < 1000) return `${Math.round(m / 10) * 10} m`;
+  // Desde 995 m ya se redondea a «1,0 km» (y no a «1000 m»)
+  if (m < 995) return `${Math.round(m / 10) * 10} m`;
   return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 }
 
