@@ -36,8 +36,11 @@ jobs:
           npm run lint
           npm test
 
+      # versionCode creciente: app.config.js lo lee de VERSION_CODE
       - name: Generar el proyecto Android
         run: npx expo prebuild --platform android --no-install
+        env:
+          VERSION_CODE: ${{ github.run_number }}
 
       # La build de release se firma con la clave de depuración: sirve para instalarla a mano, no para Google Play
       - name: Compilar APK

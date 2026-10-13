@@ -10,7 +10,7 @@ export function PrimaryButton({ label, icon, style, ...rest }: PressableProps & 
   const p = usePalette();
   return (
     <PressableScale accessibilityRole="button" {...rest} style={[s.primary, { backgroundColor: p.t, shadowColor: p.t }, style]}>
-      <Text style={[s.primaryText, { color: p.on }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={[s.primaryText, { color: p.on }]}>{label}</Text>
       {icon}
     </PressableScale>
   );
@@ -19,7 +19,7 @@ export function PrimaryButton({ label, icon, style, ...rest }: PressableProps & 
 export function GhostButton({ label, onPress, light }: { label: string; onPress: () => void; light?: boolean }) {
   return (
     <PressableScale accessibilityRole="button" onPress={onPress} style={[s.ghost, light && s.ghostLight]}>
-      <Text style={[s.ghostText, light && { color: '#fff' }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={[s.ghostText, light && { color: neutral.white }]}>{label}</Text>
     </PressableScale>
   );
 }
@@ -28,7 +28,7 @@ export function Chip({ children }: { children: ReactNode }) {
   const p = usePalette();
   return (
     <View style={[s.chip, { backgroundColor: p.soft }]}>
-      <Text style={[s.chipText, { color: p.deep }]}>{children}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={[s.chipText, { color: p.deep }]}>{children}</Text>
     </View>
   );
 }
@@ -50,12 +50,12 @@ export function IconButton({ label, icon, onPress, style }: { label: string; ico
 }
 
 const s = StyleSheet.create({
-  primary: { height: 56, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 28, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  primary: { minHeight: 56, paddingVertical: 8, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 28, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
   primaryText: { fontFamily: font.black, fontSize: 17 },
-  ghost: { height: 52, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, backgroundColor: neutral.surface, ...shadow[1] },
+  ghost: { minHeight: 52, paddingVertical: 8, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, backgroundColor: neutral.surface, ...shadow[1] },
   ghostLight: { backgroundColor: 'rgba(255,255,255,0.18)', shadowOpacity: 0, elevation: 0 },
   ghostText: { fontFamily: font.black, fontSize: 16, color: neutral.ink },
-  chip: { height: 34, paddingHorizontal: 12, borderRadius: radius.pill, justifyContent: 'center' },
+  chip: { minHeight: 34, paddingVertical: 4, paddingHorizontal: 12, borderRadius: radius.pill, justifyContent: 'center' },
   chipText: { fontFamily: font.heavy, fontSize: 14 },
   icon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center', ...shadow[2] },
 });

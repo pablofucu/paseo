@@ -14,6 +14,10 @@ export const LANGUAGES: { id: Language; name: string; note: string; ready: boole
   { id: 'en', name: 'English', note: 'Coming soon · Próximamente', ready: false },
 ];
 
+/** Idiomas que ya se pueden usar; mientras solo haya uno, la bienvenida no pregunta el idioma */
+export const READY_LANGUAGES = LANGUAGES.filter(l => l.ready);
+export const HAS_LANGUAGE_STEP = READY_LANGUAGES.length > 1;
+
 interface SettingsState {
   /** Modo prueba: simula el paseo sin moverte y muestra controles para probar la app */
   testMode: boolean;
@@ -22,6 +26,9 @@ interface SettingsState {
   language: Language | null;
   /** Ciudad cuyos tours se ven en Inicio (null la primera vez) */
   city: CityId | null;
+  /** Texto grande: escala los estilos de texto (useType) */
+  largeText: boolean;
+  setLargeText: (on: boolean) => void;
   setTestMode: (on: boolean) => void;
   setSimSpeed: (s: SimSpeed) => void;
   setLanguage: (l: Language) => void;
@@ -33,6 +40,8 @@ export const useSettings = create<SettingsState>()(
     set => ({
       testMode: false,
       simSpeed: 4,
+      largeText: false,
+      setLargeText: largeText => set({ largeText }),
       setTestMode: testMode => set({ testMode }),
       setSimSpeed: simSpeed => set({ simSpeed }),
       language: null,
