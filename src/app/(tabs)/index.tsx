@@ -95,6 +95,7 @@ export default function Home() {
           <Text style={[type.overline, { color: brand.primary }]}>Paseo</Text>
         </View>
         <View style={{ flex: 1 }} />
+        <IconButton label="Mapa de rutas" icon="map" onPress={() => router.push('/mapa')} style={s.settings} />
         <IconButton label="Ajustes" icon="settings" onPress={() => router.push('/ajustes')} style={s.settings} />
       </Animated.View>
       <Animated.Text entering={rise(1)} style={s.hello}>¿Dónde paseamos hoy?</Animated.Text>
