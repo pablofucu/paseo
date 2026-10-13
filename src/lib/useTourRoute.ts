@@ -20,10 +20,15 @@ export function useTourRoute(tour: Tour): { legs: RoutedLeg[]; quality: RouteQua
     });
     return () => { alive = false; };
   }, [tour, fixed]);
-  if (fixed) return { legs: fixed, quality: 'streets' };
-  const straight = tour.legs.map(line => ({ line, steps: [] }));
-  if (state.tourId !== tour.id || !state.done) return { legs: straight, quality: 'loading' };
-  return state.legs ? { legs: state.legs, quality: 'streets' } : { legs: straight, quality: 'approximate' };
+  // Siempre el mismo objeto mientras no cambie nada: el paseo memoriza el tramo con él y la guía
+  // guarda su lectura en el estado, así que uno nuevo en cada render los rehacía sin fin («Too many re-renders»)
+  const straight = useMemo(() => tour.legs.map(line => ({ line, steps: [] as RoutedLeg['steps'] })), [tour]);
+  const loading = state.tourId !== tour.id || !state.done;
+  return useMemo(() => {
+    if (fixed) return { legs: fixed, quality: 'streets' as const };
+    if (loading) return { legs: straight, quality: 'loading' as const };
+    return state.legs ? { legs: state.legs, quality: 'streets' as const } : { legs: straight, quality: 'approximate' as const };
+  }, [fixed, loading, straight, state.legs]);
 }
 
 /**
@@ -44,7 +49,16 @@ export function useApproachRoute(origin: LngLat | null, to: LngLat): { leg: Rout
     // origin solo cambia de verdad cuando cambia la clave
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, to[0], to[1]]);
-  if (!origin) return { leg: null, quality: 'loading' };
-  if (state.key !== key) return { leg: { line: [origin, to], steps: [] }, quality: 'loading' };
-  return state.leg ? { leg: state.leg, quality: 'streets' } : { leg: { line: [origin, to], steps: [] }, quality: 'approximate' };
+  // La línea recta de reserva se guarda por punto de partida: una nueva en cada render rehacía el tramo sin fin
+  const straight = useMemo<RoutedLeg | null>(
+    () => (origin ? { line: [origin, to], steps: [] } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [key, to[0], to[1]],
+  );
+  const loading = state.key !== key;
+  return useMemo(() => {
+    if (!straight) return { leg: null, quality: 'loading' as const };
+    if (loading) return { leg: straight, quality: 'loading' as const };
+    return state.leg ? { leg: state.leg, quality: 'streets' as const } : { leg: straight, quality: 'approximate' as const };
+  }, [straight, loading, state.leg]);
 }

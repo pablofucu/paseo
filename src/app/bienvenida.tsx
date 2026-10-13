@@ -43,14 +43,13 @@ export default function Bienvenida() {
   const insets = useSafeAreaInsets();
   const { change } = useLocalSearchParams<{ change?: string }>();
   const language = useSettings(s => s.language);
-  const city = useSettings(s => s.city);
   const setLanguage = useSettings(s => s.setLanguage);
 
   const choose = (l: Language) => {
     setLanguage(l);
     lightTap();
     if (change) goBack();
-    else router.replace(city ? '/' : '/ciudad');
+    else router.replace('/');
   };
   // Con un solo idioma hecho no hay nada que elegir: un botón para empezar
   const start = () => choose(READY_LANGUAGES[0].id);

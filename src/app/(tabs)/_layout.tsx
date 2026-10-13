@@ -32,11 +32,9 @@ const icon = (name: keyof typeof ICONS) =>
 export default function TabsLayout() {
   const hydrated = useSettingsHydrated();
   const language = useSettings(s => s.language);
-  const city = useSettings(s => s.city);
-  // La primera vez: bienvenida (idioma) y ciudad antes de nada
+  // La primera vez: bienvenida (idioma) antes de nada; la ciudad se elige en Inicio
   if (!hydrated) return null;
   if (!language) return <Redirect href="/bienvenida" />;
-  if (!city) return <Redirect href="/ciudad" />;
   return (
     <Tabs
       screenOptions={{
