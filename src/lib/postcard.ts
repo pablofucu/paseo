@@ -1,3 +1,4 @@
+import type { ImageSourcePropType } from 'react-native';
 import { PAPEL_POSTAL } from '@/lib/ink';
 import { postmarkXml, rng } from '@/lib/rubber';
 
@@ -8,6 +9,13 @@ import { postmarkXml, rng } from '@/lib/rubber';
  * matasellos. La ilustración es una imagen (con la textura de imprenta ya
  * aplicada); esto genera el papel de debajo y lo que va encima.
  */
+
+/** Miniaturas de las postales (scripts/shrink-assets.py), para lo que se pinta pequeño o difuminado */
+export const POSTCARD_THUMB: Record<string, ImageSourcePropType> = {
+  'tomares-4-paradas': require('../../assets/postcards/thumb/tomares.jpg'),
+  'sevilla-centro': require('../../assets/postcards/thumb/sevilla.jpg'),
+  'sevilla-arenal': require('../../assets/postcards/thumb/sevilla-arenal.jpg'),
+};
 
 export const POSTCARD = { w: 900, h: 600, art: { x: 34, y: 34, w: 832, h: 444 } };
 

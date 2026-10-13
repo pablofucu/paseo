@@ -14,8 +14,8 @@ const TURN_MS = 750;
  * del lomo al borde) unidos por bisagras. Cada bisagra dobla una parte de la
  * curva, más hacia el borde, que se queda atrás al levantarse la hoja.
  */
-const SEGMENTS = [0.4, 0.24, 0.2, 0.16];
-const JOINTS = [0, 0.22, 0.33, 0.45];
+const SEGMENTS = [0.4, 0.3, 0.3];
+const JOINTS = [0, 0.4, 0.6];
 /** Las hojas que no pueden girar ahora van de una pieza: cada tramo vuelve a dibujar la hoja entera */
 const WHOLE = [1];
 /** Curva total del borde en el punto más alto del giro (grados) */
@@ -42,7 +42,20 @@ interface Props {
   spread?: boolean;
   index: number;
   onIndex: (i: number) => void;
+  /** Pestañas del canto para saltar a una hoja (una por ruta, del color de la ruta) */
+  tabs?: BookTab[];
 }
+
+export interface BookTab {
+  key: string;
+  color: string;
+  label: string;
+  /** Posición de su hoja en `leaves` */
+  index: number;
+}
+
+/** Ancho que sobresale el canto con las pestañas */
+const TAB_W = 14;
 
 /**
  * El pasaporte como libreta: las hojas giran sobre el borde izquierdo. Se
@@ -55,7 +68,7 @@ interface Props {
  * terminar un giro la hoja volvería un instante a su sitio antes de que
  * llegase el índice nuevo.
  */
-export function Book({ leaves, width, spread, index, onIndex }: Props) {
+export function Book({ leaves, width, spread, index, onIndex, tabs }: Props) {
   const height = sheetFor(width).h;
   const reduced = useReducedMotion();
   const deg = useSharedValue(0);
@@ -65,6 +78,8 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
   const countSV = useSharedValue(leaves.length);
   /** 1 mientras el dedo arrastra una hoja */
   const dragSV = useSharedValue(0);
+  const reducedSV = useSharedValue(reduced);
+  useEffect(() => { reducedSV.set(reduced); }, [reduced, reducedSV]);
   useEffect(() => { indexSV.set(index); }, [index, indexSV]);
   useEffect(() => { countSV.set(leaves.length); }, [leaves.length, countSV]);
 
@@ -87,6 +102,16 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
     }));
   };
 
+  // Salto a una hoja desde una pestaña: la vecina se pasa con el giro; las lejanas, directas
+  const jump = (to: number) => {
+    const idx = indexSV.value;
+    if (turningSV.value >= 0 || to === idx || to < 0 || to >= leaves.length) return;
+    if (Math.abs(to - idx) === 1) return flip(to > idx ? 1 : -1);
+    pageTurn();
+    indexSV.set(to);
+    onIndex(to);
+  };
+
   // Al posarse la hoja, el índice y la pila cambian en el mismo fotograma
   const land = (i: number, dir: number, complete: boolean) => {
     'worklet';
@@ -100,9 +125,9 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
   // Pista la primera vez: la esquina de la tapa se levanta un poco y vuelve
   useEffect(() => {
     if (hinted || reduced || index !== 0 || leaves.length < 2) return;
-    hinted = true;
     const t = setTimeout(() => {
-      if (turningSV.value >= 0) return;
+      if (hinted || turningSV.value >= 0) return;
+      hinted = true;
       turningSV.set(0);
       deg.set(withSequence(
         withTiming(-24, { duration: 420, easing: Easing.out(Easing.quad) }),
@@ -152,6 +177,13 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
       const target = dir === 1 ? (complete ? -180 : 0) : complete ? 0 : -180;
       if (complete) scheduleOnRN(pageTurn);
       // Al soltar, la hoja sigue con la velocidad del dedo y se asienta con un muelle
+      if (reducedSV.get()) {
+        deg.set(withTiming(target, { duration: 0 }, () => {
+          'worklet';
+          land(t, dir, complete);
+        }));
+        return;
+      }
       deg.set(withSpring(target, { velocity: (e.velocityX / width) * 180, damping: 22, stiffness: 170, mass: 0.9, overshootClamping: true }, done => {
         'worklet';
         land(t, dir, complete);
@@ -170,24 +202,37 @@ export function Book({ leaves, width, spread, index, onIndex }: Props) {
   // Con una sola hoja en pantalla, la cámara acompaña a la que gira: la libreta se aleja
   // un poco y se desplaza hacia el lado del lomo para que se vea la hoja de pie y su vuelta
   const camera = useAnimatedStyle(() => {
-    const a = !spread && turningSV.value >= 0 ? Math.sin((-deg.value * Math.PI) / 180) : 0;
+    const a = !spread && !reducedSV.get() && turningSV.value >= 0 ? Math.sin((-deg.value * Math.PI) / 180) : 0;
     return { transform: [{ translateX: width * 0.12 * a }, { scale: 1 - a * 0.14 }] };
   });
 
   return (
     <View style={{ alignItems: 'center', gap: 14 }}>
+      <View style={{ width: (spread ? width * 2 : width) + (tabs?.length ? TAB_W : 0), height }}>
       <GestureDetector gesture={pan}>
         {/* Sin recortar: la hoja sale del lomo hacia el espectador y sigue más allá del borde */}
         <Animated.View style={[{ width: spread ? width * 2 : width, height }, camera]}>
           {visible.map(({ l, i }) => (
             // Solo se parten en tramos las dos hojas del lomo, las únicas que el próximo giro puede mover
-            <Page key={l.key} i={i} strips={i === index || i === index - 1} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
+            <Page key={l.key} i={i} strips={i >= index - 1 && i <= index + 1} current={i === index} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
               {l.front}
             </Page>
           ))}
           <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: spread ? width : 0, top: 0, width, height, zIndex: 999 }, s.cast, cast]} />
         </Animated.View>
       </GestureDetector>
+      {tabs?.map((t, n) => (
+        <Pressable
+          key={t.key}
+          accessibilityRole="button"
+          accessibilityLabel={`Ir a la hoja ${t.index + 1}: ${t.label}`}
+          accessibilityState={{ selected: t.index === index }}
+          hitSlop={{ top: 3, bottom: 3, left: 6, right: 10 }}
+          onPress={() => jump(t.index)}
+          style={[s.tab, { left: spread ? width * 2 : width, top: 34 + n * 38, backgroundColor: t.color, width: t.index === index ? TAB_W : TAB_W - 4 }]}
+        />
+      ))}
+      </View>
       <View style={s.nav}>
         <Pressable accessibilityRole="button" accessibilityLabel="Hoja anterior" disabled={index === 0} onPress={() => flip(-1)} style={({ pressed }) => [s.navBtn, index === 0 && { opacity: 0.35 }, pressed && { transform: [{ scale: 0.95 }] }]}>
           <Text style={s.navText}>‹ Anterior</Text>
@@ -209,6 +254,8 @@ interface PageProps {
   spread: boolean;
   stiff: boolean;
   strips: boolean;
+  /** La hoja abierta: las demás se esconden a los lectores de pantalla */
+  current: boolean;
   width: number;
   height: number;
   left: number;
@@ -216,7 +263,7 @@ interface PageProps {
   children: ReactNode;
 }
 
-const Page = memo(function Page({ i, deg, turning, index, spread, stiff, strips, width, height, left, back, children }: PageProps) {
+const Page = memo(function Page({ i, deg, turning, index, spread, stiff, strips, current, width, height, left, back, children }: PageProps) {
   const perspective = width * DEPTH;
   // Cada estilo lee los valores compartidos directamente: así Reanimated sabe de qué depende
   const leaf = useAnimatedStyle(() => {
@@ -235,7 +282,7 @@ const Page = memo(function Page({ i, deg, turning, index, spread, stiff, strips,
   const cuts = strips ? SEGMENTS : WHOLE;
   const seg = { cuts, i, deg, turning, index, stiff, width, height, perspective, front: children, back };
   return (
-    <Animated.View style={[{ position: 'absolute', left, top: 0, width: edges(width, cuts)[1], height, transformOrigin: 'left center' }, leaf]}>
+    <Animated.View accessibilityElementsHidden={!current} importantForAccessibility={current ? 'auto' : 'no-hide-descendants'} style={[{ position: 'absolute', left, top: 0, width: edges(width, cuts)[1], height, transformOrigin: 'left center' }, leaf]}>
       <Segment k={0} {...seg} />
     </Animated.View>
   );
@@ -267,7 +314,7 @@ interface SegmentProps {
  * Un tramo de la hoja: recorta su franja del anverso y del reverso, y lleva
  * colgado el siguiente tramo de su borde derecho, doblado un poco más.
  */
-function Segment({ cuts, k, i, deg, turning, index, stiff, width, height, perspective, front, back }: SegmentProps) {
+const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, width, height, perspective, front, back }: SegmentProps) {
   const e = edges(width, cuts);
   const x = e[k], w = e[k + 1] - x;
   const last = k === cuts.length - 1;
@@ -329,12 +376,13 @@ function Segment({ cuts, k, i, deg, turning, index, stiff, width, height, perspe
       )}
     </>
   );
-}
+});
 
 const s = StyleSheet.create({
   cast: { experimental_backgroundImage: 'linear-gradient(90deg, rgba(40,28,10,0.35), rgba(40,28,10,0) 55%)', borderRadius: 6 },
   shade: { experimental_backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.18), rgba(0,0,0,0) 40%)', borderRadius: 6 },
   shadeBack: { experimental_backgroundImage: 'linear-gradient(270deg, rgba(0,0,0,0.25), rgba(0,0,0,0) 50%)', borderRadius: 6 },
+  tab: { position: 'absolute', height: 30, borderTopRightRadius: 6, borderBottomRightRadius: 6, boxShadow: '1px 1px 3px rgba(0,0,0,0.25)', zIndex: 2000 },
   nav: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   navBtn: { height: 40, paddingHorizontal: 14, justifyContent: 'center', borderRadius: 999, backgroundColor: 'rgba(28,26,23,0.06)' },
   navText: { fontFamily: font.black, fontSize: 14, color: '#1c1a17' },

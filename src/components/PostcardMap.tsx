@@ -7,6 +7,7 @@ import { DUR, EASE_OUT, PressableScale, rise, SPRING } from '@/components/motion
 import { Postcard } from '@/components/Postcard';
 import type { Tour } from '@/data/types';
 import { tintaDeRuta } from '@/lib/ink';
+import { POSTCARD_THUMB } from '@/lib/postcard';
 import { buildMapStyle } from '@/lib/mapStyle';
 import { fechaSello } from '@/lib/rubber';
 import { routeProgress, type UserRoute } from '@/store/passport';
@@ -29,7 +30,7 @@ function PostcardPin({ tour, won, index, selected, onPress }: { tour: Tour; won:
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={`Postal ${tour.title}`} onPress={onPress} scaleTo={0.92}>
       <Animated.View style={[s.pin, { borderColor: tintaDeRuta(tour.accent) }, style]}>
-        {won ? <Image source={tour.postcard.art} style={s.thumb} contentFit="cover" /> : <View style={[s.thumb, s.blank]} />}
+        {won ? <Image source={POSTCARD_THUMB[tour.id] ?? tour.postcard.art} style={s.thumb} contentFit="cover" /> : <View style={[s.thumb, s.blank]} />}
         <Text style={s.pinText} numberOfLines={1}>{tour.city}</Text>
       </Animated.View>
     </PressableScale>
