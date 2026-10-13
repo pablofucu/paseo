@@ -2,13 +2,13 @@ import { memo, useCallback, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { PassportPaper } from '@/components/Paper';
-import { paperOf, RubberStamp } from '@/components/RubberStamp';
-import { StampDrop } from '@/components/passport/StampDrop';
+import { paperOf, RubberStamp, stopInk } from '@/components/RubberStamp';
+import { InkDust, StampDrop } from '@/components/passport/StampDrop';
 import type { Tour } from '@/data/types';
 import { stampHit } from '@/lib/feedback';
 import { mezcla } from '@/lib/ink';
 import { sheetFor, stampBox } from '@/lib/sheet';
-import type { UserRoute } from '@/store/passport';
+import { routeProgress, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
 interface Props {
@@ -20,6 +20,8 @@ interface Props {
   fresh?: string | null;
   /** Capa encima de los sellos (vista previa del sello en la mano) */
   children?: ReactNode;
+  /** El sello nuevo es el último de la ruta: golpe más fuerte y polvo de tinta */
+  heavy?: boolean;
 }
 
 /**
@@ -27,7 +29,7 @@ interface Props {
  * la ruta, su nombre y su ciudad discretos arriba, y los sellos donde los
  * dejó el usuario.
  */
-export const RouteSheet = memo(function RouteSheet({ tour, route, width, pageNumber, fresh, children }: Props) {
+export const RouteSheet = memo(function RouteSheet({ tour, route, width, pageNumber, fresh, children, heavy }: Props) {
   const sheet = sheetFor(width);
   const paper = paperOf(tour);
   // Letra del encabezado: la tinta de la ruta muy apagada sobre el papel
@@ -37,15 +39,16 @@ export const RouteSheet = memo(function RouteSheet({ tour, route, width, pageNum
   const knock = useSharedValue(0);
   const knockStyle = useAnimatedStyle(() => ({ transform: [{ translateY: knock.value * 3 }, { scale: 1 - knock.value * 0.005 }] }));
   const hit = useCallback(() => {
-    stampHit(false);
+    stampHit(!!heavy);
     knock.set(withSequence(withTiming(1, { duration: 98, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 182, easing: Easing.out(Easing.quad) })));
-  }, [knock]);
+  }, [knock, heavy]);
 
   const stamps = route?.stamps ?? [];
   const k = width / 340;
+  const prog = routeProgress(tour.id, route);
 
   return (
-    <Animated.View style={[{ width, height: sheet.h }, s.sheet, knockStyle]}>
+    <Animated.View accessible accessibilityLabel={`Hoja ${pageNumber}: ${tour.title}, ${prog.done} de ${prog.total} sellos`} style={[{ width, height: sheet.h }, s.sheet, knockStyle]}>
       <PassportPaper width={width} height={sheet.h} color={paper} />
       <View style={[s.head, { height: sheet.top }]} pointerEvents="none">
         <Text style={[s.city, { color: quiet, fontSize: 9.5 * k, letterSpacing: 3 * k }]}>{tour.city.toUpperCase()}</Text>
@@ -60,6 +63,7 @@ export const RouteSheet = memo(function RouteSheet({ tour, route, width, pageNum
         return (
           <View key={st.stopId} pointerEvents="none" style={{ position: 'absolute', left: st.x * width - b.w / 2, top: st.y * sheet.h - b.h / 2, width: b.w, height: b.h, transform: [{ rotate: `${st.rot}deg` }] }}>
             {fresh === st.stopId ? <StampDrop onImpact={hit}>{art}</StampDrop> : art}
+            {fresh === st.stopId && heavy && <InkDust color={stopInk(tour, st.stopId)} w={b.w} h={b.h} />}
           </View>
         );
       })}

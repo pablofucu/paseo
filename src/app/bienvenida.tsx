@@ -1,13 +1,15 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
-import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
-import { LANGUAGES, useSettings, type Language } from '@/store/settings';
+import { Compass } from '@/components/Compass';
+import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
+import { goBack } from '@/lib/nav';
+import { HAS_LANGUAGE_STEP, LANGUAGES, READY_LANGUAGES, useSettings, type Language } from '@/store/settings';
 import { font } from '@/theme/fonts';
-import { brand } from '@/theme/tokens';
+import { brand, neutral } from '@/theme/tokens';
 
 /** Entrada suave: sube 14 px y aparece, sin rebote */
 const up = (delay: number, duration: number = DUR.slow) =>
@@ -28,13 +30,7 @@ function Emblem() {
   }));
   return (
     <Animated.View style={style}>
-      <Svg width={112} height={112} viewBox="0 0 100 100">
-        <Circle cx={50} cy={50} r={46} fill="none" stroke={brand.sun} strokeWidth={3} />
-        <Circle cx={50} cy={50} r={39} fill="none" stroke={brand.sun} strokeWidth={1.2} strokeDasharray="2 4" />
-        <Path d="M50 16 L57 50 L50 84 L43 50 Z" fill="none" stroke="#fff" strokeWidth={2.4} strokeLinejoin="round" />
-        <Path d="M50 16 L57 50 L43 50 Z" fill={brand.coral} />
-        <Path d="M16 50 L50 44 L84 50 L50 56 Z" fill="none" stroke="#fff" strokeWidth={1.6} strokeLinejoin="round" />
-      </Svg>
+      <Compass />
     </Animated.View>
   );
 }
@@ -52,12 +48,17 @@ export default function Bienvenida() {
 
   const choose = (l: Language) => {
     setLanguage(l);
-    if (change) router.back();
+    lightTap();
+    if (change) goBack();
     else router.replace(city ? '/' : '/ciudad');
   };
+  // Con un solo idioma hecho no hay nada que elegir: un botón para empezar
+  const start = () => choose(READY_LANGUAGES[0].id);
 
   return (
     <View style={[s.root, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 28 }]}>
+      {/* Fondo azul marino: iconos de la barra de estado claros */}
+      <StatusBar style="light" />
       <View style={s.brand}>
         <Emblem />
         <View style={s.word}>
@@ -68,6 +69,13 @@ export default function Bienvenida() {
         <Animated.Text entering={FadeIn.delay(800).duration(500)} style={s.tag}>Rutas a pie con audio, sellos y postales</Animated.Text>
       </View>
 
+      {!HAS_LANGUAGE_STEP ? (
+        <Animated.View entering={up(950)}>
+          <PressableScale accessibilityRole="button" accessibilityLabel="Empezar" onPress={start} style={s.start}>
+            <Text maxFontSizeMultiplier={1.3} style={s.startText}>Empezar</Text>
+          </PressableScale>
+        </Animated.View>
+      ) : (
       <View style={{ gap: 12 }}>
         <Animated.Text entering={up(950, DUR.base)} style={s.ask}>Elige tu idioma · Choose your language</Animated.Text>
         {LANGUAGES.map((l, i) => {
@@ -95,6 +103,7 @@ export default function Bienvenida() {
           );
         })}
       </View>
+      )}
     </View>
   );
 }
@@ -103,15 +112,17 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: brand.navy, paddingHorizontal: 22, justifyContent: 'space-between' },
   brand: { alignItems: 'center', marginTop: 30, gap: 14 },
   word: { flexDirection: 'row' },
-  wordText: { fontFamily: font.serif, fontSize: 64, lineHeight: 70, color: '#fff', letterSpacing: -1.5 },
+  wordText: { fontFamily: font.serifBold, fontSize: 64, lineHeight: 70, color: neutral.white, letterSpacing: -1.5 },
   tag: { fontFamily: font.bold, fontSize: 16, color: 'rgba(255,255,255,0.78)', textAlign: 'center' },
   ask: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: brand.sun, textAlign: 'center', marginBottom: 2 },
-  lang: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 22, backgroundColor: '#fff' },
+  lang: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 22, backgroundColor: neutral.white },
   langOn: { borderWidth: 2, borderColor: brand.sun },
   langOff: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderStyle: 'dashed' },
   code: { width: 48, height: 48, borderRadius: 14, backgroundColor: brand.coral, alignItems: 'center', justifyContent: 'center' },
-  codeText: { fontFamily: font.black, fontSize: 16, color: '#fff', letterSpacing: 1 },
-  langName: { fontFamily: font.serif, fontSize: 22, color: brand.navy },
-  langNote: { fontFamily: font.bold, fontSize: 13, color: '#6b6457', marginTop: 1 },
+  codeText: { fontFamily: font.black, fontSize: 16, color: neutral.white, letterSpacing: 1 },
+  langName: { fontFamily: font.serifBold, fontSize: 22, color: brand.navy },
+  langNote: { fontFamily: font.bold, fontSize: 13, color: neutral.ink2, marginTop: 1 },
+  start: { minHeight: 56, paddingVertical: 8, borderRadius: 999, backgroundColor: brand.sun, alignItems: 'center', justifyContent: 'center' },
+  startText: { fontFamily: font.black, fontSize: 18, color: brand.navy },
   go: { fontFamily: font.black, fontSize: 28, color: brand.coral, marginRight: 4 },
 });

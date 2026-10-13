@@ -30,7 +30,7 @@ export const sevilla: Tour = {
   postcard: {
     art: require('../../../assets/postcards/sevilla.jpg'),
     value: '3,20€',
-    subtitle: 'TORRE DEL ORO · ARCHIVO · GIRALDA · ALCÁZAR · SANTA CRUZ',
+    subtitle: 'ATARDECER EN EL GUADALQUIVIR',
   },
   stamp: {
     art: require('../../../assets/route-stamps/sevilla-centro.png'),

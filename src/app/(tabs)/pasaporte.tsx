@@ -3,12 +3,14 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { rise } from '@/components/motion';
-import { Book, type Leaf } from '@/components/passport/Book';
-import { Cover, Holder, NextRoute, SheetBack } from '@/components/passport/Pages';
+import { Book, type BookTab, type Leaf } from '@/components/passport/Book';
+import { CityVisaPage, Cover, Holder, NextRoute, SheetBack } from '@/components/passport/Pages';
 import { RouteSheet } from '@/components/passport/RouteSheet';
 import { getTour } from '@/data/tours';
+import { tintaDeRuta } from '@/lib/ink';
 import { SHEET_RATIO } from '@/lib/sheet';
-import { usePassport } from '@/store/passport';
+import { cityVisas } from '@/lib/visa';
+import { knownRoutes, usePassport, usePassportHydrated } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
 import { type } from '@/theme/type';
@@ -23,6 +25,7 @@ export default function Pasaporte() {
   const { width, height } = useWindowDimensions();
   const passport = usePassport(s => s.passport);
   const routes = usePassport(s => s.routes);
+  const hydrated = usePassportHydrated();
   const [index, setIndex] = useState(0);
 
   const spread = width >= 760;
@@ -30,27 +33,37 @@ export default function Pasaporte() {
   const maxH = height - insets.top - insets.bottom - 250;
   const pageW = Math.floor(Math.min(spread ? (width - 64) / 2 : width - 32, maxH * SHEET_RATIO, 520));
 
-  const leaves = useMemo<Leaf[]>(() => {
+  const pages = useMemo(() => knownRoutes(passport.pageOrder), [passport.pageOrder]);
+  const visas = useMemo(() => cityVisas(routes), [routes]);
+
+  const { leaves, tabs } = useMemo(() => {
     const out: Leaf[] = [
       { key: 'cover', front: <Cover width={pageW} />, back: <SheetBack width={pageW} lining />, stiff: true },
       { key: 'holder', front: <Holder width={pageW} />, back: <SheetBack width={pageW} /> },
     ];
-    passport.pageOrder.forEach((id, i) => {
-      const tour = getTour(id);
-      if (!tour) return;
+    const tabs: BookTab[] = [];
+    pages.forEach((id, i) => {
+      const tour = getTour(id)!;
+      tabs.push({ key: id, color: tintaDeRuta(tour.accent), label: tour.title, index: out.length });
       out.push({
         key: id,
-        front: (
-          <RouteSheet tour={tour} route={routes[id]} width={pageW} pageNumber={i + 2} />
-        ),
+        front: <RouteSheet tour={tour} route={routes[id]} width={pageW} pageNumber={i + 2} />,
         back: <SheetBack width={pageW} />,
       });
     });
-    out.push({ key: 'next', front: <NextRoute width={pageW} pageNumber={passport.pageOrder.length + 2} />, back: <SheetBack width={pageW} /> });
-    return out;
-  }, [passport.pageOrder, routes, pageW]);
+    // Visado de cada ciudad con todas sus rutas completadas
+    visas.forEach((visa, i) => {
+      out.push({
+        key: `visa-${visa.area}`,
+        front: <CityVisaPage width={pageW} pageNumber={pages.length + 2 + i} visa={visa} routes={routes} />,
+        back: <SheetBack width={pageW} />,
+      });
+    });
+    out.push({ key: 'next', front: <NextRoute width={pageW} pageNumber={pages.length + visas.length + 2} />, back: <SheetBack width={pageW} /> });
+    return { leaves: out, tabs };
+  }, [pages, visas, routes, pageW]);
 
-  const stamps = Object.values(routes).reduce((a, r) => a + r.stamps.length, 0);
+  const stamps = pages.reduce((a, id) => a + (routes[id]?.stamps.length ?? 0), 0);
 
   return (
     // Sin scroll: la libreta cabe entera y el gesto horizontal de pasar hoja no compite con nada
@@ -59,12 +72,17 @@ export default function Pasaporte() {
         <Text style={type.overline}>Pasaporte</Text>
         <Text style={s.title}>Mis sellos</Text>
         <Text style={type.caption}>
-          {stamps ? `${stamps} ${stamps === 1 ? 'sello' : 'sellos'} en ${passport.pageOrder.length} ${passport.pageOrder.length === 1 ? 'ruta' : 'rutas'} · Pasa las hojas con el dedo` : 'Ábrelo y pasa las hojas con el dedo. Cada ruta tendrá su hoja con el primer sello.'}
+          {!hydrated ? 'Abriendo tu pasaporte…' : stamps ? `${stamps} ${stamps === 1 ? 'sello' : 'sellos'} en ${pages.length} ${pages.length === 1 ? 'ruta' : 'rutas'} · Pasa las hojas con el dedo` : 'Ábrelo y pasa las hojas con el dedo. Cada ruta tendrá su hoja con el primer sello.'}
         </Text>
       </Animated.View>
       {/* La libreta aparece suave, subiendo un poco hasta la mano */}
       <Animated.View entering={rise(2)}>
-      <Book leaves={leaves} width={pageW} spread={spread} index={Math.min(index, leaves.length - 1)} onIndex={setIndex} />
+      {hydrated ? (
+        <Book leaves={leaves} width={pageW} spread={spread} index={Math.min(index, leaves.length - 1)} onIndex={setIndex} tabs={tabs} />
+      ) : (
+        // Hasta leer el pasaporte guardado solo se ve la tapa cerrada (sin hojas a medias)
+        <View accessibilityLabel="Cargando el pasaporte" style={{ opacity: 0.9 }}><Cover width={pageW} /></View>
+      )}
       </Animated.View>
     </View>
   );

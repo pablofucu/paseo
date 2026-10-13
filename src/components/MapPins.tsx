@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { Marker } from '@maplibre/maplibre-react-native';
+import { memo, useEffect, useRef, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -33,6 +34,9 @@ function Pulse({ size, color, delay = 0 }: { size: number; color: string; delay?
 
 interface StopPinProps {
   index: number;
+  /** Nombre de la parada, para lectores de pantalla */
+  name?: string;
+  stamped?: boolean;
   state: 'done' | 'now' | 'next';
   selected: boolean;
   palette: TourPalette;
@@ -43,7 +47,7 @@ interface StopPinProps {
  * Pin de una parada: al abrir el mapa aparecen uno detrás de otro con un fundido
  * suave; la parada a la que vas late con calma; la elegida crece un poco.
  */
-export function StopPin({ index, state, selected, palette: p, onPress }: StopPinProps) {
+export const StopPin = memo(function StopPin({ index, name, stamped, state, selected, palette: p, onPress }: StopPinProps) {
   const reduced = useReducedMotion();
   const drop = useSharedValue(reduced ? 1 : 0);
   const sel = useSharedValue(0);
@@ -57,7 +61,11 @@ export function StopPin({ index, state, selected, palette: p, onPress }: StopPin
   }));
   const now = state === 'now';
   return (
-    <PressableScale accessibilityRole="button" accessibilityLabel={`Parada ${index + 1}`} onPress={onPress} hitSlop={10} scaleTo={0.85} style={s.pinHit}>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`Parada ${index + 1}${name ? `: ${name}` : ''}${stamped ? ', sellada' : state === 'now' ? ', tu próxima parada' : ''}`}
+      accessibilityState={{ selected }}
+      onPress={onPress} hitSlop={10} scaleTo={0.85} style={s.pinHit}>
       {now && <Pulse size={48} color={p.t2} />}
       <Animated.View
         style={[
@@ -73,7 +81,29 @@ export function StopPin({ index, state, selected, palette: p, onPress }: StopPin
       </Animated.View>
     </PressableScale>
   );
+});
+
+interface StopMarkersProps {
+  stops: Stop[];
+  /** Paradas selladas (por id) */
+  stamped: ReadonlySet<string>;
+  target: number;
+  selected: number | null;
+  palette: TourPalette;
+  onSelect: (index: number) => void;
 }
+
+/**
+ * Los pins de todas las paradas. Está aparte y memoizado para que no se
+ * repinten con cada lectura del GPS: solo cuando cambia la parada, la selección o los sellos.
+ */
+export const StopMarkers = memo(function StopMarkers({ stops, stamped, target, selected, palette, onSelect }: StopMarkersProps) {
+  return stops.map((st, i) => (
+    <Marker key={st.id} id={`stop-${st.id}`} lngLat={st.coord} anchor="center">
+      <StopPin index={i} name={st.name} stamped={stamped.has(st.id)} state={stamped.has(st.id) ? 'done' : i === target ? 'now' : 'next'} selected={selected === i} palette={palette} onPress={() => onSelect(i)} />
+    </Marker>
+  ));
+});
 
 /**
  * Tu posición: punto azul con un halo que se expande y el cono hacia donde miras.

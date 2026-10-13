@@ -203,4 +203,14 @@ describe('rutas a medias', () => {
     expect(s.walk).toBeNull();
     expect(unfinishedRoutes(ids, s.routes)).toEqual([]);
   });
+
+  it('saltar una parada la deja anotada y sin sellar', () => {
+    const { usePassport } = require('@/store/passport') as typeof import('@/store/passport'); // eslint-disable-line @typescript-eslint/no-require-imports
+    const tour = TOURS.find(t => t.city === 'Tomares')!;
+    usePassport.getState().startWalk(tour.id, 1, ['x']);
+    usePassport.getState().skipStop(tour.stops[1].id, 2);
+    usePassport.getState().skipStop(tour.stops[1].id, 2);
+    expect(usePassport.getState().walk).toMatchObject({ target: 2, arrived: null, skipped: ['x', tour.stops[1].id] });
+    expect(usePassport.getState().routes[tour.id]?.stamps ?? []).toHaveLength(0);
+  });
 });

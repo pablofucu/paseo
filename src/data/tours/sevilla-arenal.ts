@@ -35,7 +35,7 @@ export const sevillaArenal: Tour = {
   postcard: {
     art: require('../../../assets/postcards/sevilla-arenal.jpg'),
     value: '3,90€',
-    subtitle: 'MAESTRANZA · CARIDAD · SAN TELMO · TABACOS · PLAZA DE ESPAÑA · MARÍA LUISA',
+    subtitle: 'UNA BARCA EN EL CANAL DE LA PLAZA DE ESPAÑA',
   },
   stamp: {
     art: require('../../../assets/route-stamps/sevilla-arenal.png'),
