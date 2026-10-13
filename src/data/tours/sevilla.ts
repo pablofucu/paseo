@@ -56,6 +56,14 @@ export const sevilla: Tour = {
       p2: "El remate de arriba, con su pequeña cúpula, es del siglo XVIII y se hizo al reparar la torre tras el terremoto de 1755. Hoy alberga un pequeño museo naval.",
       fact: "Su nombre tiene varias explicaciones; la más aceptada es el brillo dorado que daba al reflejarse en el río.",
       captions: ["La torre junto al río", "El cuerpo almohade", "El remate del siglo XVIII", "El paseo de la orilla"],
+      then: {
+        photo: require('../../../assets/tours/sevilla/antes/torre-oro.jpg'),
+        year: 1850,
+        approx: true,
+        title: 'La torre sola en la orilla',
+        text: 'En esta foto de mediados del siglo XIX la torre aparece sola sobre la orilla de tierra, sin los jardines ni el paseo de hoy.',
+        credit: credit('torre-oro@antes'),
+      },
     },
     {
       id: "archivo",
@@ -90,6 +98,14 @@ export const sevilla: Tour = {
       p2: "En el siglo XVI Hernán Ruiz le añadió el cuerpo de campanas renacentista. La corona el Giraldillo, una veleta que representa la Fe y que da nombre a la torre.",
       fact: "Por dentro no tiene escaleras sino rampas, tan anchas que se podía subir a caballo.",
       captions: ["La Giralda", "El cuerpo de campanas", "La parte almohade", "La catedral a sus pies"],
+      then: {
+        photo: require('../../../assets/tours/sevilla/antes/giralda.jpg'),
+        year: 1860,
+        approx: true,
+        title: 'La catedral desde el Alcázar',
+        text: 'J. Laurent hizo esta foto desde el Alcázar. La explanada ante la catedral era de tierra, con árboles aún jóvenes.',
+        credit: credit('giralda@antes'),
+      },
     },
     {
       id: "alcazar",
@@ -107,6 +123,14 @@ export const sevilla: Tour = {
       p2: "Su pieza más famosa es el palacio que mandó construir el rey Pedro I hacia 1364, en estilo mudéjar, con artesanos de Sevilla, Toledo y Granada.",
       fact: "Sus pisos altos siguen siendo residencia de la familia real cuando visita Sevilla.",
       captions: ["El palacio de Pedro I", "Las yeserías mudéjares", "La fachada del palacio", "El patio de la Montería"],
+      then: {
+        photo: require('../../../assets/tours/sevilla/antes/alcazar.jpg'),
+        year: 1860,
+        approx: true,
+        title: 'La fachada del palacio de Pedro I',
+        text: 'Así fotografió J. Laurent la fachada mudéjar del patio de la Montería. Fíjate en las yeserías: apenas han cambiado.',
+        credit: credit('alcazar@antes'),
+      },
     },
     {
       id: "elvira",

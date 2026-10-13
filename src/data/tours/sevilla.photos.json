@@ -36,14 +36,6 @@
       ]
     },
     {
-      "id": "archivo",
-      "search": [
-        "Sevilla Casa Lonja",
-        "Archivo de Indias Sevilla Laurent",
-        "Sevilla Lonja LCCN"
-      ]
-    },
-    {
       "id": "giralda",
       "file": "Sevilla. Vista general de la Catedral desde el Alcazar - J. Laurent. Madrid. LCCN94512157.jpg",
       "crop": [
@@ -61,14 +53,6 @@
         0.075,
         0.06,
         0.13
-      ]
-    },
-    {
-      "id": "elvira",
-      "search": [
-        "Barrio de Santa Cruz Sevilla",
-        "Sevilla calle judería",
-        "Sevilla Santa Cruz 1910"
       ]
     }
   ]

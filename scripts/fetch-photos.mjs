@@ -106,7 +106,8 @@ async function fetchThen(spec, { id, file, search, crop }, credits) {
   await writeFile(out, img);
   credits[key] = {
     file: pick.title.slice(5).replace(/ /g, '_'),
-    author: strip(m.Artist?.value) || 'Desconocido',
+    // «Laurent, J., photographer» (Library of Congress) → «J. Laurent»
+    author: (strip(m.Artist?.value) || 'Desconocido').replace(/^([^,]+), ([^,]+), photographer$/, '$2 $1'),
     license: m.LicenseShortName?.value ?? '',
     source: pick.ii.descriptionurl,
     year: yearOf(m),
