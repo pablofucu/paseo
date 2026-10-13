@@ -36,7 +36,7 @@ export const sevilla: Tour = {
     art: require('../../../assets/route-stamps/sevilla-centro.png'),
     symbol: 'El Giraldillo, la veleta que corona la Giralda, sobre el azul del azulejo y el lema NO8DO de la ciudad.',
   },
-  banner: require('../../../assets/banners/sevilla.jpg'),
+  banner: require('../../../assets/banners/sevilla-centro.jpg'),
   durationMin: 60,
   price: 'free',
   stops: [
