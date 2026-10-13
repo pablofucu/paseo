@@ -24,7 +24,7 @@ interface SettingsState {
   simSpeed: SimSpeed;
   /** Elegido en la bienvenida (null la primera vez) */
   language: Language | null;
-  /** Ciudad cuyos tours se ven en Inicio (null la primera vez) */
+  /** Última ciudad elegida en Inicio: sale la primera (null hasta elegir una) */
   city: CityId | null;
   /** Texto grande: escala los estilos de texto (useType) */
   largeText: boolean;

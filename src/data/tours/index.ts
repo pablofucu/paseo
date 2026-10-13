@@ -21,7 +21,7 @@ export interface City {
   palette: TourPalette;
   /** Tour cuya foto emblema sirve de portada; sin él, la tarjeta se dibuja */
   coverTour?: string;
-  /** Ilustración a todo color para «Elegir ciudad» (assets/banners/ciudad-<ciudad>.jpg) */
+  /** Ilustración a todo color de su tarjeta en Inicio (assets/banners/ciudad-<ciudad>.jpg, 960 × 600) */
   art?: ImageSourcePropType;
 }
 

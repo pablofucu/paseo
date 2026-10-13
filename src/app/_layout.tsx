@@ -85,7 +85,6 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="bienvenida" options={{ animation: 'fade', contentStyle: { backgroundColor: brand.navy } }} />
-          <Stack.Screen name="ciudad" options={{ animation: 'fade_from_bottom' }} />
           <Stack.Screen name="ajustes" />
           <Stack.Screen name="tour/[id]/walk" options={{ animation: 'fade', animationDuration: 380 }} />
           <Stack.Screen name="tour/[id]/stop/[n]" options={{ animation: 'fade_from_bottom', animationDuration: 420 }} />

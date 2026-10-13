@@ -5,7 +5,6 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { lightTap, PressableScale, rise } from '@/components/motion';
 import { IconButton } from '@/components/ui';
-import { getCity } from '@/data/tours';
 import { goBack } from '@/lib/nav';
 import { usePassport } from '@/store/passport';
 import { LANGUAGES, useSettings } from '@/store/settings';
@@ -23,14 +22,13 @@ function Section({ title, i, children }: { title: string; i: number; children: R
   );
 }
 
-/** Ajustes: idioma, ciudad de Inicio y modo prueba */
+/** Ajustes: idioma, créditos, texto grande y modo prueba */
 export default function Ajustes() {
   const insets = useSafeAreaInsets();
   const type = useType();
   const rt = { fontSize: 15.5 * useFontScale() };
   const language = useSettings(s => s.language);
   const setLanguage = useSettings(s => s.setLanguage);
-  const city = useSettings(s => s.city);
   const testMode = useSettings(s => s.testMode);
   const setTestMode = useSettings(s => s.setTestMode);
   const largeText = useSettings(s => s.largeText);
@@ -78,17 +76,7 @@ export default function Ajustes() {
         })}
       </Section>
 
-      <Section title="Ciudad" i={2}>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Cambiar de ciudad" scaleTo={0.98} onPress={() => router.push({ pathname: '/ciudad', params: { change: '1' } })} style={s.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.rowTitle, rt]}>{(city && getCity(city)?.name) ?? 'Sin elegir'}</Text>
-            <Text style={type.caption}>Sus rutas salen primero en Inicio</Text>
-          </View>
-          <Text style={s.go}>›</Text>
-        </PressableScale>
-      </Section>
-
-      <Section title="Información" i={3}>
+      <Section title="Información" i={2}>
         <PressableScale accessibilityRole="button" accessibilityLabel="Créditos de las fotos" scaleTo={0.98} onPress={() => router.push('/creditos')} style={s.row}>
           <View style={{ flex: 1 }}>
             <Text style={s.rowTitle}>Créditos de las fotos</Text>
@@ -98,7 +86,7 @@ export default function Ajustes() {
         </PressableScale>
       </Section>
 
-      <Section title="Accesibilidad" i={4}>
+      <Section title="Accesibilidad" i={3}>
         <View style={s.row}>
           <View style={{ flex: 1 }}>
             <Text style={[s.rowTitle, rt]}>Texto grande</Text>
@@ -108,7 +96,7 @@ export default function Ajustes() {
         </View>
       </Section>
 
-      <Section title="Pruebas" i={5}>
+      <Section title="Pruebas" i={4}>
         <View style={s.row}>
           <View style={{ flex: 1 }}>
             <Text style={[s.rowTitle, rt]}>Modo prueba</Text>

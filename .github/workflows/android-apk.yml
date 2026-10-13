@@ -47,8 +47,13 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
 
-      - uses: actions/upload-artifact@v4
+      # Un solo .apk con nombre propio: así se sube tal cual, sin zip (archive: false usa el nombre del fichero)
+      - name: Preparar el APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk paseo-${{ github.run_number }}.apk
+
+      - uses: actions/upload-artifact@v7
         with:
-          name: paseo-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: paseo-${{ github.run_number }}.apk
+          archive: false
+          if-no-files-found: error
           retention-days: 30
