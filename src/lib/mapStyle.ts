@@ -6,6 +6,8 @@ import type { TourPalette } from '@/theme/tokens';
  * Por defecto, OpenFreeMap (gratis y sin clave) para desarrollo.
  * En producción: Protomaps autoalojado o MapTiler, vía EXPO_PUBLIC_MAP_TILES.
  */
+// El paquete sin conexión (components/OfflinePack) se descarga con este mismo estilo: MapLibre guarda teselas y glifos por URL,
+// así que TILES y GLYPHS no deben cambiar entre la descarga y el paseo (los colores sí, no cuentan).
 const TILES = process.env.EXPO_PUBLIC_MAP_TILES ?? 'https://tiles.openfreemap.org/planet';
 const GLYPHS = process.env.EXPO_PUBLIC_MAP_GLYPHS ?? 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
 // TODO: publicar glifos de Nunito para que las calles usen la tipografía de Paseo.

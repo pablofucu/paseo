@@ -6,6 +6,7 @@ import { DuotoneImage } from '@/components/DuotoneImage';
 import { useHeroMotion } from '@/components/HeroMotion';
 import { Scrim } from '@/components/Scrim';
 import { DUR, EASE_OUT, rise } from '@/components/motion';
+import { OfflinePack } from '@/components/OfflinePack';
 import { Postcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
@@ -65,6 +66,7 @@ export default function Cover() {
             <Chip>{tour.stops.length} paradas</Chip>
           </View>
           <Text style={type.body}>{tour.intro}</Text>
+          <OfflinePack tour={tour} />
 
           <Text style={[type.headline, s.h]}>Paradas</Text>
           {tour.stops.map((st, i) => (
