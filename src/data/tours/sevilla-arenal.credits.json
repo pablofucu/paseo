@@ -53,13 +53,25 @@
     "author": "F. J. Parcerisa",
     "license": "Public domain",
     "source": "https://commons.wikimedia.org/wiki/File:F%C3%A1brica_de_Tabacos_de_Sevilla_(litograf%C3%ADa).jpg",
-    "year": 1856
+    "year": 1856,
+    "crop": [
+      0.04,
+      0.07,
+      0.04,
+      0.15
+    ]
   },
   "maria-luisa@antes": {
     "file": "Sevilla-jardines-del-palacio-de-Sant-Telmo-1878.jpg",
     "author": "Jean Laurent",
     "license": "Public domain",
     "source": "https://commons.wikimedia.org/wiki/File:Sevilla-jardines-del-palacio-de-Sant-Telmo-1878.jpg",
-    "year": 1878
+    "year": 1878,
+    "crop": [
+      0.03,
+      0.06,
+      0.03,
+      0.08
+    ]
   }
 }
