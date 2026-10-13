@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -26,6 +27,7 @@ function Aviso({ title, text, action }: { title: string; text: string; action?: 
   const insets = useSafeAreaInsets();
   return (
     <View style={[s.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
+      <StatusBar style="light" />
       <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
       <View style={s.center}>
         <Text style={s.title}>{title}</Text>
@@ -91,19 +93,9 @@ function Postal({ tour }: { tour: Tour }) {
     );
   }
 
-  // Una postal sin ganar no se enseña ni se comparte
-  if (!earned) {
-    return (
-      <Aviso
-        title="Aún no es tuya"
-        text={`Completa «${tour.title}» para ganar su postal.`}
-        action={{ label: 'Ver la ruta', onPress: () => router.replace({ pathname: '/tour/[id]', params: { id: tour.id } }) }}
-      />
-    );
-  }
-
   return (
     <View style={[s.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
+      <StatusBar style="light" />
       <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
       <View style={s.center}>
         <Animated.Text entering={appear(120)} style={s.over}>{tour.city}</Animated.Text>
