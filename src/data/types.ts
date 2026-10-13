@@ -51,6 +51,19 @@ export interface PhotoCredit {
 export const CREDIT_PENDING = 'pendiente';
 export const creditPending = (c?: PhotoCredit) => !c || c.source === CREDIT_PENDING;
 
+/** Foto antigua de una parada («Así era»): de dominio público, para compararla con la de hoy */
+export interface ThenPhoto {
+  photo: ImageSourcePropType;
+  /** Año (o año aproximado) de la foto */
+  year: number;
+  /** Aproximada: se muestra «hacia 1870» */
+  approx?: boolean;
+  title: string;
+  /** Qué ha cambiado desde entonces, una o dos frases */
+  text: string;
+  credit: PhotoCredit;
+}
+
 export interface Stop {
   id: string;
   name: string;
@@ -71,6 +84,8 @@ export interface Stop {
   fact: string;
   /** Pie de la foto */
   captions: string[];
+  /** Foto antigua para la tarjeta «Así era» (assets/tours/<ruta>/antes, la descarga scripts/fetch-photos.mjs) */
+  then?: ThenPhoto;
   /**
    * Guion completo para la voz, si hace falta escribirlo distinto de la ficha.
    * Si falta, se lee la ficha con los números y siglos en letras (src/lib/spoken.ts).

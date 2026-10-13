@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { bearing, cumulative, destination, distance, formatDistance, maneuvers, pointAlong, projectOnRoute, turnAngle } from '../geo';
+import { bearing, boundsOf, cumulative, destination, distance, formatDistance, maneuvers, pointAlong, projectOnRoute, turnAngle } from '../geo';
 import { arrivalAllowed, guide, instruction, prepareLeg } from '../guidance';
 import type { LngLat } from '@/data/types';
 
@@ -138,5 +138,17 @@ describe('guidance', () => {
     expect(arrivalAllowed(last, b, a, 1000 + 46000)).toBe(true);
     expect(arrivalAllowed(last, b, destination(a, 0, 20), 5000)).toBe(true);
     expect(arrivalAllowed(last, destination(a, 0, 80), a, 5000)).toBe(true);
+  });
+});
+
+describe('boundsOf', () => {
+  it('devuelve la caja [oeste, sur, este, norte] de los puntos', () => {
+    expect(boundsOf(L)).toEqual([-6.046, 37.372, -6.045, 37.373]);
+    expect(boundsOf([[-6, 37], [-7, 38], [-5.5, 36.5]])).toEqual([-7, 36.5, -5.5, 38]);
+  });
+
+  it('con un solo punto la caja es ese punto y sin puntos no hay caja', () => {
+    expect(boundsOf([A])).toEqual([A[0], A[1], A[0], A[1]]);
+    expect(boundsOf([])).toBeNull();
   });
 });

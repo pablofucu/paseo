@@ -129,3 +129,16 @@ export function formatDistance(m: number): string {
 
 /** Minutos a pie a 4,5 km/h, como mínimo 1. */
 export const walkingMinutes = (m: number) => Math.max(1, Math.ceil(m / 75));
+
+/** Caja [oeste, sur, este, norte] que contiene todos los puntos; null si no hay ninguno. Es el formato de `bounds` de MapLibre. */
+export function boundsOf(points: LngLat[]): [number, number, number, number] | null {
+  if (!points.length) return null;
+  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+  for (const [lng, lat] of points) {
+    if (lng < w) w = lng;
+    if (lng > e) e = lng;
+    if (lat < s) s = lat;
+    if (lat > n) n = lat;
+  }
+  return [w, s, e, n];
+}
