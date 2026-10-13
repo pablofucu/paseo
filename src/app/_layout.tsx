@@ -6,14 +6,19 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { fontAssets } from '@/theme/fonts';
-import { neutral } from '@/theme/tokens';
+import { useSettingsHydrated } from '@/store/settings';
+import { brand, neutral } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded] = useFonts(fontAssets);
-  useEffect(() => { if (loaded) SplashScreen.hideAsync(); }, [loaded]);
-  if (!loaded) return null;
+  const [loaded, fontError] = useFonts(fontAssets);
+  const hydrated = useSettingsHydrated();
+  // Se enseña la app cuando hay fuentes (o fallaron: se verá con las del sistema) y ajustes leídos;
+  // hasta entonces sigue el splash azul y no hay destello blanco ni redirecciones erróneas
+  const ready = (loaded || !!fontError) && hydrated;
+  useEffect(() => { if (ready) SplashScreen.hideAsync(); }, [ready]);
+  if (!ready) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -34,13 +39,13 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="bienvenida" options={{ animation: 'fade', contentStyle: { backgroundColor: '#1D2B4F' } }} />
+          <Stack.Screen name="bienvenida" options={{ animation: 'fade', contentStyle: { backgroundColor: brand.navy } }} />
           <Stack.Screen name="ciudad" options={{ animation: 'fade_from_bottom' }} />
           <Stack.Screen name="ajustes" />
           <Stack.Screen name="tour/[id]/walk" options={{ animation: 'fade', animationDuration: 380 }} />
           <Stack.Screen name="tour/[id]/stop/[n]" options={{ animation: 'fade_from_bottom', animationDuration: 420 }} />
           <Stack.Screen name="tour/[id]/done" options={{ animation: 'fade_from_bottom', animationDuration: 480, gestureEnabled: false }} />
-          <Stack.Screen name="postal/[id]" options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal', gestureDirection: 'vertical', contentStyle: { backgroundColor: '#1d1a15' } }} />
+          <Stack.Screen name="postal/[id]" options={{ animation: 'slide_from_bottom', presentation: 'fullScreenModal', gestureDirection: 'vertical', contentStyle: { backgroundColor: neutral.night } }} />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

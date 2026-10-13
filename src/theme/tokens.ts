@@ -13,9 +13,13 @@ export const brand = {
 export const neutral = {
   ink: '#1C1A17',
   ink2: '#5A544C',
-  ink3: '#9A9389',
+  ink3: '#7A7369',
   line: '#E8E2D8',
   surface: '#FFFFFF',
+  /** Blanco para texto y trazos sobre fotos o fondos oscuros */
+  white: '#FFFFFF',
+  /** Fondo de la postal (pantalla oscura) */
+  night: '#1D1A15',
   bg: '#FAF6F0',
   bg2: '#F2EDE4',
   paper: '#FBF6EC',
@@ -27,6 +31,8 @@ export const functional = {
   gold: '#F5B731',
   warn: '#E39B0B',
   warnSoft: '#FFF3D6',
+  /** Texto sobre warnSoft */
+  warnInk: '#6B4700',
 } as const;
 
 export interface TourPalette {
