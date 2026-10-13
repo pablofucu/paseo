@@ -51,22 +51,39 @@ const yearOf = m => {
   return y.length ? Math.min(...y) : null;
 };
 const isFree = m => /public domain|^pd|cc0/i.test(m.LicenseShortName?.value ?? '');
+async function cropImage(buf, [l, t, r, b]) {
+  if (sharp) {
+    const { width: w, height: h } = await sharp(buf).metadata();
+    const box = { left: Math.round(w * l), top: Math.round(h * t), width: Math.round(w * (1 - l - r)), height: Math.round(h * (1 - t - b)) };
+    return sharp(buf).extract(box).jpeg({ quality: 84, mozjpeg: true }).toBuffer();
+  }
+  const tmp = join(process.env.RUNNER_TEMP ?? '/tmp', `crop-${Date.now()}.jpg`);
+  await writeFile(tmp, buf);
+  const { stdout } = await run('identify', ['-format', '%w %h', tmp]);
+  const [w, h] = stdout.split(' ').map(Number);
+  await run('convert', [tmp, '-crop', `${Math.round(w * (1 - l - r))}x${Math.round(h * (1 - t - b))}+${Math.round(w * l)}+${Math.round(h * t)}`, '+repage', '-quality', '84', tmp]);
+  return readFile(tmp);
+}
 async function infos(titles) {
   const r = await (await get(`${COMMONS}&prop=imageinfo&iiprop=url|mime|size|extmetadata&iiurlwidth=1280&titles=${encodeURIComponent(titles.join('|'))}`)).json();
   return Object.values(r.query?.pages ?? {}).filter(p => p.imageinfo).map(p => ({ title: p.title, ii: p.imageinfo[0] }));
 }
-async function fetchThen(spec, { id, file, search }, credits) {
+async function fetchThen(spec, { id, file, search, crop }, credits) {
   const key = `${id}@antes`;
   const out = join(spec.dir, 'antes', `${id}.jpg`);
   const want = file && (file.startsWith('File:') ? file : 'File:' + file);
-  if (!FORCE && credits[key] && await access(out).then(() => true, () => false) && (!want || credits[key].file === want.slice(5).replace(/ /g, '_'))) { console.log(`${key}: ya está`); return; }
+  const same = c => (!want || c.file === want.slice(5).replace(/ /g, '_')) && JSON.stringify(c.crop ?? null) === JSON.stringify(crop ?? null);
+  if (!FORCE && credits[key] && same(credits[key]) && await access(out).then(() => true, () => false)) { console.log(`${key}: ya está`); return; }
   let pick;
   if (want) {
     pick = (await infos([want]))[0];
     if (!pick) throw new Error(`${key}: ${want} no está en Commons`);
   } else {
-    const r = await (await get(`${COMMONS}&list=search&srnamespace=6&srlimit=40&srsearch=${encodeURIComponent(search)}`)).json();
-    const titles = (r.query?.search ?? []).map(x => x.title);
+    const titles = [];
+    for (const q of [search].flat()) {
+      const r = await (await get(`${COMMONS}&list=search&srnamespace=6&srlimit=40&srsearch=${encodeURIComponent(q)}`)).json();
+      for (const x of r.query?.search ?? []) if (!titles.includes(x.title)) titles.push(x.title);
+    }
     const found = [];
     for (let i = 0; i < titles.length; i += 20) found.push(...await infos(titles.slice(i, i + 20)));
     const ok = found
@@ -74,7 +91,7 @@ async function fetchThen(spec, { id, file, search }, credits) {
       .filter(f => f.ii.mime === 'image/jpeg' && isFree(f.ii.extmetadata ?? {}) && f.year && f.ii.width >= 800)
       .sort((a, b) => a.year - b.year);
     console.log(`${key}: ${ok.length} candidatas para «${search}»`);
-    for (const f of ok.slice(0, 8)) console.log(`   ${f.year} · ${f.title} · ${f.ii.extmetadata?.LicenseShortName?.value}`);
+    for (const f of ok.slice(0, 15)) console.log(`   ${f.year} · ${f.title} · ${f.ii.extmetadata?.LicenseShortName?.value}`);
     pick = ok[0];
     if (!pick) { console.warn(`${key}: sin foto antigua libre, se omite`); return; }
   }
@@ -82,7 +99,10 @@ async function fetchThen(spec, { id, file, search }, credits) {
   if (pick.ii.mime !== 'image/jpeg') throw new Error(`${key}: ${pick.title} es ${pick.ii.mime}, se necesita JPEG`);
   if (!isFree(m)) throw new Error(`${key}: ${pick.title} no es de dominio público (${m.LicenseShortName?.value})`);
   await mkdir(join(spec.dir, 'antes'), { recursive: true });
-  const img = Buffer.from(await (await get(pick.ii.thumburl)).arrayBuffer());
+  let img = Buffer.from(await (await get(pick.ii.thumburl)).arrayBuffer());
+  // Recorte [izquierda, arriba, derecha, abajo] en fracciones: quita el cartón y los
+  // márgenes del escaneo para que la foto encaje con la de hoy
+  if (crop) img = await cropImage(img, crop);
   await writeFile(out, img);
   credits[key] = {
     file: pick.title.slice(5).replace(/ /g, '_'),
@@ -90,6 +110,7 @@ async function fetchThen(spec, { id, file, search }, credits) {
     license: m.LicenseShortName?.value ?? '',
     source: pick.ii.descriptionurl,
     year: yearOf(m),
+    ...(crop ? { crop } : {}),
   };
   console.log(`${key}: ${pick.title} (${Math.round(img.length / 1024)} KB) · ${credits[key].author} · ${credits[key].year}`);
 }

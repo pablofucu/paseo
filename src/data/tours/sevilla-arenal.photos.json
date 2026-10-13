@@ -31,27 +31,53 @@
   "then": [
     {
       "id": "maestranza",
-      "search": "Plaza de toros Sevilla Maestranza Laurent"
+      "search": [
+        "Sevilla plaza de toros Laurent",
+        "Maestranza Sevilla 1900",
+        "Sevilla Plaza de toros LCCN"
+      ]
     },
     {
       "id": "caridad",
-      "search": "Hospital de la Caridad Sevilla Laurent"
+      "search": [
+        "Sevilla Caridad Laurent",
+        "Hospital de la Caridad Sevilla",
+        "Sevilla Caridad LCCN"
+      ]
     },
     {
       "id": "san-telmo",
-      "search": "Palacio de San Telmo Sevilla Laurent"
+      "file": "Sevilla. Vista general del palacio de San Telmo desde el rio - J. Laurent. Madrid. LCCN94512217.jpg",
+      "crop": [
+        0.07,
+        0.2,
+        0.07,
+        0.15
+      ]
     },
     {
       "id": "tabacos",
-      "search": "Fábrica de Tabacos Sevilla Laurent"
+      "search": [
+        "Sevilla Fabrica de tabacos",
+        "Fábrica de Tabacos Sevilla 1900",
+        "Sevilla tabacos LCCN"
+      ]
     },
     {
       "id": "plaza-espana",
-      "search": "Plaza de España Sevilla 1929"
+      "search": [
+        "Plaza de España Sevilla Exposición Iberoamericana",
+        "Exposición Iberoamericana 1929 Sevilla",
+        "Plaza de España Sevilla 1930"
+      ]
     },
     {
       "id": "maria-luisa",
-      "search": "Parque de María Luisa Sevilla 1914"
+      "search": [
+        "Parque de María Luisa Sevilla",
+        "Sevilla Parque María Luisa 1920",
+        "Sevilla jardines San Telmo Laurent"
+      ]
     }
   ]
 }

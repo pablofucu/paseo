@@ -27,23 +27,49 @@
   "then": [
     {
       "id": "torre-oro",
-      "search": "Torre del Oro Sevilla Laurent"
+      "file": "La torre del Oro, Sevilla, Spanje, RP-F-00-6077.jpg",
+      "crop": [
+        0.06,
+        0.12,
+        0.06,
+        0.1
+      ]
     },
     {
       "id": "archivo",
-      "search": "Casa Lonja Sevilla Laurent"
+      "search": [
+        "Sevilla Casa Lonja",
+        "Archivo de Indias Sevilla Laurent",
+        "Sevilla Lonja LCCN"
+      ]
     },
     {
       "id": "giralda",
-      "search": "Giralda Sevilla Laurent"
+      "file": "Sevilla. Vista general de la Catedral desde el Alcazar - J. Laurent. Madrid. LCCN94512157.jpg",
+      "crop": [
+        0.06,
+        0.075,
+        0.06,
+        0.13
+      ]
     },
     {
       "id": "alcazar",
-      "search": "Alcázar Sevilla Laurent"
+      "file": "Sevilla. Fachada del palacio del Alcazar - J. Laurent. Madrid. LCCN94512165.jpg",
+      "crop": [
+        0.06,
+        0.075,
+        0.06,
+        0.13
+      ]
     },
     {
       "id": "elvira",
-      "search": "Plaza Doña Elvira Sevilla"
+      "search": [
+        "Barrio de Santa Cruz Sevilla",
+        "Sevilla calle judería",
+        "Sevilla Santa Cruz 1910"
+      ]
     }
   ]
 }
