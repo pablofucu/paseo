@@ -94,6 +94,14 @@ export const sevillaArenal: Tour = {
       p2: 'En el siglo XIX fue el palacio de los duques de Montpensier, que pusieron en la balaustrada doce estatuas de sevillanos ilustres. Hoy es la sede de la Presidencia de la Junta de Andalucía.',
       fact: 'El Parque de María Luisa fue el jardín de este palacio hasta que la infanta lo regaló a la ciudad en 1893.',
       captions: ['La portada barroca', 'San Telmo en su hornacina', 'Los sevillanos ilustres', 'La Avenida de Roma'],
+      then: {
+        photo: require('../../../assets/tours/sevilla-arenal/antes/san-telmo.jpg'),
+        year: 1860,
+        approx: true,
+        title: 'El palacio de los Montpensier',
+        text: 'Cuando Laurent hizo esta foto, San Telmo era la residencia de los duques de Montpensier, con sus jardines hasta el río.',
+        credit: credit('san-telmo@antes'),
+      },
     },
     {
       id: 'tabacos',
@@ -111,6 +119,13 @@ export const sevillaArenal: Tour = {
       p2: 'Aquí trabajaban miles de cigarreras. Una de ellas inspiró a Carmen, la protagonista de la novela de Mérimée y de la ópera de Bizet. Desde mediados del siglo XX es la sede de la Universidad de Sevilla.',
       fact: 'El foso sigue ahí: rodea el edificio y se cruza por pequeños puentes.',
       captions: ['La portada principal', 'La Fama', 'El foso', 'La calle San Fernando'],
+      then: {
+        photo: require('../../../assets/tours/sevilla-arenal/antes/tabacos.jpg'),
+        year: 1856,
+        title: 'La fábrica y su foso',
+        text: 'Litografía de F. J. Parcerisa. La fábrica estaba rodeada por un foso, como una fortaleza, y se entraba por puentes.',
+        credit: credit('tabacos@antes'),
+      },
     },
     {
       id: 'plaza-espana',
@@ -145,6 +160,13 @@ export const sevillaArenal: Tour = {
       p2: 'Alrededor de esta plaza están tres pabellones de la Exposición: el Mudéjar, hoy Museo de Artes y Costumbres Populares, el Real y el del Renacimiento, que guarda el Museo Arqueológico.',
       fact: 'La Plaza de América es conocida como la plaza de las palomas: muchos sevillanos recuerdan haberles dado de comer de niños.',
       captions: ['El Pabellón Mudéjar', 'La Plaza de América', 'Las palomas', 'Los jardines'],
+      then: {
+        photo: require('../../../assets/tours/sevilla-arenal/antes/maria-luisa.jpg'),
+        year: 1878,
+        title: 'Los jardines de San Telmo',
+        text: 'Antes de ser parque público, eran los jardines privados del palacio de San Telmo. La infanta María Luisa los donó a la ciudad en 1893.',
+        credit: credit('maria-luisa@antes'),
+      },
     },
   ],
   legs: geo.legs as LngLat[][],

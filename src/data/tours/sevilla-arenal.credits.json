@@ -34,5 +34,44 @@
     "author": "Anual",
     "license": "CC BY-SA 3.0",
     "source": "https://commons.wikimedia.org/wiki/File:Glorieta_de_los_hermanos_machado_pml_2012003.jpg"
+  },
+  "san-telmo@antes": {
+    "file": "Sevilla._Vista_general_del_palacio_de_San_Telmo_desde_el_rio_-_J._Laurent._Madrid._LCCN94512217.jpg",
+    "author": "J. Laurent",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Sevilla._Vista_general_del_palacio_de_San_Telmo_desde_el_rio_-_J._Laurent._Madrid._LCCN94512217.jpg",
+    "year": 1860,
+    "crop": [
+      0.07,
+      0.2,
+      0.07,
+      0.15
+    ]
+  },
+  "tabacos@antes": {
+    "file": "Fábrica_de_Tabacos_de_Sevilla_(litografía).jpg",
+    "author": "F. J. Parcerisa",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:F%C3%A1brica_de_Tabacos_de_Sevilla_(litograf%C3%ADa).jpg",
+    "year": 1856,
+    "crop": [
+      0.04,
+      0.07,
+      0.04,
+      0.15
+    ]
+  },
+  "maria-luisa@antes": {
+    "file": "Sevilla-jardines-del-palacio-de-Sant-Telmo-1878.jpg",
+    "author": "Jean Laurent",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Sevilla-jardines-del-palacio-de-Sant-Telmo-1878.jpg",
+    "year": 1878,
+    "crop": [
+      0.03,
+      0.06,
+      0.03,
+      0.08
+    ]
   }
 }

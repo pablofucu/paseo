@@ -4,6 +4,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { rise } from '@/components/motion';
+import { thenYear } from '@/components/ThenNow';
 import { IconButton } from '@/components/ui';
 import { TOURS } from '@/data/tours';
 import { creditPending } from '@/data/types';
@@ -26,12 +27,16 @@ export default function Creditos() {
         <Animated.View key={tour.id} entering={rise(t + 2)} style={{ gap: 8 }}>
           <Text style={[type.overline, { marginLeft: 4 }]}>{tour.title}</Text>
           <View style={s.group}>
-            {tour.stops.map((st, i) => {
-              const c = st.photoCredit;
+            {tour.stops.flatMap(st => [
+              { key: st.id, name: st.name, thumb: st.thumb, c: st.photoCredit },
+              // La foto antigua de «Así era», debajo de la de hoy
+              ...(st.then ? [{ key: `${st.id}@antes`, name: `${st.name} · ${thenYear(st.then)}`, thumb: st.then.photo, c: st.then.credit }] : []),
+            ]).map((st, i) => {
+              const c = st.c;
               const pending = creditPending(c);
               return (
                 <Pressable
-                  key={st.id}
+                  key={st.key}
                   accessibilityRole={pending ? undefined : 'link'}
                   accessibilityLabel={pending ? `${st.name}: foto pendiente de crédito` : `${st.name}: foto de ${c.author}, licencia ${c.license}. Abre la fuente`}
                   disabled={pending}
