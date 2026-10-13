@@ -6,14 +6,15 @@ import { PassportPaper } from '@/components/Paper';
 import { TOURS } from '@/data/tours';
 import { tintaDeRuta } from '@/lib/ink';
 import type { CityVisa } from '@/lib/visa';
-import { fechaRomana, fechaSello, rng } from '@/lib/rubber';
+import { fechaRomana, fechaSello } from '@/lib/rubber';
 import { sheetFor } from '@/lib/sheet';
-import { knownRoutes, routeProgress, usePassport, type UserRoute } from '@/store/passport';
+import { knownRoutes, routeProgress, usePassport } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
 /** Azul marino de la tapa y dorado estampado (guía de sellos, § 04) */
 export const LEATHER = '#23324a';
 const GOLD = ['#b8913d', '#f3dc93', '#b8913d'];
+const GRAIN = require('../../../assets/passport/cover-grain.png');
 
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '<');
 
@@ -21,18 +22,11 @@ const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperC
 export const Cover = memo(function Cover({ width }: { width: number }) {
   const h = sheetFor(width).h;
   const owner = usePassport(s => s.passport.owner);
-  const grain = useMemo(() => {
-    const r = rng(23);
-    let d = '', l = '';
-    for (let i = 0; i < 900; i++) {
-      const x = (r() * width).toFixed(1), y = (r() * h).toFixed(1);
-      if (i % 2) d += `M${x} ${y}h0.8`; else l += `M${x} ${y}h0.8`;
-    }
-    return { d, l };
-  }, [width, h]);
   const cx = width / 2, cy = h * 0.42, R = width * 0.2;
   return (
     <View style={{ width, height: h, borderRadius: 8, overflow: 'hidden', backgroundColor: LEATHER }}>
+      {/* textura fina de la piel, horneada (scripts/build-passport-paper.mjs) */}
+      <Image source={GRAIN} style={StyleSheet.absoluteFill} contentFit="fill" cachePolicy="memory" transition={0} />
       <Svg width={width} height={h}>
         <Defs>
           <LinearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
@@ -43,9 +37,6 @@ export const Cover = memo(function Cover({ width }: { width: number }) {
             <Stop offset="0.08" stopColor="#fff" stopOpacity="0.06" /><Stop offset="0.14" stopColor="#000" stopOpacity="0" />
           </LinearGradient>
         </Defs>
-        {/* textura fina de la piel */}
-        <Path d={grain.d} stroke="#000" strokeOpacity={0.35} strokeWidth={1} strokeLinecap="round" />
-        <Path d={grain.l} stroke="#fff" strokeOpacity={0.07} strokeWidth={1} strokeLinecap="round" />
         <Rect x={10} y={10} width={width - 20} height={h - 20} rx={4} fill="none" stroke="url(#gold)" strokeOpacity={0.55} strokeWidth={1} />
         <SvgText x={cx} y={h * 0.17} textAnchor="middle" fontFamily={font.serif} fontSize={width * 0.085} letterSpacing={width * 0.012} fill="url(#gold)">PASAPORTE</SvgText>
         <SvgText x={cx} y={h * 0.17 + width * 0.08} textAnchor="middle" fontFamily={font.black} fontSize={width * 0.045} letterSpacing={width * 0.016} fill="url(#gold)">DE RUTAS</SvgText>
@@ -146,7 +137,8 @@ function Field({ label, k, children }: { label: string; k: number; children: Rea
  * Visado de una ciudad: cuando se completan todas sus rutas, sus sellos de ruta
  * (los que ya se tenían, no uno nuevo) juntos en una tira. No da ningún sello.
  */
-export const CityVisaPage = memo(function CityVisaPage({ width, pageNumber, visa, routes }: { width: number; pageNumber: number; visa: CityVisa; routes: Record<string, UserRoute> }) {
+export const CityVisaPage = memo(function CityVisaPage({ width, pageNumber, visa }: { width: number; pageNumber: number; visa: CityVisa }) {
+  const routes = usePassport(s => s.routes);
   const sheet = sheetFor(width);
   const k = width / 330;
   const gap = 8 * k;

@@ -214,7 +214,7 @@ export function Book({ leaves, width, spread, index, onIndex, tabs }: Props) {
         <Animated.View style={[{ width: spread ? width * 2 : width, height }, camera]}>
           {visible.map(({ l, i }) => (
             // Solo se parten en tramos las dos hojas del lomo, las únicas que el próximo giro puede mover
-            <Page key={l.key} i={i} strips={i >= index - 1 && i <= index + 1} current={i === index} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
+            <Page key={l.key} i={i} strips={i >= index - 1 && i <= index + 1} current={i === index} side={Math.sign(i - index)} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
               {l.front}
             </Page>
           ))}
@@ -256,6 +256,8 @@ interface PageProps {
   strips: boolean;
   /** La hoja abierta: las demás se esconden a los lectores de pantalla */
   current: boolean;
+  /** −1 ya pasada, 1 por pasar, 0 la abierta */
+  side: number;
   width: number;
   height: number;
   left: number;
@@ -263,7 +265,7 @@ interface PageProps {
   children: ReactNode;
 }
 
-const Page = memo(function Page({ i, deg, turning, index, spread, stiff, strips, current, width, height, left, back, children }: PageProps) {
+const Page = memo(function Page({ i, deg, turning, index, spread, stiff, strips, current, side, width, height, left, back, children }: PageProps) {
   const perspective = width * DEPTH;
   // Cada estilo lee los valores compartidos directamente: así Reanimated sabe de qué depende
   const leaf = useAnimatedStyle(() => {
@@ -280,7 +282,10 @@ const Page = memo(function Page({ i, deg, turning, index, spread, stiff, strips,
     };
   });
   const cuts = strips ? SEGMENTS : WHOLE;
-  const seg = { cuts, i, deg, turning, index, stiff, width, height, perspective, front: children, back };
+  // Una hoja que no puede girar ahora solo enseña una cara: la otra ni se monta
+  const front = strips || side > 0 ? children : null;
+  const rear = strips || side < 0 ? back : null;
+  const seg = { cuts, i, deg, turning, index, stiff, width, height, perspective, front, back: rear, layer: strips };
   return (
     <Animated.View accessibilityElementsHidden={!current} importantForAccessibility={current ? 'auto' : 'no-hide-descendants'} style={[{ position: 'absolute', left, top: 0, width: edges(width, cuts)[1], height, transformOrigin: 'left center' }, leaf]}>
       <Segment k={0} {...seg} />
@@ -308,13 +313,15 @@ interface SegmentProps {
   perspective: number;
   front: ReactNode;
   back: ReactNode;
+  /** Guardar las caras como textura: solo en las hojas que pueden girar (las demás no se mueven y la textura solo gasta memoria) */
+  layer: boolean;
 }
 
 /**
  * Un tramo de la hoja: recorta su franja del anverso y del reverso, y lleva
  * colgado el siguiente tramo de su borde derecho, doblado un poco más.
  */
-const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, width, height, perspective, front, back }: SegmentProps) {
+const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, width, height, perspective, front, back, layer }: SegmentProps) {
   const e = edges(width, cuts);
   const x = e[k], w = e[k + 1] - x;
   const last = k === cuts.length - 1;
@@ -357,10 +364,10 @@ const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, 
   // vuelven a dibujar los SVG del papel y los sellos en cada fotograma
   return (
     <>
-      <Animated.View style={[clip, face]} renderToHardwareTextureAndroid shouldRasterizeIOS>
+      <Animated.View style={[clip, face]} renderToHardwareTextureAndroid={layer} shouldRasterizeIOS={layer}>
         <View style={sheet}>{front}</View>
       </Animated.View>
-      <Animated.View style={[clip, rear]} renderToHardwareTextureAndroid shouldRasterizeIOS>
+      <Animated.View style={[clip, rear]} renderToHardwareTextureAndroid={layer} shouldRasterizeIOS={layer}>
         <View style={[sheet, { transform: [{ scaleX: -1 }] }]}>{back}</View>
       </Animated.View>
       <Animated.View pointerEvents="none" style={[clip, shade]}>
@@ -371,7 +378,7 @@ const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, 
       </Animated.View>
       {!last && (
         <Animated.View style={[{ position: 'absolute', left: w, top: 0, width: e[k + 2] - e[k + 1], height, transformOrigin: 'left center' }, joint]}>
-          <Segment {...{ cuts, i, deg, turning, index, stiff, width, height, perspective, front, back }} k={k + 1} />
+          <Segment {...{ cuts, i, deg, turning, index, stiff, width, height, perspective, front, back, layer }} k={k + 1} />
         </Animated.View>
       )}
     </>

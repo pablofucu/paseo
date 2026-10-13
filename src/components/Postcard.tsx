@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import type { Tour } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { PAPEL_POSTAL, tintaDeRuta } from '@/lib/ink';
-import { POSTCARD, POSTCARD_THUMB, postcardBlankXml, postcardFaceXml } from '@/lib/postcard';
+import { POSTCARD, POSTCARD_BLUR, POSTCARD_MID, POSTCARD_THUMB, postcardBlankXml, postcardFaceXml } from '@/lib/postcard';
 import { postmarkXml } from '@/lib/rubber';
 import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
@@ -35,7 +35,7 @@ interface Props {
  * textos y el matasellos con la fecha en que se completó. Sin ganar: en
  * blanco, con el progreso.
  */
-export function Postcard({ tour, route, width, back }: Props) {
+export const Postcard = memo(function Postcard({ tour, route, width, back }: Props) {
   const id = useMemo(() => `pc${uid++}_`, []);
   const k = width / VB.w;
   const height = postcardHeight(width);
@@ -43,16 +43,18 @@ export function Postcard({ tour, route, width, back }: Props) {
   // Solo se ve la ilustración si la ruta está completa de verdad (si el tour gana una parada, vuelve a quedar a medias)
   const prog = routeProgress(tour.id, route);
   const date = prog.completedAt;
+  // El reverso no lleva la cara: no se genera
   const face = useMemo(
-    () => (date ? postcardFaceXml({ id, title: tour.title, subtitle: tour.postcard.subtitle, value: tour.postcard.value, accent, city: tour.city, date }) : postcardBlankXml({ title: tour.title, accent })),
-    [id, date, tour, accent],
+    () => (back ? '' : date ? postcardFaceXml({ id, title: tour.title, subtitle: tour.postcard.subtitle, value: tour.postcard.value, accent, city: tour.city, date }) : postcardBlankXml({ title: tour.title, accent })),
+    [id, date, tour, accent, back],
   );
   const art = { left: (POSTCARD.art.x - VB.x) * k, top: (POSTCARD.art.y - VB.y) * k, width: POSTCARD.art.w * k, height: POSTCARD.art.h * k };
 
   if (back) return <PostcardBack tour={tour} route={route} width={width} accent={accent} />;
 
-  // Lo que se pinta pequeño (pin, ventana del mapa) usa la miniatura
-  const artSource = width < 200 ? (POSTCARD_THUMB[tour.id] ?? tour.postcard.art) : tour.postcard.art;
+  // Lo que se pinta pequeño (pin, ventana del mapa) usa la miniatura; la lista, la de 832 px;
+  // solo la postal grande decodifica la ilustración entera (1664 px, ~6 MB en memoria cada una)
+  const artSource = (width < 200 ? POSTCARD_THUMB[tour.id] : width < 480 ? POSTCARD_MID[tour.id] : undefined) ?? tour.postcard.art;
   const reveal = prog.total ? prog.done / prog.total : 0;
   return (
     <View style={{ width, height }}>
@@ -66,14 +68,14 @@ export function Postcard({ tour, route, width, back }: Props) {
           accessibilityLabel={`Postal ${tour.title} sin ganar: ${prog.started ? `${prog.done} de ${prog.total} paradas` : 'sin empezar'}`}
           style={[s.abs, art, s.blank]}
         >
-          <Image source={POSTCARD_THUMB[tour.id] ?? tour.postcard.art} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={30 - reveal * 16} />
+          <Image source={POSTCARD_BLUR[tour.id] ?? POSTCARD_THUMB[tour.id] ?? tour.postcard.art} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: PAPEL_POSTAL, opacity: 0.94 - reveal * 0.72 }]} />
         </View>
       )}
       <SvgXml xml={face} width={width} height={height} style={StyleSheet.absoluteFill} />
     </View>
   );
-}
+});
 
 function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserRoute | undefined; width: number; accent: string }) {
   const k = width / VB.w;

@@ -30,13 +30,14 @@ interface StampProps {
 
 /**
  * Sello de goma de una parada: el dibujo horneado con su textura, teñido con
- * la tinta de la parada, y la fecha real encima. Mezclado con el papel (multiply).
+ * la tinta de la parada, y la fecha real encima. Sin mixBlendMode: en Android
+ * cada sello abría una capa aparte y en el pasaporte hay muchos a la vez.
  */
 export const RubberStamp = memo(function RubberStamp({ tour, stop, date, width, height, style }: StampProps) {
   const color = stopInk(tour, stop.id);
   const xml = useMemo(() => rubberDateXml({ art: stop.rubber, city: tour.city, date, color }), [stop, tour.city, date, color]);
   return (
-    <View pointerEvents="none" style={[{ width, height, mixBlendMode: 'multiply', opacity: 0.92 }, style]}>
+    <View pointerEvents="none" style={[{ width, height, opacity: 0.88 }, style]}>
       <Image source={STAMP_ART[stop.id]} tintColor={color} style={StyleSheet.absoluteFill} contentFit="fill" cachePolicy="memory" transition={0} />
       <SvgXml xml={xml} width={width} height={height} opacity={0.88} />
     </View>
