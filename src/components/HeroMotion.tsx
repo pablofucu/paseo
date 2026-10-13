@@ -1,5 +1,6 @@
+import { useIsFocused } from 'expo-router';
 import { useEffect } from 'react';
-import { Easing, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { Easing, cancelAnimation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 /**
  * Movimiento de las fotos de cabecera: un zoom lento continuo (quieto con
@@ -11,9 +12,12 @@ export function useHeroMotion(height: number) {
   const reduced = useReducedMotion();
   const scrollY = useSharedValue(0);
   const drift = useSharedValue(0);
+  // Con otra pantalla encima, el zoom infinito sigue gastando batería sin que se vea: se para
+  const focused = useIsFocused();
   useEffect(() => {
-    if (!reduced) drift.set(withRepeat(withTiming(1, { duration: 11000, easing: Easing.inOut(Easing.sin) }), -1, true));
-  }, [drift, reduced]);
+    if (!reduced && focused) drift.set(withRepeat(withTiming(1, { duration: 11000, easing: Easing.inOut(Easing.sin) }), -1, true));
+    else cancelAnimation(drift);
+  }, [drift, reduced, focused]);
   const onScroll = useAnimatedScrollHandler(e => { scrollY.value = e.contentOffset.y; });
   const photo = useAnimatedStyle(() => ({
     transform: [

@@ -75,7 +75,7 @@ describe('sellos de goma', () => {
     const tour = TOURS.find(t => t.city === 'Tomares')!;
     const kebab = tour.stops.find(s => s.id === 'kebab')!;
     const xml = rubberDateXml({ art: kebab.rubber, city: tour.city, date: '2026-10-10T17:00:00Z', color: '#2f5a48' });
-    expect(xml).toContain('TOMARES · 10 OCT 2026 · SEVILLA');
+    expect(xml).toContain('TOMARES · 10 OCT 2026');
     expect(xml).toContain('color="#2f5a48"');
     const ayto = tour.stops.find(s => s.id === 'ayuntamiento')!;
     expect(rubberDateXml({ art: ayto.rubber, city: tour.city, date: '2026-10-10T17:00:00Z', color: '#000' })).toContain('10 · X · 2026');

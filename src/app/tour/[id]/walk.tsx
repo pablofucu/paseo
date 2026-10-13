@@ -16,6 +16,7 @@ import type { LngLat } from '@/data/types';
 import { cumulative, formatDistance, projectOnRoute, walkingMinutes } from '@/lib/geo';
 import { guide, instruction, prepareLeg } from '@/lib/guidance';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
+import { wayScript } from '@/lib/spoken';
 import { useNarration } from '@/lib/useNarration';
 import { useTourParam } from '@/lib/useTour';
 import { useReroute } from '@/lib/useReroute';
@@ -111,6 +112,7 @@ export default function Walk() {
     setSelected(null);
   }, [target]);
   const openStop = (n: number) => {
+    narration.stop();
     setSelected(null);
     router.push({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(n) } });
   };
@@ -191,7 +193,7 @@ export default function Walk() {
 
         <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: sheetH + 14 }} />
         {/* Entrar y salir de la guía de la parada visitada */}
-        {visited && selected == null && <GuideButton to="guide" photo={visited.photo} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
+        {visited && selected == null && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
         {quality !== 'streets' && leg && (
           <View style={[s.srcPill, { bottom: 268 + insets.bottom }]}>
             <Text style={s.srcText}>{quality === 'loading' ? 'Calculando la ruta por calles…' : 'Sin conexión: ruta en línea recta'}</Text>
@@ -227,7 +229,7 @@ export default function Walk() {
         {/* Hoja inferior (y, después, encima de ella la ventana de la parada elegida en el mapa) */}
         <Animated.View entering={FadeInDown.delay(150).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })} onLayout={e => setSheetH(e.nativeEvent.layout.height)} style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
           {showWay && (
-            <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(way!.story ?? way!.text.replace(/^De camino:\s*/i, '')))} style={[s.way, { backgroundColor: p.soft }]}>
+            <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(wayScript(way!)))} style={[s.way, { backgroundColor: p.soft }]}>
               <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>
               <Text style={[s.wayText, { color: p.deep }]} numberOfLines={1}>{way!.text}</Text>
             </Pressable>

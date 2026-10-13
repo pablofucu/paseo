@@ -103,7 +103,7 @@ export const tomares: Tour = {
     id: "kebab",
     name: "Royal King Kebab",
     kind: "food",
-    rubber: { shape: 'rect', title: 'ROYAL KING KEBAB', place: 'TOMARES' },
+    rubber: { shape: 'rect', title: 'ROYAL KING KEBAB' },
     photo: require('../../../assets/tours/tomares/kebab.jpg'),
     thumb: require('../../../assets/tours/tomares/thumbs/kebab.jpg'),
     photoCredit: PENDIENTE,
