@@ -28,5 +28,26 @@
     "author": "Anual",
     "license": "CC BY-SA 4.0",
     "source": "https://commons.wikimedia.org/wiki/File:Callejon_del_agua_2023An002.jpg"
+  },
+  "torre-oro@antes": {
+    "file": "La_torre_del_Oro,_Sevilla,_Spanje,_RP-F-00-6077.jpg",
+    "author": "Rijksmuseum",
+    "license": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:La_torre_del_Oro,_Sevilla,_Spanje,_RP-F-00-6077.jpg",
+    "year": 1850
+  },
+  "giralda@antes": {
+    "file": "Sevilla._Vista_general_de_la_Catedral_desde_el_Alcazar_-_J._Laurent._Madrid._LCCN94512157.jpg",
+    "author": "Laurent, J., photographer",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Sevilla._Vista_general_de_la_Catedral_desde_el_Alcazar_-_J._Laurent._Madrid._LCCN94512157.jpg",
+    "year": 1860
+  },
+  "alcazar@antes": {
+    "file": "Sevilla._Vista_general_de_la_Catedral_desde_el_Alcazar_-_J._Laurent._Madrid._LCCN94512157.jpg",
+    "author": "Laurent, J., photographer",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Sevilla._Vista_general_de_la_Catedral_desde_el_Alcazar_-_J._Laurent._Madrid._LCCN94512157.jpg",
+    "year": 1860
   }
 }

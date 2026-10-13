@@ -34,5 +34,19 @@
     "author": "Anual",
     "license": "CC BY-SA 3.0",
     "source": "https://commons.wikimedia.org/wiki/File:Glorieta_de_los_hermanos_machado_pml_2012003.jpg"
+  },
+  "san-telmo@antes": {
+    "file": "Sevilla._Vista_general_del_palacio_de_San_Telmo_desde_el_rio_-_J._Laurent._Madrid._LCCN94512217.jpg",
+    "author": "Laurent, J., photographer",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Sevilla._Vista_general_del_palacio_de_San_Telmo_desde_el_rio_-_J._Laurent._Madrid._LCCN94512217.jpg",
+    "year": 1860
+  },
+  "tabacos@antes": {
+    "file": "Cigarrera.jpg",
+    "author": "Jean Laurent (Garchizy, 1816 – Madrid, 1886)",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Cigarrera.jpg",
+    "year": 1870
   }
 }
