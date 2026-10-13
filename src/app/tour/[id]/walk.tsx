@@ -14,12 +14,14 @@ import { GuideButton } from '@/components/GuideButton';
 import { ManeuverIcon, type ManeuverKind } from '@/components/ManeuverIcon';
 import { StopMarkers, StopPopup } from '@/components/MapPins';
 import { MeMarker } from '@/components/MeMarker';
+import { OrientationButton } from '@/components/OrientationButton';
 import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
 import type { LngLat, Tour } from '@/data/types';
 import { distance, formatDistance, pointAlong, projectOnRoute, walkingMinutes } from '@/lib/geo';
 import { startArrivalWatch, stopArrivalWatch } from '@/lib/arrivalWatch';
 import { entryMode } from '@/lib/entry';
 import { accuracySlack, ARRIVE_RADIUS_M, arrivalAllowed, instruction, prepareLeg } from '@/lib/guidance';
+import { nextMapBearing, rotateMs, routeBearing } from '@/lib/mapBearing';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { wayScript } from '@/lib/spoken';
 import { usePausedWalk } from '@/lib/pausedWalk';
@@ -152,7 +154,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   });
   const sheetMove = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - up.get()) * rangeSV.get() }] }));
   const scrim = useAnimatedStyle(() => ({ opacity: up.get() * 0.45 }));
-  const { testMode, simSpeed, setSimSpeed } = useSettings();
+  const { testMode, simSpeed, setSimSpeed, mapOrientation, setMapOrientation } = useSettings();
   const [source, setSource] = useState<PositionSource>(testMode ? 'simulated' : 'gps');
   const [paused, setPaused] = useState(false);
   /** Modo prueba: posición puesta a mano tocando el mapa (puede estar fuera de la ruta) */
@@ -195,7 +197,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const sim = useMemo(() => ({ speed: simSpeed, paused: paused || !!manual, resumeFrom }), [simSpeed, paused, manual, resumeFrom]);
   const gpsOpts = useMemo(() => ({ far: farTarget, heading: focused }), [farTarget, focused]);
   const walk = useWalkPosition(source, leg, sim, gpsOpts);
-  const { heading, permission, accuracy, retry } = walk;
+  const { heading, course, permission, accuracy, retry } = walk;
   const position = manual ?? walk.position;
 
   // Modo prueba: tocar el mapa te lleva allí; «Seguir» retoma el paseo desde el punto de la ruta más cercano
@@ -342,6 +344,17 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const want = selected != null ? tour.stops[selected].coord : follow ? position ?? stop.coord : null;
   if (want && (want[0] !== cam[0] || want[1] !== cam[1])) setCam(want);
   const camCenter = want ?? cam;
+  // Giro del mapa: «ruta arriba» pone hacia arriba el camino que te toca seguir (solo mientras te sigue); «norte arriba», el norte
+  const [rot, setRot] = useState({ bearing: 0, ms: 700 });
+  const wantBearing = mapOrientation === 'north' ? 0 : follow && selected == null ? nextMapBearing(rot.bearing, routeBearing(leg, g, position, course)) : rot.bearing;
+  if (wantBearing !== rot.bearing) setRot({ bearing: wantBearing, ms: rotateMs(rot.bearing, wantBearing) });
+  /** Giro real del mapa (también el que haces con los dedos), para la aguja del botón */
+  const mapRot = useSharedValue(0);
+  const toggleOrientation = () => {
+    lightTap();
+    setMapOrientation(mapOrientation === 'route' ? 'north' : 'route');
+    setFollow(true);
+  };
   const padBottom = selected != null ? sheetH + 110 : sheetH + 10;
   const padTop = insets.top + bannerH + 16;
 
@@ -438,9 +451,11 @@ function WalkScreen({ tour }: { tour: Tour }) {
           attributionPosition={{ bottom: sheetH + 8, right: 8 }}
           onPress={testMode ? e => moveTo(e.nativeEvent.lngLat) : undefined}
           onRegionWillChange={e => { if (e.nativeEvent.userInteraction) setFollow(false); }}
+          onRegionIsChanging={e => { mapRot.value = e.nativeEvent.bearing; }}
+          onRegionDidChange={e => { mapRot.value = e.nativeEvent.bearing; }}
         >
           {/* Con una parada elegida, el mapa vuela hasta ella; si no, sigue tu posición */}
-          <Camera center={camCenter} zoom={selected != null ? 17.3 : 17} duration={selected != null ? 900 : 700} easing={selected != null ? 'fly' : 'ease'} padding={{ top: padTop, bottom: padBottom, left: 0, right: 0 }} />
+          <Camera center={camCenter} zoom={selected != null ? 17.3 : 17} bearing={rot.bearing} duration={selected != null ? 900 : Math.max(700, rot.ms)} easing={selected != null ? 'fly' : 'ease'} padding={{ top: padTop, bottom: padBottom, left: 0, right: 0 }} />
           {routeGeo?.walked && (
             <GeoJSONSource id="walked" data={routeGeo.walked}>
               <Layer id="walked-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': c.route, 'line-width': 4, 'line-opacity': 0.35 }} />
@@ -514,6 +529,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
           </View>
         )}
 
+        {/* Brújula: «ruta arriba» o «norte arriba» */}
+        {selected == null && !promptOn && offer < 0 && !expanded && <OrientationButton mode={mapOrientation} bearing={mapRot} accent={p.t} onToggle={toggleOrientation} style={{ left: 14, bottom: sheetH + 12 }} />}
         {/* Entrar y salir de la guía de la parada visitada; «Centrar en mí» encima, solo si el mapa va libre */}
         {visited && selected == null && !promptOn && !expanded && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
         {!follow && selected == null && !promptOn && !expanded && (
