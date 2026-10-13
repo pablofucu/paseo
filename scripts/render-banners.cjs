@@ -5,6 +5,8 @@
 //
 // Sevilla usa su ilustración propia (design/banners/sevilla.svg, la dibuja
 // scripts/draw-banner-sevilla.mjs); las demás rutas, el dibujo de su postal.
+// En «Elegir ciudad» va la ilustración de la ciudad a todo color
+// (assets/banners/ciudad-<ciudad>.jpg).
 // Los colores se leen de la paleta de cada ruta en src/data/tours/<tour>.ts.
 //
 // Necesita Playwright con Chromium: node scripts/render-banners.cjs
@@ -18,6 +20,8 @@ const BANNERS = {
   tomares: 'design/postcards/tomares-4-paradas.svg',
   'sevilla-arenal': 'design/postcards/sevilla-arenal.svg',
 };
+// Portadas de ciudad para «Elegir ciudad»: el mismo dibujo a todo color, sin teñir
+const CITIES = { sevilla: 'design/banners/sevilla.svg' };
 // La misma tinta de imprenta que scripts/render-postcards.cjs. Debajo va el
 // dibujo sin tinta, algo transparente, para que el moteado no aclare las
 // zonas oscuras (el cielo de noche) y la portada no pierda contraste.
@@ -55,15 +59,20 @@ function gradientMap(p) {
   const p = await b.newPage();
   fs.mkdirSync(path.join(root, 'assets/banners'), { recursive: true });
   let seed = 23;
-  for (const [id, file] of Object.entries(BANNERS)) {
+  const jobs = [
+    ...Object.entries(BANNERS).map(([id, file]) => ({ file, out: `${id}.jpg`, tone: gradientMap(palette(id)) })),
+    ...Object.entries(CITIES).map(([id, file]) => ({ file, out: `ciudad-${id}.jpg`, tone: null })),
+  ];
+  for (const { file, out, tone } of jobs) {
     const art = fs.readFileSync(path.join(root, file), 'utf8');
     const [, w, h] = art.match(/viewBox="0 0 (\d+) (\d+)"/).map(Number);
     const inner = art.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+    const under = inner.replace(/id="([^"]+)"/g, 'id="u-$1"').replace(/url\(#([^)]+)\)/g, 'url(#u-$1)');
     const ink = INK.replace('SEED11', seed + 11).replace('SEED5', seed + 5).replace('SEED', seed);
     await p.setViewportSize({ width: w, height: h });
-    await p.setContent(`<html><body style="margin:0"><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs>${ink}${gradientMap(palette(id))}</defs><g filter="url(#tono)"><rect width="${w}" height="${h}" fill="#f5eedb"/><g opacity="0.75">${inner.replace(/id="([^"]+)"/g, 'id="u-$1"').replace(/url\(#([^)]+)\)/g, 'url(#u-$1)')}</g><g filter="url(#tinta)">${inner}</g></g></svg></body></html>`);
+    await p.setContent(`<html><body style="margin:0"><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs>${ink}${tone ?? ''}</defs><g${tone ? ' filter="url(#tono)"' : ''}><rect width="${w}" height="${h}" fill="#f5eedb"/><g opacity="0.75">${under}</g><g filter="url(#tinta)">${inner}</g></g></svg></body></html>`);
     await p.waitForTimeout(300);
-    await p.screenshot({ path: path.join(root, 'assets/banners', `${id}.jpg`), type: 'jpeg', quality: 86 });
+    await p.screenshot({ path: path.join(root, 'assets/banners', out), type: 'jpeg', quality: 86 });
     seed += 13;
   }
   await b.close();

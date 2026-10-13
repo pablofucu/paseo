@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -53,7 +54,7 @@ export default function Ciudad() {
                 scaleTo={0.97}
                 style={[s.card, current === c.id && s.cardOn]}
               >
-                {cover ? <TourBanner tour={cover} /> : <CityArt id={c.id} palette={c.palette} />}
+                {c.art ? <Image source={c.art} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition={{ top: '6%' }} /> : cover ? <TourBanner tour={cover} /> : <CityArt id={c.id} palette={c.palette} />}
                 <Scrim opacity={0.65} />
                 <View style={s.cardText}>
                   <Text style={s.region}>{c.region}</Text>
