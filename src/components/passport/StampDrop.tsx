@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import { View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 
 /** Curva del estampado de la guía: cubic-bezier(.3, 1.4, .5, 1), con rebote */
 const EASE = Easing.bezier(0.3, 1.4, 0.5, 1);
@@ -30,4 +31,35 @@ export function StampDrop({ onImpact, children }: { onImpact: () => void; childr
 
   const style = useAnimatedStyle(() => ({ opacity: Math.min(1, opacity.value), transform: [{ scale: scale.value }] }));
   return <Animated.View style={style}>{children}</Animated.View>;
+}
+
+const MOTES = 11;
+
+/** Una mota de tinta que sale disparada del sello y se apaga */
+function Mote({ i, color, reach, delay }: { i: number; color: string; reach: number; delay: number }) {
+  const t = useSharedValue(0);
+  useEffect(() => { t.set(withDelay(delay, withTiming(1, { duration: 620, easing: Easing.out(Easing.cubic) }))); }, [t, delay]);
+  // Reparto fijo (sin azar entre renders): ángulo y alcance con una pequeña variación por mota
+  const a = (i / MOTES) * Math.PI * 2 + (i % 3) * 0.22;
+  const r = reach * (0.7 + ((i * 37) % 10) / 22);
+  const size = 3 + (i % 3);
+  const style = useAnimatedStyle(() => ({
+    opacity: t.value === 0 ? 0 : (1 - t.value) * 0.75,
+    transform: [{ translateX: Math.cos(a) * r * t.value }, { translateY: Math.sin(a) * r * t.value }, { scale: 1 - t.value * 0.5 }],
+  }));
+  return <Animated.View style={[{ position: 'absolute', left: -size / 2, top: -size / 2, width: size, height: size, borderRadius: size, backgroundColor: color }, style]} />;
+}
+
+/**
+ * Polvo de tinta del último sello de la ruta: unas motas que salen del
+ * centro del sello justo en el impacto. Con «reducir movimiento» no se pinta.
+ */
+export function InkDust({ color, w, h }: { color: string; w: number; h: number }) {
+  const reduced = useReducedMotion();
+  if (reduced) return null;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: w / 2, top: h / 2 }}>
+      {Array.from({ length: MOTES }, (_, i) => <Mote key={i} i={i} color={color} reach={Math.max(w, h) * 0.62} delay={300} />)}
+    </View>
+  );
 }
