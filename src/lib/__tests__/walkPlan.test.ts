@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { acceptFix, MAX_ACCURACY_M, STALE_FIX_MS } from '../useWalkPosition';
-import { canSkip, nextTarget } from '../walkPlan';
+import { canSkip, JOIN_LEG_M, legStart, nextTarget } from '../walkPlan';
 
 const ids = ['a', 'b', 'c', 'd'];
 
@@ -36,5 +36,36 @@ describe('lecturas del GPS', () => {
     expect(acceptFix(MAX_ACCURACY_M + 1, true, 1000)).toBe(false);
     expect(acceptFix(80, true, STALE_FIX_MS)).toBe(true);
     expect(acceptFix(null, true, 1000)).toBe(true);
+  });
+});
+
+describe('legStart (tramo tras sellar)', () => {
+  const from: [number, number] = [-3.7, 40.4];
+  // ~0,000009° de latitud ≈ 1 m
+  const at = (m: number): [number, number] => [from[0], from[1] + m * 0.000009];
+  const base = { sequential: true, source: 'gps' as const, accuracy: 8, legFrom: from };
+
+  it('sellado en la parada: tramo fijo', () => {
+    expect(legStart({ ...base, position: at(5) })).toBe('fixed');
+  });
+  it('sellado 100 m antes: camino desde donde estás', () => {
+    expect(legStart({ ...base, position: at(100) })).toBe('approach');
+  });
+  it('justo en el límite sigue siendo fijo', () => {
+    expect(legStart({ ...base, position: at(JOIN_LEG_M - 3) })).toBe('fixed');
+    expect(legStart({ ...base, position: at(JOIN_LEG_M + 5) })).toBe('approach');
+  });
+  it('GPS flojo: margen mayor y, si es inservible, espera', () => {
+    expect(legStart({ ...base, accuracy: 30, position: at(JOIN_LEG_M + 10) })).toBe('fixed');
+    expect(legStart({ ...base, accuracy: 30, position: at(100) })).toBe('approach');
+    expect(legStart({ ...base, accuracy: 80, position: at(100) })).toBe('wait');
+    expect(legStart({ ...base, position: null })).toBe('wait');
+  });
+  it('paseo simulado: siempre el fijo', () => {
+    expect(legStart({ ...base, source: 'simulated', accuracy: null, position: at(100) })).toBe('fixed');
+  });
+  it('sin tramo fijo (primera parada, saltos): camino desde donde estés', () => {
+    expect(legStart({ ...base, sequential: false, position: at(0) })).toBe('approach');
+    expect(legStart({ ...base, legFrom: null, position: at(0) })).toBe('approach');
   });
 });

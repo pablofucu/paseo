@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { Redirect, router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { DuotoneImage } from '@/components/DuotoneImage';
@@ -14,7 +14,6 @@ import { StopMarkers, StopPopup } from '@/components/MapPins';
 import { MeMarker } from '@/components/MeMarker';
 import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
 import { StopList } from '@/components/StopList';
-import { IconButton } from '@/components/ui';
 import type { LngLat, Tour } from '@/data/types';
 import { cumulative, distance, formatDistance, pointAlong, projectOnRoute, walkingMinutes } from '@/lib/geo';
 import { startArrivalWatch, stopArrivalWatch } from '@/lib/arrivalWatch';
@@ -29,7 +28,7 @@ import { useReroute } from '@/lib/useReroute';
 import { useTourParamSafe } from '@/lib/useTour';
 import { useApproachRoute, useTourRoute } from '@/lib/useTourRoute';
 import { MAX_ACCURACY_M, useWalkPosition, type PositionSource } from '@/lib/useWalkPosition';
-import { canSkip, nextTarget } from '@/lib/walkPlan';
+import { canSkip, legStart, nextTarget } from '@/lib/walkPlan';
 import { usePassport } from '@/store/passport';
 import { useSettings, type SimSpeed } from '@/store/settings';
 import { font } from '@/theme/fonts';
@@ -138,17 +137,21 @@ function WalkScreen({ tour }: { tour: Tour }) {
   // El tramo sale de la parada anterior solo si vienes de ella; la primera parada, o tras saltar, retomar o ir a otra, se calcula desde donde estés
   const sequential = target > 0 && mine && walkState.guide === target - 1;
   const gpsFrom = gpsOrigin?.target === target ? gpsOrigin.from : null;
-  const origin = sequential || farStart ? null : rerouted?.source === source && rerouted.target === target ? rerouted.from : source === 'simulated' ? simOrigin : gpsFrom;
+  // Sellaste antes de llegar a la parada anterior: el fijo sale de ella y tú no estás ahí, así que el camino sale de donde estás (se decide una vez por tramo)
+  const [joined, setJoined] = useState<{ target: number; from: LngLat | null } | null>(null);
+  const reroutedHere = rerouted?.source === source && rerouted.target === target ? rerouted.from : null;
+  const fixed = sequential && !reroutedHere && !(joined?.target === target && joined.from);
+  const origin = fixed || farStart ? null : reroutedHere ?? (sequential ? joined?.from ?? null : source === 'simulated' ? simOrigin : gpsFrom);
 
   // Tramo actual: de la parada anterior a esta; para la primera, por calles desde donde estés
   const approach = useApproachRoute(origin, stop.coord);
   const leg = useMemo(() => {
     // Pasada la última parada no hay tramo (el paseo se va a la pantalla final)
     if (finished) return null;
-    if (sequential && route.legs[target - 1]) return prepareLeg(route.legs[target - 1].line, route.legs[target - 1].steps);
+    if (fixed && route.legs[target - 1]) return prepareLeg(route.legs[target - 1].line, route.legs[target - 1].steps);
     return approach.leg ? prepareLeg(approach.leg.line, approach.leg.steps) : null;
-  }, [route, target, finished, sequential, approach.leg]);
-  const quality = sequential ? route.quality : approach.quality;
+  }, [route, target, finished, fixed, approach.leg]);
+  const quality = fixed ? route.quality : approach.quality;
 
   const sim = useMemo(() => ({ speed: simSpeed, paused: paused || !!manual, resumeFrom }), [simSpeed, paused, manual, resumeFrom]);
   const gpsOpts = useMemo(() => ({ far: farTarget, heading: focused }), [farTarget, focused]);
@@ -185,6 +188,10 @@ function WalkScreen({ tour }: { tour: Tour }) {
   }, [tour.id, narration]);
   const onSelectStop = useCallback((i: number) => setSelected(v => (v === i ? null : i)), []);
   // La primera posición GPS marca el inicio del camino hasta la parada (si no estás a cientos de km)
+  if (sequential && !finished && !farStart && joined?.target !== target) {
+    const d = legStart({ sequential, source, position, accuracy: source === 'gps' ? accuracy : null, legFrom: tour.stops[target - 1].coord });
+    if (d !== 'wait') setJoined({ target, from: d === 'approach' ? position : null });
+  }
   if (!sequential && !finished && source === 'gps' && position && gpsOrigin?.target !== target && !farStart) setGpsOrigin({ target, from: position });
 
   // Lejos de la primera parada (> 2 km) no se dibuja una ruta enorme: se ofrece abrir el mapa del sistema
@@ -197,8 +204,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
   if (farTargetNow !== farTarget) setFarTarget(farTargetNow);
 
   const g = useGuide(leg, position, stop.coord, source === 'gps' ? accuracy : null);
-  // Si el camino sale de donde estabas, al salirte de él se recalcula desde donde estés; el tramo fijo entre paradas no
-  const rerouting = useReroute(!sequential && !farStart, position, !!g?.offRoute, from => setRerouted({ source, target, from }), quality);
+  // Al salirte del camino (también del tramo fijo entre paradas) se recalcula desde donde estés
+  const rerouting = useReroute(!farStart, position, !!g?.offRoute, from => setRerouted({ source, target, from }), quality);
 
   // Sin posición suficiente del GPS: avisa y deja marcar la llegada a mano
   const [noFix, setNoFix] = useState(false);
@@ -347,6 +354,11 @@ function WalkScreen({ tour }: { tour: Tour }) {
     endWalk();
     router.back();
   };
+  // Terminar el paseo (sin guardar el progreso) pide confirmación; la salida normal es «Pausar paseo»
+  const finish = () => Alert.alert('¿Terminar el paseo?', 'No se guardará para seguir más tarde. Tus sellos ya conseguidos se quedan.', [
+    { text: 'Seguir paseando', style: 'cancel' },
+    { text: 'Terminar', style: 'destructive', onPress: () => { narration.stop(); endWalk(); router.back(); } },
+  ]);
   const goHere = (i: number) => {
     jumpTo(i);
     setSelected(null);
@@ -467,7 +479,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
           ))}
         </View>
 
-        {view === 'map' && <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: sheetH + 14 }} />}
         {/* Entrar y salir de la guía de la parada visitada */}
         {view === 'map' && visited && selected == null && !promptOn && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
         {view === 'map' && !follow && selected == null && !promptOn && (
@@ -593,6 +604,9 @@ function WalkScreen({ tour }: { tour: Tour }) {
             <PressableScale accessibilityRole="button" accessibilityHint="Guarda el paseo para seguir más tarde" onPress={pause} scaleTo={0.96} style={s.action}>
               <Text style={s.actionText}>Pausar paseo</Text>
             </PressableScale>
+            <PressableScale accessibilityRole="button" accessibilityHint="Pide confirmación antes de terminar el paseo" onPress={finish} scaleTo={0.96} style={s.actionQuiet}>
+              <Text style={s.actionQuietText}>Terminar paseo</Text>
+            </PressableScale>
           </View>
         </Animated.View>
         {selected != null && (
@@ -675,5 +689,7 @@ const s = StyleSheet.create({
   listenSub: { fontFamily: font.bold, fontSize: 12.5, marginTop: 1 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   action: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: neutral.bg2, justifyContent: 'center' },
+  actionQuiet: { height: 36, paddingHorizontal: 8, justifyContent: 'center' },
+  actionQuietText: { fontFamily: font.heavy, fontSize: 13, color: neutral.ink3, textDecorationLine: 'underline' },
   actionText: { fontFamily: font.heavy, fontSize: 13, color: neutral.ink2 },
 });
