@@ -3,7 +3,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
 import { Redirect, router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useSharedValue } from 'react-native-reanimated';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -12,6 +12,7 @@ import { GuideButton } from '@/components/GuideButton';
 import { ManeuverIcon, type ManeuverKind } from '@/components/ManeuverIcon';
 import { StopMarkers, StopPopup } from '@/components/MapPins';
 import { MeMarker } from '@/components/MeMarker';
+import { OrientationButton } from '@/components/OrientationButton';
 import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
 import { StopList } from '@/components/StopList';
 import { IconButton } from '@/components/ui';
@@ -20,6 +21,7 @@ import { cumulative, distance, formatDistance, pointAlong, projectOnRoute, walki
 import { startArrivalWatch, stopArrivalWatch } from '@/lib/arrivalWatch';
 import { entryMode } from '@/lib/entry';
 import { accuracySlack, ARRIVE_RADIUS_M, arrivalAllowed, instruction, prepareLeg } from '@/lib/guidance';
+import { nextMapBearing, rotateMs, routeBearing } from '@/lib/mapBearing';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { wayScript } from '@/lib/spoken';
 import { usePausedWalk } from '@/lib/pausedWalk';
@@ -114,7 +116,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const visited = mine && walkState.guide != null ? tour.stops[walkState.guide] : null;
   const p = tour.palette;
   const insets = useSafeAreaInsets();
-  const { testMode, simSpeed, setSimSpeed } = useSettings();
+  const { testMode, simSpeed, setSimSpeed, mapOrientation, setMapOrientation } = useSettings();
   const [source, setSource] = useState<PositionSource>(testMode ? 'simulated' : 'gps');
   const [paused, setPaused] = useState(false);
   /** Modo prueba: posición puesta a mano tocando el mapa (puede estar fuera de la ruta) */
@@ -153,7 +155,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const sim = useMemo(() => ({ speed: simSpeed, paused: paused || !!manual, resumeFrom }), [simSpeed, paused, manual, resumeFrom]);
   const gpsOpts = useMemo(() => ({ far: farTarget, heading: focused }), [farTarget, focused]);
   const walk = useWalkPosition(source, leg, sim, gpsOpts);
-  const { heading, permission, accuracy, retry } = walk;
+  const { heading, course, permission, accuracy, retry } = walk;
   const position = manual ?? walk.position;
 
   // Modo prueba: tocar el mapa te lleva allí; «Seguir» retoma el paseo desde el punto de la ruta más cercano
@@ -299,6 +301,17 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const want = selected != null ? tour.stops[selected].coord : follow ? position ?? stop.coord : null;
   if (want && (want[0] !== cam[0] || want[1] !== cam[1])) setCam(want);
   const camCenter = want ?? cam;
+  // Giro del mapa: «ruta arriba» pone hacia arriba el camino que te toca seguir (solo mientras te sigue); «norte arriba», el norte
+  const [rot, setRot] = useState({ bearing: 0, ms: 700 });
+  const wantBearing = mapOrientation === 'north' ? 0 : follow && selected == null ? nextMapBearing(rot.bearing, routeBearing(leg, g, position, course)) : rot.bearing;
+  if (wantBearing !== rot.bearing) setRot({ bearing: wantBearing, ms: rotateMs(rot.bearing, wantBearing) });
+  /** Giro real del mapa (también el que haces con los dedos), para la aguja del botón */
+  const mapRot = useSharedValue(0);
+  const toggleOrientation = () => {
+    lightTap();
+    setMapOrientation(mapOrientation === 'route' ? 'north' : 'route');
+    setFollow(true);
+  };
   const padBottom = selected != null ? sheetH + 110 : sheetH + 10;
   const padTop = insets.top + bannerH + 8 + TOGGLE_H;
 
@@ -387,9 +400,11 @@ function WalkScreen({ tour }: { tour: Tour }) {
           attributionPosition={{ bottom: sheetH + 8, right: 8 }}
           onPress={testMode ? e => moveTo(e.nativeEvent.lngLat) : undefined}
           onRegionWillChange={e => { if (e.nativeEvent.userInteraction) setFollow(false); }}
+          onRegionIsChanging={e => { mapRot.value = e.nativeEvent.bearing; }}
+          onRegionDidChange={e => { mapRot.value = e.nativeEvent.bearing; }}
         >
           {/* Con una parada elegida, el mapa vuela hasta ella; si no, sigue tu posición */}
-          <Camera center={camCenter} zoom={selected != null ? 17.3 : 17} duration={selected != null ? 900 : 700} easing={selected != null ? 'fly' : 'ease'} padding={{ top: padTop, bottom: padBottom, left: 0, right: 0 }} />
+          <Camera center={camCenter} zoom={selected != null ? 17.3 : 17} bearing={rot.bearing} duration={selected != null ? 900 : Math.max(700, rot.ms)} easing={selected != null ? 'fly' : 'ease'} padding={{ top: padTop, bottom: padBottom, left: 0, right: 0 }} />
           {routeGeo?.walked && (
             <GeoJSONSource id="walked" data={routeGeo.walked}>
               <Layer id="walked-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': c.route, 'line-width': 4, 'line-opacity': 0.35 }} />
@@ -467,6 +482,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
           ))}
         </View>
 
+        {view === 'map' && selected == null && !promptOn && offer < 0 && <OrientationButton mode={mapOrientation} bearing={mapRot} accent={p.t} onToggle={toggleOrientation} style={{ left: 14, bottom: sheetH + 68 }} />}
         {view === 'map' && <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: sheetH + 14 }} />}
         {/* Entrar y salir de la guía de la parada visitada */}
         {view === 'map' && visited && selected == null && !promptOn && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}

@@ -7,6 +7,8 @@ export type SimSpeed = 1 | 4 | 16;
 /** Idiomas de la interfaz. De momento solo hay versión en español. */
 export type Language = 'es' | 'en';
 export type CityId = 'sevilla' | 'madrid';
+/** Cómo se orienta el mapa del paseo: el camino que sigues hacia arriba, o el norte */
+export type MapOrientation = 'route' | 'north';
 
 /** Idiomas que se ofrecen en la bienvenida y en Ajustes; el inglés aún no está hecho */
 export const LANGUAGES: { id: Language; name: string; note: string; ready: boolean }[] = [
@@ -28,6 +30,9 @@ interface SettingsState {
   city: CityId | null;
   /** Texto grande: escala los estilos de texto (useType) */
   largeText: boolean;
+  /** Mapa del paseo «ruta arriba» (por defecto) o «norte arriba» */
+  mapOrientation: MapOrientation;
+  setMapOrientation: (o: MapOrientation) => void;
   setLargeText: (on: boolean) => void;
   setTestMode: (on: boolean) => void;
   setSimSpeed: (s: SimSpeed) => void;
@@ -41,6 +46,8 @@ export const useSettings = create<SettingsState>()(
       testMode: false,
       simSpeed: 4,
       largeText: false,
+      mapOrientation: 'route',
+      setMapOrientation: mapOrientation => set({ mapOrientation }),
       setLargeText: largeText => set({ largeText }),
       setTestMode: testMode => set({ testMode }),
       setSimSpeed: simSpeed => set({ simSpeed }),

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { LngLat } from '@/data/types';
 import { bearing, pointAlong } from './geo';
+import { reliableCourse } from './mapBearing';
 import type { PreparedLeg } from './guidance';
 import { angleDelta } from './smooth';
 
@@ -11,6 +12,8 @@ export type PositionSource = 'gps' | 'simulated';
 export interface WalkPosition {
   position: LngLat | null;
   heading: number | null;
+  /** Hacia dónde te mueves (rumbo del GPS), solo si andas; null parado o sin dato */
+  course: number | null;
   /** «denied»: sin permiso; «unavailable»: los servicios de ubicación están apagados o fallan */
   permission: 'unknown' | 'granted' | 'denied' | 'unavailable';
   /** Error de la última lectura del GPS, en metros (null si no se conoce o es simulado) */
@@ -51,7 +54,7 @@ const TICK = 0.25;
  * probar la app sin moverse (modo prueba).
  */
 export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null, sim: SimOptions, gps: GpsOptions = { far: false, heading: true }): WalkPosition & { retry: () => void } {
-  const [state, setState] = useState<WalkPosition>({ position: null, heading: null, permission: 'unknown', accuracy: null });
+  const [state, setState] = useState<WalkPosition>({ position: null, heading: null, course: null, permission: 'unknown', accuracy: null });
   const [attempt, setAttempt] = useState(0);
   const retry = useCallback(() => setAttempt(n => n + 1), []);
   const along = useRef(0);
@@ -97,7 +100,7 @@ export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null,
             const now = Date.now();
             const use = acceptFix(accuracy, lastFix.current > 0, now - lastFix.current);
             if (use) lastFix.current = now;
-            setState(s => ({ ...s, accuracy, position: use ? [l.coords.longitude, l.coords.latitude] : s.position }));
+            setState(s => ({ ...s, accuracy, position: use ? [l.coords.longitude, l.coords.latitude] : s.position, course: use ? reliableCourse(l.coords.heading, l.coords.speed) : s.course }));
           },
         );
         if (cancelled) { sub.remove(); return; }
@@ -145,7 +148,8 @@ export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null,
       along.current = Math.min(leg.length, along.current + WALK_MS * opts.current.speed * dt);
       const p = pointAlong(leg.line, along.current, leg.cum);
       const ahead = pointAlong(leg.line, Math.min(leg.length, along.current + 3), leg.cum);
-      setState(s => ({ permission: 'granted', accuracy: null, position: p, heading: along.current < leg.length ? bearing(p, ahead) : s.heading }));
+      const h = along.current < leg.length ? bearing(p, ahead) : null;
+      setState(s => ({ permission: 'granted', accuracy: null, position: p, heading: h ?? s.heading, course: h ?? s.course }));
     };
     const first = setTimeout(() => step(0), 0);
     const id = setInterval(() => step(TICK), TICK * 1000);
