@@ -95,7 +95,7 @@ export interface Tour {
     art: ImageSourcePropType;
     /** Valor facial, como en un sello de carta («4,50€») */
     value: string;
-    /** Subtítulo: las paradas separadas por « · » */
+    /** Pie de la escena en una frase corta («ATARDECER EN EL GUADALQUIVIR», en mayúsculas como se imprime), no la lista de paradas */
     subtitle: string;
   };
   /**

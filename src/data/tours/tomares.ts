@@ -36,7 +36,7 @@ export const tomares: Tour = {
   postcard: {
     art: require('../../../assets/postcards/tomares.jpg'),
     value: '4,50€',
-    subtitle: 'LETRERO · AYUNTAMIENTO · PARROQUIA · ROYAL KING KEBAB',
+    subtitle: 'CALLE ENCALADA DEL ALJARAFE EN FIESTA',
   },
   stamp: {
     art: require('../../../assets/route-stamps/tomares-4-paradas.png'),
