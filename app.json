@@ -12,7 +12,8 @@
       "supportsTablet": false,
       "infoPlist": {
         "UIBackgroundModes": [
-          "audio"
+          "audio",
+          "location"
         ]
       }
     },
@@ -43,7 +44,11 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Paseo usa tu ubicación para guiarte entre las paradas del tour y avisarte cuando llegas."
+          "locationWhenInUsePermission": "Paseo usa tu ubicación para guiarte entre las paradas del tour y avisarte cuando llegas.",
+          "locationAlwaysAndWhenInUsePermission": "Paseo usa tu ubicación, también con la pantalla apagada, para avisarte cuando llegas a cada parada.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "@maplibre/maplibre-react-native",

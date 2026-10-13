@@ -12,10 +12,13 @@ import { GuideButton } from '@/components/GuideButton';
 import { ManeuverIcon, type ManeuverKind } from '@/components/ManeuverIcon';
 import { StopMarkers, StopPopup } from '@/components/MapPins';
 import { MeMarker } from '@/components/MeMarker';
-import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
+import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
+import { StopList } from '@/components/StopList';
 import { IconButton } from '@/components/ui';
 import type { LngLat, Tour } from '@/data/types';
 import { cumulative, distance, formatDistance, pointAlong, projectOnRoute, walkingMinutes } from '@/lib/geo';
+import { startArrivalWatch, stopArrivalWatch } from '@/lib/arrivalWatch';
+import { entryMode } from '@/lib/entry';
 import { accuracySlack, ARRIVE_RADIUS_M, arrivalAllowed, instruction, prepareLeg } from '@/lib/guidance';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { wayScript } from '@/lib/spoken';
@@ -46,6 +49,8 @@ const FAR_TARGET_M = 250;
 const NEAR_TARGET_M = 180;
 /** Cuánto se deja de mover el trazo ya recorrido (metros) para no actualizar el mapa en cada lectura */
 const WALKED_STEP_M = 3;
+/** Alto del selector Mapa / Paradas con su hueco */
+const TOGGLE_H = 48;
 
 /** Abre la app de mapas del sistema con la ruta a pie hasta un punto */
 function openSystemMaps(coord: LngLat, name: string) {
@@ -89,6 +94,10 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const ids = useMemo(() => tour.stops.map(st => st.id), [tour]);
   const stamped = useMemo(() => new Set(saved?.stamps.map(x => x.stopId)), [saved]);
   const [selected, setSelected] = useState<number | null>(null);
+  /** Mapa o lista de paradas (el respaldo cuando el GPS no ayuda) */
+  const [view, setView] = useState<'map' | 'list'>('map');
+  /** Tarjeta «Estás en…» tras llegar (el GPS es fiable): escuchar o dejarlo para luego */
+  const [prompt, setPrompt] = useState<{ idx: number; repeat: boolean } | null>(null);
   const [sheetH, setSheetH] = useState(230);
   const [bannerH, setBannerH] = useState(120);
   // Si se entra directamente (sin pasar por la ficha), el paseo empieza aquí
@@ -165,12 +174,14 @@ function WalkScreen({ tour }: { tour: Tour }) {
     setResumeFrom(undefined);
     setPaused(false);
     setSelected(null);
+    setPrompt(null);
     setFollow(true);
   }, [target]);
-  const openStop = useCallback((n: number) => {
+  /** Abre la parada; con `arrived` el audio empieza solo (el usuario ha elegido escucharla) */
+  const openStop = useCallback((n: number, arrived?: '1' | 'repeat') => {
     narration.stop();
     setSelected(null);
-    router.push({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(n) } });
+    router.push({ pathname: '/tour/[id]/stop/[n]', params: arrived ? { id: tour.id, n: String(n), arrived } : { id: tour.id, n: String(n) } });
   }, [tour.id, narration]);
   const onSelectStop = useCallback((i: number) => setSelected(v => (v === i ? null : i)), []);
   // La primera posición GPS marca el inicio del camino hasta la parada (si no estás a cientos de km)
@@ -197,8 +208,14 @@ function WalkScreen({ tour }: { tour: Tour }) {
     return () => clearTimeout(t);
   }, [source, permission, position]);
   const poorGps = source === 'gps' && permission === 'granted' && ((accuracy != null && accuracy > MAX_ACCURACY_M) || (!position && noFix));
+  // Con GPS y permiso, la ubicación también se sigue con la pantalla apagada para avisar al llegar
+  useEffect(() => {
+    if (source !== 'gps' || permission !== 'granted' || !mine || finished) return;
+    startArrivalWatch();
+    return () => { stopArrivalWatch(); };
+  }, [source, permission, mine, finished]);
 
-  // Llegada: vibración y la parada se abre encima del mapa. Desde ahora se puede sellar.
+  // Llegada: vibración y aviso en el mapa; la guía solo se abre si el usuario lo pide. Desde ahora se puede sellar.
   const arrivedFor = useRef<number | null>(null);
   const lastArrival = useRef<{ at: number; coord: LngLat; stopCoord: LngLat } | null>(null);
   /** Ir a otra parada: las que quedan por el camino sin sellar se dejan «saltadas» para sellarlas luego */
@@ -206,7 +223,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
     if (i > target) ids.slice(target, i).filter(id => !stamped.has(id)).forEach(id => skipStop(id, i));
     else goTo(i);
   }, [ids, stamped, target, skipStop, goTo]);
-  const doArrive = useCallback((idx: number, from: LngLat | null) => {
+  /** Registra la llegada (vibra y deja sellar); devuelve si la parada ya estaba sellada */
+  const register = useCallback((idx: number, from: LngLat | null) => {
     const st = tour.stops[idx];
     // Llegar a una parada que no era la siguiente la convierte en la parada actual
     if (idx !== target) jumpTo(idx);
@@ -216,8 +234,12 @@ function WalkScreen({ tour }: { tour: Tour }) {
     setSelected(null);
     lastArrival.current = { at: Date.now(), coord: from ?? st.coord, stopCoord: st.coord };
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    router.push({ pathname: '/tour/[id]/stop/[n]', params: { id: tour.id, n: String(idx), arrived: repeat ? 'repeat' : '1' } });
+    return repeat;
   }, [tour, target, jumpTo, arrive, narration]);
+  const doArrive = useCallback((idx: number, from: LngLat | null) => {
+    const repeat = register(idx, from);
+    openStop(idx, repeat ? 'repeat' : '1');
+  }, [register, openStop]);
   useEffect(() => {
     if (!g?.arrived || finished || !position || arrivedFor.current === target) return;
     // Ya se llegó a esta parada (aunque la pantalla se haya vuelto a montar): no se repite
@@ -225,16 +247,11 @@ function WalkScreen({ tour }: { tour: Tour }) {
     // Paradas a menos de 25 m una de otra: la siguiente espera a que te hayas movido o pase un rato
     if (!arrivalAllowed(lastArrival.current, stop.coord, position, Date.now())) return;
     arrivedFor.current = target;
-    doArrive(target, position);
-  }, [g?.arrived, position, finished, target, mine, walkState?.arrived, stop.id, stop.coord, doArrive]);
-  /** «Ya estoy aquí» a mano (GPS flojo): equivale a llegar */
-  const arriveManual = () => {
-    arrivedFor.current = target;
-    if (mine && walkState.arrived === stop.id) openStop(target);
-    else doArrive(target, position);
-  };
+    const repeat = register(target, position);
+    setPrompt({ idx: target, repeat });
+  }, [g?.arrived, position, finished, target, mine, walkState?.arrived, stop.id, stop.coord, register]);
 
-  // A 60 m de la parada: «¡Ya estás aquí!» con una vibración suave antes de abrirla
+  // A 60 m de la parada: «¡Ya estás aquí!» con una vibración suave antes de llegar
   const previewFor = useRef<number | null>(null);
   const near = !!g?.near && !g.offRoute;
   useEffect(() => {
@@ -283,10 +300,19 @@ function WalkScreen({ tour }: { tour: Tour }) {
   if (want && (want[0] !== cam[0] || want[1] !== cam[1])) setCam(want);
   const camCenter = want ?? cam;
   const padBottom = selected != null ? sheetH + 110 : sheetH + 10;
-  const padTop = insets.top + bannerH + 8;
+  const padTop = insets.top + bannerH + 8 + TOGGLE_H;
 
   // Avisos debajo de la indicación: uno solo, con todo lo que pasa
   const blocked = source === 'gps' && (permission === 'denied' || permission === 'unavailable');
+  // Sin ubicación utilizable la lista pasa sola al frente, una vez; se puede volver al mapa
+  const autoList = useRef(false);
+  const gpsUnusable = blocked || (source === 'gps' && noFix && !position);
+  useEffect(() => {
+    if (!gpsUnusable || autoList.current) return;
+    autoList.current = true;
+    setSelected(null);
+    setView('list');
+  }, [gpsUnusable]);
   const notice = (() => {
     if (blocked || farStart) return null;
     const parts: string[] = [];
@@ -296,14 +322,18 @@ function WalkScreen({ tour }: { tour: Tour }) {
     if (leg && quality === 'approximate') parts.push('Sin conexión: ruta en línea recta');
     return parts.length ? parts.join(' · ') : null;
   })();
+  // El selector Mapa / Paradas va bajo la indicación (y bajo el aviso, si lo hay); lo demás cuelga de él
+  const toggleTop = insets.top + 8 + bannerH + 8 + (notice ? 40 : 0);
+  const belowToggle = toggleTop + TOGGLE_H;
 
   const kind: ManeuverKind = !g ? 'wait' : g.offRoute ? 'back' : near || g.arrived ? 'arrive' : g.next ? g.next.direction : 'straight';
   const text = rerouting
     ? { text: 'Recalculando la ruta…', then: `Te llevamos a ${stop.name} desde donde estás` }
-    : near ? { text: '¡Ya estás aquí!', then: `${stop.name}: se abre al llegar` }
+    : g?.arrived ? { text: 'Has llegado', then: stop.name }
+    : near ? { text: '¡Ya estás aquí!', then: `${stop.name}: te avisamos al llegar` }
     : g ? instruction(g, stop.name)
     : { text: `Vamos a ${stop.name}`, then: 'Al llegar se estampa tu sello' };
-  const bannerDist = g ? formatDistance(g.offRoute ? g.offRouteBy : near ? g.toStop : g.distToNext) : '—';
+  const bannerDist = g ? formatDistance(g.offRoute ? g.offRouteBy : near || g.arrived ? g.toStop : g.distToNext) : '—';
 
   const skipNext = canSkip(ids, stamped, target) ? ids.findIndex((id, i) => i > target && !stamped.has(id)) : -1;
   const skip = () => {
@@ -321,7 +351,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
     jumpTo(i);
     setSelected(null);
   };
-  const showManual = !testMode && !finished && (poorGps || near || !!g?.arrived);
   const statusFor = (i: number) => {
     const id = tour.stops[i].id;
     if (stamped.has(id)) return 'Sellada · puedes volver a leerla';
@@ -329,6 +358,22 @@ function WalkScreen({ tour }: { tour: Tour }) {
     if (skipped?.includes(id)) return 'La saltaste · aún sin sellar';
     return i < target ? 'Aún sin sellar' : 'Más adelante en la ruta';
   };
+
+  // Entrar a la guía de la parada a la que vas: el modo según lo fiable que sea el GPS
+  const mode = entryMode({ arrived: mine && walkState.arrived === stop.id, distance: position ? distance(position, stop.coord) : null, accuracy: source === 'gps' ? accuracy : null, permission, hasFix: !!position, noFix, source });
+  const listen = (i: number) => {
+    if (i !== target || finished) return openStop(i);
+    lightTap();
+    if (mode === 'far') return openStop(target);
+    arrivedFor.current = target;
+    const repeat = mode === 'here' ? stamped.has(stop.id) : register(target, position);
+    setPrompt(null);
+    openStop(target, repeat ? 'repeat' : '1');
+  };
+  const listenCopy = mode === 'here' ? { title: 'Escuchar ahora', sub: stamped.has(stop.id) ? 'Ya tienes su sello' : 'Después, tu sello' }
+    : mode === 'confirm' ? { title: `¿Ya estás en ${stop.name}?`, sub: 'Toca para escuchar y sellar' }
+    : { title: `Escuchar ${stop.name}`, sub: 'Puedes escucharla ya; el sello, al llegar' };
+  const promptOn = prompt != null && !finished && offer < 0 && selected == null && view === 'map';
 
   return (
     <TourThemeProvider palette={p}>
@@ -385,8 +430,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
             <Text style={s.noticeText}>{notice}</Text>
           </View>
         )}
-        {blocked && (
-          <View style={[s.card, { top: insets.top + 8 + bannerH + 8 }]}>
+        {blocked && view === 'map' && (
+          <View style={[s.card, { top: belowToggle }]}>
             <Text style={s.cardTitle}>{permission === 'denied' ? 'Paseo necesita tu ubicación' : 'La ubicación está apagada'}</Text>
             <Text style={s.cardText}>{permission === 'denied' ? 'Activa la ubicación en Ajustes para que Paseo te guíe, o usa el paseo simulado.' : 'Enciende la ubicación del móvil para que Paseo te guíe.'}</Text>
             <View style={s.cardRow}>
@@ -395,8 +440,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
             </View>
           </View>
         )}
-        {farStart && (
-          <View style={[s.card, { top: insets.top + 8 + bannerH + 8 }]}>
+        {farStart && view === 'map' && (
+          <View style={[s.card, { top: belowToggle }]}>
             <Text style={s.cardTitle}>Estás lejos del inicio</Text>
             <Text style={s.cardText}>La primera parada, {tour.stops[0].name}, queda a {formatDistance(position ? distance(position, tour.stops[0].coord) : FAR_START_M)}. Usa tu app de mapas para llegar; el paseo empieza al acercarte.</Text>
             <View style={s.cardRow}>
@@ -405,10 +450,27 @@ function WalkScreen({ tour }: { tour: Tour }) {
           </View>
         )}
 
-        <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: sheetH + 14 }} />
+        {view === 'list' && (
+          <StopList tour={tour} stamped={stamped} target={target} position={position} status={statusFor} onPlay={listen} top={toggleTop - 6} bottom={sheetH + 12} background={c.bg} />
+        )}
+        <View style={[s.toggle, { top: toggleTop }]}>
+          {(['map', 'list'] as const).map(v => (
+            <Pressable
+              key={v}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: view === v }}
+              onPress={() => { setSelected(null); setView(v); }}
+              style={[s.toggleHalf, view === v && { backgroundColor: p.deep }]}
+            >
+              <Text style={[s.toggleText, view === v && { color: '#fff' }]}>{v === 'map' ? 'Mapa' : 'Paradas'}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {view === 'map' && <IconButton label="Salir del tour" icon="close" onPress={() => { endWalk(); router.back(); }} style={{ position: 'absolute', left: 14, bottom: sheetH + 14 }} />}
         {/* Entrar y salir de la guía de la parada visitada */}
-        {visited && selected == null && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
-        {!follow && selected == null && (
+        {view === 'map' && visited && selected == null && !promptOn && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
+        {view === 'map' && !follow && selected == null && !promptOn && (
           <PressableScale accessibilityRole="button" accessibilityLabel="Centrar en mí" onPress={() => setFollow(true)} scaleTo={0.94} style={[s.center, { bottom: sheetH + (visited ? 72 : 14) }]}>
             <Svg width={18} height={18} viewBox="0 0 24 24">
               <Circle cx={12} cy={12} r={4} fill="none" stroke={neutral.ink} strokeWidth={2.6} />
@@ -419,8 +481,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
         )}
 
         {/* Modo prueba: controles para recorrer el tour sin moverse */}
-        {testMode && (
-          <View style={[s.test, { top: insets.top + 8 + bannerH + 56 }]}>
+        {testMode && view === 'map' && (
+          <View style={[s.test, { top: belowToggle + 8 }]}>
             <View style={s.testRow}>
               <Text style={s.testTitle}>Modo prueba</Text>
               <Pressable accessibilityRole="button" onPress={() => { setManual(null); setSource(v => (v === 'gps' ? 'simulated' : 'gps')); }} style={s.testChip}>
@@ -445,7 +507,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
         )}
 
         {/* Estás en otra parada sin sellar */}
-        {offer >= 0 && (
+        {offer >= 0 && view === 'map' && (
           <Animated.View entering={FadeInDown.duration(DUR.base).easing(EASE_OUT)} style={[s.popWrap, { bottom: sheetH + 12 }]}>
             <View style={s.offer}>
               <Text style={s.offerTitle}>Estás en {tour.stops[offer].name}</Text>
@@ -453,6 +515,25 @@ function WalkScreen({ tour }: { tour: Tour }) {
               <View style={s.cardRow}>
                 <PressableScale accessibilityRole="button" onPress={() => doArrive(offer, position)} style={[s.cardBtn, { backgroundColor: p.t }]}><Text style={[s.cardBtnText, { color: p.on }]}>Sí, sellarla</Text></PressableScale>
                 <PressableScale accessibilityRole="button" onPress={() => setDeclined(d => [...d, tour.stops[offer].id])} style={[s.cardBtn, s.cardBtnGhost]}><Text style={[s.cardBtnText, { color: neutral.ink }]}>Ahora no</Text></PressableScale>
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Has llegado (GPS fiable): la guía no se abre sola */}
+        {promptOn && (
+          <Animated.View entering={FadeInDown.duration(DUR.base).easing(EASE_OUT)} style={[s.popWrap, { bottom: sheetH + 12 }]}>
+            <View style={s.offer}>
+              <View style={s.promptTop}>
+                <DuotoneImage source={tour.stops[prompt.idx].thumb} palette={p} style={s.promptPic} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.offerTitle}>Estás en {tour.stops[prompt.idx].name}</Text>
+                  <Text style={s.offerText}>¿Escuchas su historia?</Text>
+                </View>
+              </View>
+              <View style={s.cardRow}>
+                <PressableScale accessibilityRole="button" onPress={() => setPrompt(null)} style={[s.cardBtn, s.cardBtnGhost, { flex: 1, alignItems: 'center' }]}><Text style={[s.cardBtnText, { color: neutral.ink }]}>Luego</Text></PressableScale>
+                <PressableScale accessibilityRole="button" accessibilityLabel={`Escuchar ${tour.stops[prompt.idx].name}`} onPress={() => { setPrompt(null); openStop(prompt.idx, prompt.repeat ? 'repeat' : '1'); }} style={[s.cardBtn, { flex: 1.4, alignItems: 'center', backgroundColor: p.t }]}><Text style={[s.cardBtnText, { color: p.on }]}>▶ Escuchar</Text></PressableScale>
               </View>
             </View>
           </Animated.View>
@@ -488,12 +569,22 @@ function WalkScreen({ tour }: { tour: Tour }) {
               <Text style={s.etaSub}>{g ? formatDistance(g.remaining) : ''}</Text>
             </View>
           </PressableScale>
+          {!finished && (
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={`${listenCopy.title}. ${listenCopy.sub}`}
+              onPress={() => listen(target)}
+              scaleTo={0.98}
+              style={[s.listen, mode === 'far' ? { backgroundColor: p.deep } : { backgroundColor: p.t2, borderColor: `${p.t2}66` }]}
+            >
+              <View style={[s.listenPlay, { backgroundColor: mode === 'far' ? p.t : p.deep }]}><Text style={s.listenGlyph}>▶</Text></View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[s.listenTitle, { color: mode === 'far' ? '#fff' : neutral.ink }]} numberOfLines={1}>{listenCopy.title}</Text>
+                <Text style={[s.listenSub, { color: mode === 'far' ? 'rgba(255,255,255,0.8)' : neutral.ink2 }]} numberOfLines={1}>{listenCopy.sub}</Text>
+              </View>
+            </PressableScale>
+          )}
           <View style={s.actions}>
-            {showManual && (
-              <PressableScale accessibilityRole="button" accessibilityHint="Marca que has llegado a esta parada" onPress={arriveManual} scaleTo={0.96} style={[s.action, { backgroundColor: p.t }]}>
-                <Text style={[s.actionText, { color: p.on }]}>Ya estoy aquí</Text>
-              </PressableScale>
-            )}
             {skipNext >= 0 && (
               <PressableScale accessibilityRole="button" accessibilityHint="Pasa a la siguiente parada; esta queda sin sellar" onPress={skip} scaleTo={0.96} style={s.action}>
                 <Text style={s.actionText}>Saltar esta parada</Text>
@@ -572,6 +663,16 @@ const s = StyleSheet.create({
   nextName: { fontFamily: font.black, fontSize: 18, color: neutral.ink },
   eta: { fontFamily: font.black, fontSize: 20, color: neutral.ink, fontVariant: ['tabular-nums'] },
   etaSub: { fontFamily: font.bold, fontSize: 12, color: neutral.ink3 },
+  toggle: { position: 'absolute', left: 12, right: 12, height: 40, flexDirection: 'row', padding: 3, borderRadius: radius.pill, backgroundColor: neutral.surface, ...shadow[2] },
+  toggleHalf: { flex: 1, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  toggleText: { fontFamily: font.black, fontSize: 14, color: neutral.ink },
+  promptTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  promptPic: { width: 64, height: 64, borderRadius: 16 },
+  listen: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 22, borderWidth: 4, borderColor: 'transparent' },
+  listenPlay: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  listenGlyph: { fontFamily: font.black, fontSize: 15, color: '#fff' },
+  listenTitle: { fontFamily: font.black, fontSize: 16 },
+  listenSub: { fontFamily: font.bold, fontSize: 12.5, marginTop: 1 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   action: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: neutral.bg2, justifyContent: 'center' },
   actionText: { fontFamily: font.heavy, fontSize: 13, color: neutral.ink2 },
