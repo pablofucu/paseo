@@ -11,6 +11,7 @@ import { DUR, EASE_OUT, rise } from '@/components/motion';
 import { StampPlacer } from '@/components/passport/StampPlacer';
 import { RubberStamp } from '@/components/RubberStamp';
 import { Scrim } from '@/components/Scrim';
+import { ThenNowCard } from '@/components/ThenNow';
 import { GhostButton, IconButton, PrimaryButton } from '@/components/ui';
 import { getTour } from '@/data/tours';
 import { creditPending, KIND_LABEL, type Tour } from '@/data/types';
@@ -147,7 +148,9 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
             </View>
           </Animated.View>
           <Animated.Text entering={rise(6)} style={type.body}>{stop.p2}</Animated.Text>
-          <Animated.View entering={rise(7)} style={[s.fact, { backgroundColor: p.t2 }]}>
+          {/* Así era: la foto antigua, entre el texto, para compararla con la de hoy */}
+          {stop.then && <Animated.View entering={rise(7)}><ThenNowCard stop={stop} palette={p} /></Animated.View>}
+          <Animated.View entering={rise(8)} style={[s.fact, { backgroundColor: p.t2 }]}>
             <Text style={s.factOver}>¿Sabías que…?</Text>
             <Text style={s.factText}>{stop.fact}</Text>
           </Animated.View>

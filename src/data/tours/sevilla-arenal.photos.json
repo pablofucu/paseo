@@ -2,11 +2,62 @@
   "_info": "Fotos libres de la imagen principal del artículo de Wikipedia. Las descarga scripts/fetch-photos.mjs (workflow 'Contenido') con su autoría y licencia.",
   "dir": "assets/tours/sevilla-arenal",
   "photos": [
-    { "id": "maestranza", "wiki": "es:Plaza de toros de la Real Maestranza de Caballería de Sevilla" },
-    { "id": "caridad", "wiki": "es:Hospital de la Caridad (Sevilla)" },
-    { "id": "san-telmo", "wiki": "es:Palacio de San Telmo" },
-    { "id": "tabacos", "wiki": "es:Real Fábrica de Tabacos de Sevilla" },
-    { "id": "plaza-espana", "wiki": "es:Plaza de España (Sevilla)" },
-    { "id": "maria-luisa", "wiki": "es:Parque de María Luisa" }
+    {
+      "id": "maestranza",
+      "wiki": "es:Plaza de toros de la Real Maestranza de Caballería de Sevilla"
+    },
+    {
+      "id": "caridad",
+      "wiki": "es:Hospital de la Caridad (Sevilla)"
+    },
+    {
+      "id": "san-telmo",
+      "wiki": "es:Palacio de San Telmo"
+    },
+    {
+      "id": "tabacos",
+      "wiki": "es:Real Fábrica de Tabacos de Sevilla"
+    },
+    {
+      "id": "plaza-espana",
+      "wiki": "es:Plaza de España (Sevilla)"
+    },
+    {
+      "id": "maria-luisa",
+      "wiki": "es:Parque de María Luisa"
+    }
+  ],
+  "_then": "Fotos antiguas («Así era»): de dominio público. Con «search» el script elige la más antigua; con «file» se fija el archivo de Commons.",
+  "then": [
+    {
+      "id": "san-telmo",
+      "file": "Sevilla. Vista general del palacio de San Telmo desde el rio - J. Laurent. Madrid. LCCN94512217.jpg",
+      "crop": [
+        0.07,
+        0.2,
+        0.07,
+        0.15
+      ]
+    },
+    {
+      "id": "tabacos",
+      "file": "Fábrica de Tabacos de Sevilla (litografía).jpg",
+      "crop": [
+        0.04,
+        0.07,
+        0.04,
+        0.15
+      ]
+    },
+    {
+      "id": "maria-luisa",
+      "file": "Sevilla-jardines-del-palacio-de-Sant-Telmo-1878.jpg",
+      "crop": [
+        0.03,
+        0.06,
+        0.03,
+        0.08
+      ]
+    }
   ]
 }

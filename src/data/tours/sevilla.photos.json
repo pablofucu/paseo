@@ -2,10 +2,58 @@
   "_info": "Fotos libres de la imagen principal del artículo de Wikipedia. Las descarga scripts/fetch-photos.mjs (workflow 'Contenido') con su autoría y licencia.",
   "dir": "assets/tours/sevilla",
   "photos": [
-    { "id": "torre-oro", "wiki": "es:Torre del Oro" },
-    { "id": "archivo", "wiki": "es:Archivo General de Indias" },
-    { "id": "giralda", "wiki": "es:Giralda" },
-    { "id": "alcazar", "wiki": "es:Real Alcázar de Sevilla" },
-    { "id": "elvira", "wiki": "es:Barrio de Santa Cruz (Sevilla)" }
+    {
+      "id": "torre-oro",
+      "wiki": "es:Torre del Oro"
+    },
+    {
+      "id": "archivo",
+      "wiki": "es:Archivo General de Indias"
+    },
+    {
+      "id": "giralda",
+      "wiki": "es:Giralda"
+    },
+    {
+      "id": "alcazar",
+      "wiki": "es:Real Alcázar de Sevilla"
+    },
+    {
+      "id": "elvira",
+      "wiki": "es:Barrio de Santa Cruz (Sevilla)"
+    }
+  ],
+  "_then": "Fotos antiguas («Así era»): de dominio público. Con «search» el script elige la más antigua; con «file» se fija el archivo de Commons.",
+  "then": [
+    {
+      "id": "torre-oro",
+      "file": "La torre del Oro, Sevilla, Spanje, RP-F-00-6077.jpg",
+      "crop": [
+        0.06,
+        0.12,
+        0.06,
+        0.1
+      ]
+    },
+    {
+      "id": "giralda",
+      "file": "Sevilla. Vista general de la Catedral desde el Alcazar - J. Laurent. Madrid. LCCN94512157.jpg",
+      "crop": [
+        0.06,
+        0.075,
+        0.06,
+        0.13
+      ]
+    },
+    {
+      "id": "alcazar",
+      "file": "Sevilla. Fachada del palacio del Alcazar - J. Laurent. Madrid. LCCN94512165.jpg",
+      "crop": [
+        0.06,
+        0.075,
+        0.06,
+        0.13
+      ]
+    }
   ]
 }
