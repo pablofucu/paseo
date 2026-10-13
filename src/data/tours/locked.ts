@@ -17,6 +17,10 @@ export const LOCKED_TOURS: LockedTour[] = [
     durationMin: 75,
     stops: 6,
     eur: 4.99,
+    stamp: {
+      art: require('../../../assets/route-stamps/triana.png'),
+      symbol: 'Un plato de cerámica con flor de azulejo: el oficio que da nombre al barrio de Triana.',
+    },
   },
   {
     id: 'murillo',
@@ -30,6 +34,10 @@ export const LOCKED_TOURS: LockedTour[] = [
     durationMin: 90,
     stops: 7,
     eur: 3.99,
+    stamp: {
+      art: require('../../../assets/route-stamps/murillo.png'),
+      symbol: 'La paleta y el pincel del pintor bajo un rompimiento de gloria, como en sus inmaculadas.',
+    },
   },
   {
     id: 'austrias',
@@ -43,6 +51,10 @@ export const LOCKED_TOURS: LockedTour[] = [
     durationMin: 90,
     stops: 7,
     eur: 4.99,
+    stamp: {
+      art: require('../../../assets/route-stamps/austrias.png'),
+      symbol: 'El oso y el madroño, el escudo de la villa de Madrid desde los tiempos de los Austrias.',
+    },
   },
   {
     id: 'letras',
@@ -56,6 +68,10 @@ export const LOCKED_TOURS: LockedTour[] = [
     durationMin: 60,
     stops: 5,
     eur: 3.99,
+    stamp: {
+      art: require('../../../assets/route-stamps/letras.png'),
+      symbol: 'Una pluma, un tintero y un libro abierto: los poetas y comediantes del Siglo de Oro.',
+    },
   },
   {
     id: 'retiro-prado',
@@ -69,5 +85,9 @@ export const LOCKED_TOURS: LockedTour[] = [
     durationMin: 80,
     stops: 6,
     eur: 4.49,
+    stamp: {
+      art: require('../../../assets/route-stamps/retiro-prado.png'),
+      symbol: 'Una barca de remos en el estanque del Retiro, el paseo tranquilo entre el parque y los museos.',
+    },
   },
 ];

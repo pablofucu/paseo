@@ -2,6 +2,7 @@
 // (164 × 200). Es un dibujo exclusivo que simboliza la ruta entera, no un
 // recorte de su postal. scripts/render-postcards.cjs lo hornea con la textura
 // de imprenta en assets/route-stamps/<tour>.png; el borde dentado lo pone la app.
+// Incluye también las rutas de pago aún bloqueadas (src/data/tours/locked.ts).
 //
 //   node scripts/draw-route-stamps.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -101,6 +102,104 @@ const stamps = {};
   s += T(82, 191, 'EL ARENAL', 15, deep, { ls: 2.4 });
   s += R(18, 18, 40, 16, brick) + T(22, 30, '3,90€', 11, cream, { anchor: 'start' });
   stamps['sevilla-arenal'] = s + frame(cream);
+}
+
+/* ---- Rutas de pago aún bloqueadas: un sello exclusivo para cada una ---- */
+const el = (x, y, rx, ry, fill, extra = '') => `<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(rx)}" ry="${f(ry)}" fill="${fill}"${extra}/>`;
+const band = (acc, deep, name, size, price, place) => R(0, 170, W, 30, '#f5f1e6') + R(0, 170, W, 3, acc) + T(82, 192, name, size, deep, { ls: 2 })
+  + T(10, 22, price, 13, '#f5f1e6', { anchor: 'start' }) + T(154, 22, place, 8, '#f5f1e6', { anchor: 'end', ls: 1.4 });
+
+/* Triana: plato de cerámica con flor de azulejo, sobre fondo de cuerda seca */
+{
+  const bg = '#1E7A6E', deep = '#0C3A33', gold = '#F0B23E', cream = '#f5f1e6', blue = '#1f4fa8', dark = '#13594f';
+  let s = R(0, 0, W, H, bg);
+  for (let y = 0; y < 170; y += 20) for (let x = (y / 20) % 2 ? 10 : 0; x < W + 10; x += 20) s += P(`M${x},${y - 6} L${x + 6},${y} L${x},${y + 6} L${x - 6},${y} Z`, dark);
+  s += Ci(82, 92, 62, gold) + Ci(82, 92, 55, cream) + Ci(82, 92, 49, blue) + Ci(82, 92, 44, cream);
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4, ca = Math.cos(a), sa = Math.sin(a);
+    s += el(82 + ca * 24, 92 + sa * 24, 15, 7, i % 2 ? bg : gold, ` transform="rotate(${i * 45} ${f(82 + ca * 24)} ${f(92 + sa * 24)})"`);
+  }
+  s += Ci(82, 92, 11, blue) + Ci(82, 92, 6, gold);
+  for (let i = 0; i < 16; i++) { const a = (i * Math.PI) / 8; s += Ci(82 + Math.cos(a) * 46.5, 92 + Math.sin(a) * 46.5, 1.8, i % 2 ? gold : bg); }
+  s += band(gold, deep, 'TRIANA', 17, '4,99€', 'SEVILLA');
+  stamps['triana'] = s + frame(cream);
+}
+
+/* La Sevilla de Murillo: paleta y pincel bajo un rompimiento de gloria */
+{
+  const bg = '#8A3B5C', deep = '#3D1428', gold = '#E9B44C', cream = '#f5f1e6';
+  let s = R(0, 0, W, H, bg);
+  for (let i = 0; i < 18; i++) { const a = (i * Math.PI) / 9 - Math.PI / 2; s += P(`M82,96 L${f(82 + Math.cos(a - 0.09) * 130)},${f(96 + Math.sin(a - 0.09) * 130)} L${f(82 + Math.cos(a + 0.09) * 130)},${f(96 + Math.sin(a + 0.09) * 130)} Z`, i % 2 ? '#7a3150' : '#9a4668'); }
+  s += Ci(82, 92, 60, gold) + Ci(82, 92, 53, '#f4d58a');
+  for (const [x, y, r] of [[40, 74, 9], [124, 70, 11], [118, 128, 8], [46, 124, 10]]) s += Ci(x, y, r, cream) + Ci(x - 3, y + 3, r * 0.7, '#f0e4cf');
+  // paleta de pintor con huecos y manchas
+  s += P('M44,100 Q38,66 78,60 Q124,56 128,92 Q130,124 96,126 Q84,127 84,116 Q84,106 72,108 Q54,112 44,100 Z', '#8d5a34');
+  s += P('M48,98 Q43,70 78,65 Q120,62 124,92 Q126,120 96,121 Q80,122 80,114 Q80,102 70,103 Q54,106 48,98 Z', '#b9854f');
+  s += Ci(66, 92, 4, '#ece0c8');
+  for (const [x, y, c] of [[62, 78, '#c8402f'], [80, 72, '#1f4fa8'], [100, 72, '#e5a823'], [114, 84, '#2f6a3a'], [112, 100, '#f5f1e6']]) s += Ci(x, y, 7, c) + Ci(x - 2, y - 2, 2, '#ffffff" fill-opacity="0.45');
+  // pincel cruzado
+  s += S('M52,150 L132,66', '#5a3a22', 5) + P('M126,72 L138,58 L142,62 L130,76 Z', '#d6c096') + P('M138,58 L150,44 Q154,46 152,52 L142,62 Z', '#c8402f');
+  s += band(gold, deep, 'MURILLO', 16, '3,99€', 'SEVILLA');
+  stamps['murillo'] = s + frame(cream);
+}
+
+/* El Madrid de los Austrias: el oso y el madroño, escudo de la villa */
+{
+  const bg = '#B5462E', deep = '#4A1A10', gold = '#F2C14E', cream = '#f5f1e6', bear = '#5a3a28', leaf = '#2f6a3a', fruit = '#d8301f';
+  let s = R(0, 0, W, H, bg);
+  for (let x = 0; x < W; x += 20) s += R(x, 0, 10, 170, '#a63f29');
+  s += Ci(82, 92, 62, gold) + Ci(82, 92, 55, cream);
+  // madroño
+  s += S('M116,142 Q112,118 118,86', '#5a4430', 6);
+  for (const [x, y, r] of [[118, 76, 20], [100, 88, 15], [136, 90, 15], [112, 60, 14], [128, 66, 13]]) s += Ci(x, y, r, leaf);
+  for (const [x, y] of [[108, 70], [124, 62], [132, 86], [100, 90], [118, 82], [126, 76], [110, 94]]) s += Ci(x, y, 3.4, fruit) + Ci(x - 1, y - 1, 1, '#f09a8a');
+  // oso a cuatro patas
+  s += P('M42,122 Q38,94 62,90 Q84,86 98,98 Q106,108 100,124 Z', bear);
+  s += Ci(48, 96, 14, bear) + Ci(38, 88, 6, bear) + Ci(54, 84, 5, bear) + el(36, 100, 8, 6, '#8a6a52') + Ci(32, 99, 2.2, '#1c120c') + Ci(46, 93, 1.6, cream);
+  s += R(46, 118, 11, 28, bear) + R(60, 120, 11, 26, '#4a2e20') + R(86, 118, 11, 28, bear) + R(100, 116, 10, 30, '#4a2e20');
+  s += band(gold, deep, 'AUSTRIAS', 14, '4,99€', 'MADRID');
+  stamps['austrias'] = s + frame(cream);
+}
+
+/* El Barrio de las Letras: pluma, tintero y un libro abierto con versos */
+{
+  const bg = '#2F5D8C', deep = '#132A42', gold = '#E8A93B', cream = '#f5f1e6', page = '#fbf3de';
+  let s = R(0, 0, W, H, bg);
+  for (let y = 12; y < 170; y += 14) s += R(10, y, 144, 1.4, '#3a6b9e');
+  s += Ci(82, 92, 62, gold) + Ci(82, 92, 55, '#244a72');
+  // libro abierto
+  s += P('M30,118 Q56,106 82,118 Q108,106 134,118 V134 Q108,122 82,134 Q56,122 30,134 Z', '#8a5a34');
+  s += P('M34,84 Q58,74 82,86 V122 Q58,110 34,118 Z', page) + P('M130,84 Q106,74 82,86 V122 Q106,110 130,118 Z', '#efe4c8');
+  for (let i = 0; i < 5; i++) s += S(`M42,${92 + i * 6.5} Q58,${88 + i * 6.5} ${72 - (i % 2) * 6},${95 + i * 6.5}`, '#6a5a4a', 1.4) + S(`M92,${95 + i * 6.5} Q106,${88 + i * 6.5} ${122 - (i % 2) * 8},${92 + i * 6.5}`, '#6a5a4a', 1.4);
+  // pluma
+  s += P('M70,100 Q104,48 138,26 Q134,62 104,86 Q92,96 82,108 Z', cream) + S('M82,108 Q112,60 138,26', '#b6a888', 1.8);
+  for (let i = 0; i < 6; i++) s += S(`M${96 + i * 6},${78 - i * 8} l-8,6`, '#d8ccb0', 1.2);
+  s += S('M70,100 L56,126', deep, 2.6);
+  // tintero
+  s += R(106, 112, 22, 18, deep) + R(110, 106, 14, 8, '#0c1c2e') + Ci(117, 121, 4, gold);
+  s += band(gold, deep, 'LAS LETRAS', 13, '3,99€', 'MADRID');
+  stamps['letras'] = s + frame(cream);
+}
+
+/* Del Retiro al Prado: barca de remos en el estanque, bajo un castaño */
+{
+  const bg = '#3E7B46', deep = '#16351A', gold = '#E5B94A', cream = '#f5f1e6', water = '#6fa5c4', waterLt = '#a9cde0';
+  let s = R(0, 0, W, H, bg);
+  for (let x = 0; x < W; x += 24) for (let y = (x / 24) % 2 ? 6 : 18; y < 168; y += 24) s += `<ellipse cx="${x}" cy="${y}" rx="10" ry="5" fill="#4a8a52" transform="rotate(-30 ${x} ${y})"/>`;
+  s += Ci(82, 92, 62, gold) + Ci(82, 92, 55, '#cfe6ee');
+  s += `<clipPath id="rp_c"><circle cx="82" cy="92" r="55"/></clipPath><g clip-path="url(#rp_c)">`;
+  s += R(20, 100, 130, 60, water);
+  for (let y = 108; y < 156; y += 9) s += S(`M24,${y} q6,-4 12,0 t12,0 t12,0 t12,0 t12,0 t12,0 t12,0 t12,0 t12,0 t12,0`, waterLt, 1.6);
+  s += Ci(112, 54, 12, '#f7ecc8');
+  // castaño de orilla
+  s += R(32, 66, 6, 36, '#6b4a2a') + Ci(35, 56, 20, '#2f6a3a') + Ci(24, 70, 13, '#3f7d3a') + Ci(48, 68, 12, '#4f8f48');
+  // barca
+  s += P('M56,118 h66 l-10,14 h-46 Z', '#c8553d') + R(60, 116, 58, 3, '#f5f1e6');
+  s += Ci(80, 100, 6, '#5a3a28') + R(75, 106, 11, 12, '#1f4fa8') + S('M82,110 L56,128 M82,110 L112,126', '#7a5a3a', 2.2);
+  s += S('M52,140 q8,-4 16,0 t16,0 t16,0', cream, 1.6);
+  s += '</g>';
+  s += band(gold, deep, 'RETIRO · PRADO', 12, '4,49€', 'MADRID');
+  stamps['retiro-prado'] = s + frame(cream);
 }
 
 mkdirSync(new URL('../design/route-stamps/', import.meta.url), { recursive: true });
