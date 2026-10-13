@@ -14,7 +14,6 @@ import { font } from '@/theme/fonts';
 const VB = { x: -14, y: -10, w: 928, h: 628 };
 export const postcardHeight = (width: number) => (width * VB.h) / VB.w;
 
-let uid = 0;
 
 /** Papel perforado con grano y sombra, horneado (scripts/build-postcard-paper.mjs): sin máscaras SVG */
 const PAPER = require('../../assets/postcards/paper.png');
@@ -31,12 +30,11 @@ interface Props {
 }
 
 /**
- * Postal de una ruta. Ganada: su ilustración con el marco, los
- * textos y el matasellos con la fecha en que se completó. Sin ganar: en
+ * Postal de una ruta. Ganada: su ilustración con el marco y los
+ * textos, sin matasellos encima. Sin ganar: en
  * blanco, con el progreso.
  */
 export const Postcard = memo(function Postcard({ tour, route, width, back }: Props) {
-  const id = useMemo(() => `pc${uid++}_`, []);
   const k = width / VB.w;
   const height = postcardHeight(width);
   const accent = tintaDeRuta(tour.accent);
@@ -45,8 +43,8 @@ export const Postcard = memo(function Postcard({ tour, route, width, back }: Pro
   const date = prog.completedAt;
   // El reverso no lleva la cara: no se genera
   const face = useMemo(
-    () => (back ? '' : date ? postcardFaceXml({ id, title: tour.title, subtitle: tour.postcard.subtitle, value: tour.postcard.value, accent, city: tour.city, date }) : postcardBlankXml({ title: tour.title, accent })),
-    [id, date, tour, accent, back],
+    () => (back ? '' : date ? postcardFaceXml({ title: tour.title, subtitle: tour.postcard.subtitle, value: tour.postcard.value, accent }) : postcardBlankXml({ title: tour.title, accent })),
+    [date, tour, accent, back],
   );
   const art = { left: (POSTCARD.art.x - VB.x) * k, top: (POSTCARD.art.y - VB.y) * k, width: POSTCARD.art.w * k, height: POSTCARD.art.h * k };
 
