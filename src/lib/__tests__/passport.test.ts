@@ -2,9 +2,9 @@ import { describe, expect, it } from '@jest/globals';
 import { STAMP_ART } from '@/data/stamps/images';
 import { TOURS } from '@/data/tours';
 import { contraste, PAPEL, papelDeRuta, tintaDeParada, tintaDeRuta } from '@/lib/ink';
-import { clampToSafe, overlap, randomSpot, settle, stampRotation } from '@/lib/placement';
+import { clampToSafe, overlap, randomSpot, settle, stampRotation, type Box } from '@/lib/placement';
 import { fechaRomana, fechaSello, rng, rubberDateXml } from '@/lib/rubber';
-import { sheetFor } from '@/lib/sheet';
+import { sheetFor, stampInk, stampScale } from '@/lib/sheet';
 import { dropFinalStamps, migrateVisits, routeProgress, type UserRoute } from '@/store/passport';
 
 describe('postal y sello de ruta', () => {
@@ -42,6 +42,10 @@ describe('tinta de la ruta', () => {
   });
 });
 
+/** Dos cajas separadas al menos `gap` en algún eje */
+const separated = (a: Box, b: Box, gap: number) =>
+  Math.abs(a.x - b.x) >= (a.w + b.w) / 2 + gap - 1e-6 || Math.abs(a.y - b.y) >= (a.h + b.h) / 2 + gap - 1e-6;
+
 describe('colocar sellos', () => {
   const sheet = sheetFor(330);
   it('respeta márgenes, cabecera y pie', () => {
@@ -51,11 +55,12 @@ describe('colocar sellos', () => {
     const d = clampToSafe(999, 999, 100, 100, sheet);
     expect(d.y + 50).toBeLessThanOrEqual(sheet.h - sheet.bottom);
   });
-  it('si tapa más de un 35 % a otro, se aparta lo justo', () => {
+  it('si cae sobre otro sello, se aparta lo justo y deja un hueco', () => {
     const other = { x: 165, y: 250, w: 110, h: 110 };
     const p = settle(170, 255, 110, 110, [other], sheet);
-    expect(overlap({ ...p, w: 110, h: 110 }, other)).toBeLessThanOrEqual(0.35 + 1e-9);
-    expect(Math.hypot(p.x - 170, p.y - 255)).toBeLessThan(75);
+    expect(overlap({ ...p, w: 110, h: 110 }, other)).toBe(0);
+    expect(separated({ ...p, w: 110, h: 110 }, other, sheet.gap)).toBe(true);
+    expect(Math.hypot(p.x - 170, p.y - 255)).toBeLessThan(125);
   });
   it('si cabe, cae justo donde se suelta', () => {
     expect(settle(165, 250, 110, 110, [], sheet)).toEqual({ x: 165, y: 250 });
@@ -63,7 +68,47 @@ describe('colocar sellos', () => {
   it('«Colócalo tú» encuentra un hueco libre', () => {
     const others = [{ x: 100, y: 200, w: 110, h: 110 }, { x: 230, y: 200, w: 110, h: 110 }];
     const p = randomSpot(110, 110, others, sheet, rng(3));
-    for (const o of others) expect(overlap({ ...p, w: 110, h: 110 }, o)).toBeLessThanOrEqual(0.35 + 1e-9);
+    for (const o of others) expect(separated({ ...p, w: 110, h: 110 }, o, sheet.gap)).toBe(true);
+  });
+  it('tocarse justo por el borde no vale: hace falta el hueco', () => {
+    const other = { x: 165, y: 250, w: 100, h: 100 };
+    const p = settle(165 + 100, 250, 100, 100, [other], sheet);
+    expect(separated({ ...p, w: 100, h: 100 }, other, sheet.gap)).toBe(true);
+  });
+  it('todas las paradas de la ruta más larga caben en una hoja sin tocarse', () => {
+    const longest = TOURS.reduce((a, t) => (t.stops.length > a.stops.length ? t : a));
+    for (const width of [300, 330, 390]) {
+      const sh = sheetFor(width);
+      // Tres maneras de sellar: «Colócalo tú» y soltar siempre en el centro (el peor caso para el hueco libre)
+      for (const mode of ['azar', 'centro', 'cerca'] as const) {
+        for (let seed = 1; seed <= 12; seed++) {
+          const r = rng(seed * 31 + width);
+          const placed: Box[] = [];
+          for (const stop of [...longest.stops].sort(() => r() - 0.5)) {
+            const k = stampInk(stop.rubber.shape, width, longest.stops.length);
+            const c = mode === 'azar' ? randomSpot(k.w, k.h, placed, sh, r)
+              : settle(mode === 'centro' ? width / 2 : r() * width, sh.h / 2 + (mode === 'centro' ? 0 : (r() - 0.5) * 40), k.w, k.h, placed, sh);
+            const b = { ...c, ...k };
+            for (const o of placed) expect(separated(b, o, sh.gap)).toBe(true);
+            placed.push(b);
+          }
+          expect(placed).toHaveLength(longest.stops.length);
+        }
+      }
+    }
+  });
+  it('con muchas paradas los sellos se achican en vez de pisarse', () => {
+    expect(stampScale(4)).toBe(1);
+    expect(stampScale(8)).toBeLessThan(stampScale(6));
+    expect(stampScale(60)).toBeGreaterThanOrEqual(0.5);
+    // Peor caso con 8 paradas: rectángulos soltados en el centro, uno tras otro
+    const sh = sheetFor(330), k = stampInk('rect', 330, 8), placed: Box[] = [];
+    for (let i = 0; i < 8; i++) {
+      const c = settle(165, sh.h / 2, k.w, k.h, placed, sh);
+      const b = { ...c, ...k };
+      for (const o of placed) expect(separated(b, o, sh.gap)).toBe(true);
+      placed.push(b);
+    }
   });
 });
 

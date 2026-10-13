@@ -33,17 +33,17 @@ interface Props {
 }
 
 /**
- * La hoja de la ruta con el sello «en la mano»: una vista previa al 35 % que
- * sigue al dedo. Al soltar tras arrastrar, el sello cae justo ahí (con los límites de la
- * guía) y ya no se puede mover; un toque suelto lo deja en la mano con «Sellar aquí». «Colócalo tú» busca un hueco libre al azar.
+ * La hoja de la ruta con el sello «en la mano»: una vista previa translúcida
+ * (35 % de opacidad) que sigue al dedo. Al soltar tras arrastrar, el sello cae justo ahí
+ * (con los límites de la guía, sin pisar otro sello) y ya no se puede mover; un toque suelto lo deja en la mano con «Sellar aquí». «Colócalo tú» busca un hueco libre al azar.
  */
 export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped, tone = 'dark' }: Props) {
   const route = useRoute(tour.id);
   const placeStamp = usePassport(s => s.placeStamp);
   const sheet = sheetFor(width);
   const stop = tour.stops.find(s => s.id === target)!;
-  const box = stampBox(stop.rubber.shape, width);
-  const ink = stampInk(stop.rubber.shape, width);
+  const box = stampBox(stop.rubber.shape, width, tour.stops.length);
+  const ink = stampInk(stop.rubber.shape, width, tour.stops.length);
   const [fresh, setFresh] = useState<string | null>(null);
   /** Ruta recién completada con este sello: golpe más fuerte y polvo de tinta */
   const [final, setFinal] = useState(false);
@@ -62,7 +62,7 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
   const startX = useSharedValue(0), startY = useSharedValue(0), startT = useSharedValue(0), travel = useSharedValue(0);
 
   const others = () =>
-    placedBoxes((route?.stamps ?? []).map(st => ({ ...st, shape: tour.stops.find(t => t.id === st.stopId)?.rubber.shape ?? 'circle' })), sheet);
+    placedBoxes((route?.stamps ?? []).map(st => ({ ...st, shape: tour.stops.find(t => t.id === st.stopId)?.rubber.shape ?? 'circle' })), sheet, tour.stops.length);
 
   const stampAt = (spot: { x: number; y: number }) => {
     if (done.current) return;
@@ -78,7 +78,7 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
     setTimeout(() => syncReminders(knownRoutes(st.passport.pageOrder), st.routes, true), 1800);
   };
 
-  // Como mucho un 35 % encima de otro sello
+  // Nunca encima de otro sello: se aparta al hueco libre más cercano
   const release = (x: number, y: number) => stampAt(settle(x, y, ink.w, ink.h, others(), sheet));
   const auto = () => stampAt(randomSpot(ink.w, ink.h, others(), sheet, Math.random));
   const keep = (x: number, y: number) => { if (!done.current) setHand({ x, y }); };

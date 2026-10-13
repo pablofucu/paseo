@@ -2,8 +2,10 @@
  * Dónde cae un sello en la hoja del pasaporte. El usuario elige el sitio; la
  * app solo pone límites suaves (guía de sellos, § 04):
  * - 16 px de margen con los bordes, sin pisar la cabecera ni el pie;
- * - como mucho un 35 % del sello encima de otro; si se pasa, se desplaza lo
- *   justo hacia el hueco libre más cercano.
+ * - nunca un sello encima de otro, y entre dos siempre un pequeño hueco
+ *   (`gap`); si cae encima, se desplaza lo justo hacia el hueco libre más
+ *   cercano. Para que quepan todos, sheet.ts reduce el tamaño de los sellos de
+ *   las hojas con muchas paradas.
  * Todo en píxeles de la hoja; el centro del sello es (x, y).
  */
 
@@ -14,6 +16,8 @@ export interface Sheet {
   top: number;
   bottom: number;
   margin: number;
+  /** Hueco mínimo entre dos sellos */
+  gap: number;
 }
 
 export interface Box {
@@ -32,7 +36,8 @@ export function stampRotation(rand: () => number) {
   return rand() < 0.5 ? -deg : deg;
 }
 
-export const MAX_OVERLAP = 0.35;
+/** Parte del sello pequeño que puede quedar tapada: ninguna */
+export const MAX_OVERLAP = 0;
 
 /** Lleva el centro a la zona segura (si el sello no cabe, lo centra en ese eje) */
 export function clampToSafe(x: number, y: number, w: number, h: number, s: Sheet) {
@@ -51,16 +56,21 @@ export function overlap(a: Box, b: Box) {
   return (ix * iy) / Math.min(a.w * a.h, b.w * b.h);
 }
 
-const worst = (b: Box, others: Box[]) => others.reduce((m, o) => Math.max(m, overlap(b, o)), 0);
+/** Lo peor que tapa `b` a otro sello, dejando `gap` libre alrededor de `b` */
+const worst = (b: Box, others: Box[], gap: number) => {
+  const g = { ...b, w: b.w + 2 * gap, h: b.h + 2 * gap };
+  return others.reduce((m, o) => Math.max(m, overlap(g, o)), 0);
+};
 
 /**
  * Sitio final para un sello soltado en (x, y): dentro de la zona segura y, si
- * tapa demasiado a otro, en el hueco válido más cercano. Si la hoja está tan
- * llena que no hay hueco, el sitio que menos tapa.
+ * tapa a otro (o queda a menos de `gap`), en el hueco libre más cercano. Solo si
+ * no hay hueco (no debería pasar: la hoja reduce los sellos para que quepan
+ * todos) devuelve el sitio que menos tapa.
  */
 export function settle(x: number, y: number, w: number, h: number, others: Box[], s: Sheet, max = MAX_OVERLAP) {
   const start = clampToSafe(x, y, w, h, s);
-  if (worst({ ...start, w, h }, others) <= max) return start;
+  if (worst({ ...start, w, h }, others, s.gap) <= max) return start;
   let best = start, bestScore = Infinity;
   const step = 6;
   const reach = Math.hypot(s.w, s.h);
@@ -69,7 +79,7 @@ export function settle(x: number, y: number, w: number, h: number, others: Box[]
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       const c = clampToSafe(start.x + Math.cos(a) * r, start.y + Math.sin(a) * r, w, h, s);
-      const score = worst({ ...c, w, h }, others);
+      const score = worst({ ...c, w, h }, others, s.gap);
       if (score <= max) return c;
       if (score < bestScore) { bestScore = score; best = c; }
     }
@@ -82,7 +92,7 @@ export function randomSpot(w: number, h: number, others: Box[], s: Sheet, rand: 
   let best = clampToSafe(s.w / 2, s.h / 2, w, h, s), bestScore = Infinity;
   for (let i = 0; i < 160; i++) {
     const c = clampToSafe(rand() * s.w, rand() * s.h, w, h, s);
-    const score = worst({ ...c, w, h }, others);
+    const score = worst({ ...c, w, h }, others, s.gap);
     if (score <= max) return c;
     if (score < bestScore) { bestScore = score; best = c; }
   }

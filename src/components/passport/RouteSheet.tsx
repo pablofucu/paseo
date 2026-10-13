@@ -58,7 +58,7 @@ export const RouteSheet = memo(function RouteSheet({ tour, route, width, pageNum
       {stamps.map(st => {
         const stop = tour.stops.find(t => t.id === st.stopId);
         if (!stop) return null;
-        const b = stampBox(stop.rubber.shape, width);
+        const b = stampBox(stop.rubber.shape, width, tour.stops.length);
         const art = <RubberStamp tour={tour} stop={stop} date={st.date} width={b.w} height={b.h} />;
         return (
           <View key={st.stopId} pointerEvents="none" style={{ position: 'absolute', left: st.x * width - b.w / 2, top: st.y * sheet.h - b.h / 2, width: b.w, height: b.h, transform: [{ rotate: `${st.rot}deg` }] }}>

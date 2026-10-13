@@ -188,8 +188,8 @@ export function migrateVisits(old: OldState): Pick<PassportState, 'passport' | '
       if (!stop) continue;
       route.history.push({ stopId, date });
       if (route.stamps.some(s => s.stopId === stopId)) continue;
-      const others = placedBoxes(route.stamps.map(s => ({ ...s, shape: tour.stops.find(t => t.id === s.stopId)!.rubber.shape })), sheet);
-      const size = stampInk(stop.rubber.shape, sheet.w);
+      const others = placedBoxes(route.stamps.map(s => ({ ...s, shape: tour.stops.find(t => t.id === s.stopId)!.rubber.shape })), sheet, tour.stops.length);
+      const size = stampInk(stop.rubber.shape, sheet.w, tour.stops.length);
       const spot = randomSpot(size.w, size.h, others, sheet, r);
       route.stamps.push({ stopId, date, x: spot.x / sheet.w, y: spot.y / sheet.h, rot: stampRotation(r), seed: Math.floor(r() * 1e9) });
     }
