@@ -3,8 +3,10 @@ import { useKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
 import { Redirect, router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { DuotoneImage } from '@/components/DuotoneImage';
@@ -13,9 +15,8 @@ import { ManeuverIcon, type ManeuverKind } from '@/components/ManeuverIcon';
 import { StopMarkers, StopPopup } from '@/components/MapPins';
 import { MeMarker } from '@/components/MeMarker';
 import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
-import { StopList } from '@/components/StopList';
 import type { LngLat, Tour } from '@/data/types';
-import { cumulative, distance, formatDistance, pointAlong, projectOnRoute, walkingMinutes } from '@/lib/geo';
+import { distance, formatDistance, pointAlong, projectOnRoute, walkingMinutes } from '@/lib/geo';
 import { startArrivalWatch, stopArrivalWatch } from '@/lib/arrivalWatch';
 import { entryMode } from '@/lib/entry';
 import { accuracySlack, ARRIVE_RADIUS_M, arrivalAllowed, instruction, prepareLeg } from '@/lib/guidance';
@@ -48,8 +49,10 @@ const FAR_TARGET_M = 250;
 const NEAR_TARGET_M = 180;
 /** Cuánto se deja de mover el trazo ya recorrido (metros) para no actualizar el mapa en cada lectura */
 const WALKED_STEP_M = 3;
-/** Alto del selector Mapa / Paradas con su hueco */
-const TOGGLE_H = 48;
+/** Rojo de «Terminar paseo» (la acción que no se puede deshacer) */
+const DANGER = '#B3261E';
+/** Duración de subir y bajar la hoja */
+const SHEET_MS = 260;
 
 /** Abre la app de mapas del sistema con la ruta a pie hasta un punto */
 function openSystemMaps(coord: LngLat, name: string) {
@@ -93,11 +96,13 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const ids = useMemo(() => tour.stops.map(st => st.id), [tour]);
   const stamped = useMemo(() => new Set(saved?.stamps.map(x => x.stopId)), [saved]);
   const [selected, setSelected] = useState<number | null>(null);
-  /** Mapa o lista de paradas (el respaldo cuando el GPS no ayuda) */
-  const [view, setView] = useState<'map' | 'list'>('map');
   /** Tarjeta «Estás en…» tras llegar (el GPS es fiable): escuchar o dejarlo para luego */
   const [prompt, setPrompt] = useState<{ idx: number; repeat: boolean } | null>(null);
-  const [sheetH, setSheetH] = useState(230);
+  /** Hoja inferior: alto de su cabecera (asa + escuchar), de lo que hay debajo, y si está subida */
+  const [headerH, setHeaderH] = useState(80);
+  const [bodyH, setBodyH] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const winH = useWindowDimensions().height;
   const [bannerH, setBannerH] = useState(120);
   // Si se entra directamente (sin pasar por la ficha), el paseo empieza aquí
   useEffect(() => { if (!mine) startWalk(tour.id, param); }, [mine, startWalk, tour.id, param]);
@@ -113,6 +118,40 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const visited = mine && walkState.guide != null ? tour.stops[walkState.guide] : null;
   const p = tour.palette;
   const insets = useSafeAreaInsets();
+  /** Alto de la hoja plegada (lo que tapa del mapa) y de la subida, con su recorrido */
+  const sheetH = headerH + insets.bottom + 10;
+  const fullH = Math.min(winH * 0.82, headerH + bodyH);
+  const range = Math.max(0, fullH - sheetH);
+  /** Hoja: 0 plegada, 1 subida (se mueve con el dedo) */
+  const up = useSharedValue(0);
+  const rangeSV = useSharedValue(0);
+  const startUp = useSharedValue(0);
+  const velUp = useSharedValue(0);
+  useEffect(() => { rangeSV.set(range); }, [range, rangeSV]);
+  const snap = useCallback((open: boolean) => {
+    setExpanded(open);
+    up.set(withTiming(open ? 1 : 0, { duration: SHEET_MS }));
+  }, [up]);
+  // Arrastrar el asa: sigue al dedo y al soltar se queda arriba o abajo según la posición y la velocidad
+  const drag = usePanGesture({
+    activeOffsetY: [-8, 8],
+    onBegin: () => { 'worklet'; startUp.set(up.get()); },
+    onUpdate: e => {
+      'worklet';
+      velUp.set(e.velocityY);
+      if (rangeSV.get() <= 0) return;
+      up.set(Math.min(1, Math.max(0, startUp.get() - e.translationY / rangeSV.get())));
+    },
+    onFinalize: e => {
+      'worklet';
+      if (e.canceled) return;
+      const open = Math.abs(velUp.get()) > 500 ? velUp.get() < 0 : up.get() > 0.5;
+      up.set(withTiming(open ? 1 : 0, { duration: SHEET_MS }));
+      scheduleOnRN(setExpanded, open);
+    },
+  });
+  const sheetMove = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - up.get()) * rangeSV.get() }] }));
+  const scrim = useAnimatedStyle(() => ({ opacity: up.get() * 0.45 }));
   const { testMode, simSpeed, setSimSpeed } = useSettings();
   const [source, setSource] = useState<PositionSource>(testMode ? 'simulated' : 'gps');
   const [paused, setPaused] = useState(false);
@@ -294,9 +333,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
     return { walked: done.length > 1 ? line(done) : null, rest: rest.length > 1 ? line(rest) : null };
   }, [leg, alongQ]);
 
-  const lens = useMemo(() => route.legs.map(l => cumulative(l.line).at(-1) ?? 0), [route.legs]);
-  const total = useMemo(() => lens.reduce((a, l) => a + l, 0), [lens]);
-  const totalBefore = useMemo(() => lens.slice(0, Math.max(0, target - 1)).reduce((a, l) => a + l, 0), [lens, target]);
   const frac = leg && g && leg.length > 0 ? Math.min(1, Math.max(0, g.along / leg.length)) : 0;
   const way = tour.onTheWay.find(w => w.afterStop === target - 1);
   const showWay = !!way && frac > 0.12 && frac < 0.65;
@@ -307,19 +343,19 @@ function WalkScreen({ tour }: { tour: Tour }) {
   if (want && (want[0] !== cam[0] || want[1] !== cam[1])) setCam(want);
   const camCenter = want ?? cam;
   const padBottom = selected != null ? sheetH + 110 : sheetH + 10;
-  const padTop = insets.top + bannerH + 8 + TOGGLE_H;
+  const padTop = insets.top + bannerH + 16;
 
   // Avisos debajo de la indicación: uno solo, con todo lo que pasa
   const blocked = source === 'gps' && (permission === 'denied' || permission === 'unavailable');
-  // Sin ubicación utilizable la lista pasa sola al frente, una vez; se puede volver al mapa
+  // Sin ubicación utilizable la hoja sube sola, una vez (ahí están las paradas); se puede bajar
   const autoList = useRef(false);
   const gpsUnusable = blocked || (source === 'gps' && noFix && !position);
   useEffect(() => {
     if (!gpsUnusable || autoList.current) return;
     autoList.current = true;
     setSelected(null);
-    setView('list');
-  }, [gpsUnusable]);
+    snap(true);
+  }, [gpsUnusable, snap]);
   const notice = (() => {
     if (blocked || farStart) return null;
     const parts: string[] = [];
@@ -329,9 +365,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
     if (leg && quality === 'approximate') parts.push('Sin conexión: ruta en línea recta');
     return parts.length ? parts.join(' · ') : null;
   })();
-  // El selector Mapa / Paradas va bajo la indicación (y bajo el aviso, si lo hay); lo demás cuelga de él
-  const toggleTop = insets.top + 8 + bannerH + 8 + (notice ? 40 : 0);
-  const belowToggle = toggleTop + TOGGLE_H;
+  // Lo demás cuelga de la tarjeta de indicación (y del aviso, si lo hay)
+  const belowTop = insets.top + 8 + bannerH + 8 + (notice ? 40 : 0);
 
   const kind: ManeuverKind = !g ? 'wait' : g.offRoute ? 'back' : near || g.arrived ? 'arrive' : g.next ? g.next.direction : 'straight';
   const text = rerouting
@@ -340,6 +375,10 @@ function WalkScreen({ tour }: { tour: Tour }) {
     : near ? { text: '¡Ya estás aquí!', then: `${stop.name}: te avisamos al llegar` }
     : g ? instruction(g, stop.name)
     : { text: `Vamos a ${stop.name}`, then: 'Al llegar se estampa tu sello' };
+  // Sin sorpresas (ni llegada, ni aviso, ni recálculo, ni fuera de ruta) la tarjeta dice hacia dónde vas; si no, el texto de siempre
+  const steady = !!g && !rerouting && !g.arrived && !near && !g.offRoute;
+  const stopNo = Math.min(target, tour.stops.length - 1) + 1;
+  const toward = `Hacia ${stop.name}${g ? ` · ${walkingMinutes(g.remaining)} min` : ''}`;
   const bannerDist = g ? formatDistance(g.offRoute ? g.offRouteBy : near || g.arrived ? g.toStop : g.distToNext) : '—';
 
   const skipNext = canSkip(ids, stamped, target) ? ids.findIndex((id, i) => i > target && !stamped.has(id)) : -1;
@@ -385,7 +424,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const listenCopy = mode === 'here' ? { title: 'Escuchar ahora', sub: stamped.has(stop.id) ? 'Ya tienes su sello' : 'Después, tu sello' }
     : mode === 'confirm' ? { title: `¿Ya estás en ${stop.name}?`, sub: 'Toca para escuchar y sellar' }
     : { title: `Escuchar ${stop.name}`, sub: 'Puedes escucharla ya; el sello, al llegar' };
-  const promptOn = prompt != null && !finished && offer < 0 && selected == null && view === 'map';
+  const promptOn = prompt != null && !finished && offer < 0 && selected == null && !expanded;
 
   return (
     <TourThemeProvider palette={p}>
@@ -417,12 +456,12 @@ function WalkScreen({ tour }: { tour: Tour }) {
           {position && <MeMarker position={position} heading={heading} />}
         </Map>
 
-        {/* Indicación */}
+        {/* Indicación: giro, hacia qué parada vas y el progreso del paseo */}
         <View
           onLayout={e => setBannerH(e.nativeEvent.layout.height)}
           accessible
           accessibilityLiveRegion="polite"
-          accessibilityLabel={`${bannerDist}. ${text.text}. ${text.then}`}
+          accessibilityLabel={`${bannerDist}. ${text.text}. ${text.then}. ${toward}. Parada ${stopNo} de ${tour.stops.length}`}
           style={[s.dir, { top: insets.top + 8, backgroundColor: g?.offRoute ? functional.warn : p.deep }]}
         >
           <View style={s.dirMain}>
@@ -434,7 +473,20 @@ function WalkScreen({ tour }: { tour: Tour }) {
               <Text style={[s.instr, g?.offRoute && { color: neutral.ink }]}>{text.text}</Text>
             </View>
           </View>
-          <View style={s.then}><Text style={[s.thenText, g?.offRoute && { color: neutral.ink }]} numberOfLines={1}>{text.then}</Text></View>
+          <View style={s.then}>
+            <View style={s.thenRow}>
+              <DuotoneImage source={stop.thumb} palette={p} style={s.thenPic} />
+              <Text style={[s.thenText, g?.offRoute && { color: neutral.ink }]} numberOfLines={1}>{steady ? toward : text.then}</Text>
+              <Text style={[s.thenCount, g?.offRoute && { color: neutral.ink }]}>{stopNo}/{tour.stops.length}</Text>
+            </View>
+            <View style={s.bar}>
+              {tour.stops.map((st, i) => (
+                <View key={st.id} style={[s.seg, stamped.has(st.id) && { backgroundColor: g?.offRoute ? neutral.ink : p.soft }]}>
+                  {i === target && !stamped.has(st.id) && <View style={[StyleSheet.absoluteFill, { width: `${Math.round(frac * 100)}%`, backgroundColor: g?.offRoute ? neutral.ink : p.t2 }]} />}
+                </View>
+              ))}
+            </View>
+          </View>
         </View>
 
         {notice && (
@@ -442,8 +494,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
             <Text style={s.noticeText}>{notice}</Text>
           </View>
         )}
-        {blocked && view === 'map' && (
-          <View style={[s.card, { top: belowToggle }]}>
+        {blocked && (
+          <View style={[s.card, { top: belowTop }]}>
             <Text style={s.cardTitle}>{permission === 'denied' ? 'Paseo necesita tu ubicación' : 'La ubicación está apagada'}</Text>
             <Text style={s.cardText}>{permission === 'denied' ? 'Activa la ubicación en Ajustes para que Paseo te guíe, o usa el paseo simulado.' : 'Enciende la ubicación del móvil para que Paseo te guíe.'}</Text>
             <View style={s.cardRow}>
@@ -452,8 +504,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
             </View>
           </View>
         )}
-        {farStart && view === 'map' && (
-          <View style={[s.card, { top: belowToggle }]}>
+        {farStart && (
+          <View style={[s.card, { top: belowTop }]}>
             <Text style={s.cardTitle}>Estás lejos del inicio</Text>
             <Text style={s.cardText}>La primera parada, {tour.stops[0].name}, queda a {formatDistance(position ? distance(position, tour.stops[0].coord) : FAR_START_M)}. Usa tu app de mapas para llegar; el paseo empieza al acercarte.</Text>
             <View style={s.cardRow}>
@@ -462,38 +514,20 @@ function WalkScreen({ tour }: { tour: Tour }) {
           </View>
         )}
 
-        {view === 'list' && (
-          <StopList tour={tour} stamped={stamped} target={target} position={position} status={statusFor} onPlay={listen} top={toggleTop - 6} bottom={sheetH + 12} background={c.bg} />
-        )}
-        <View style={[s.toggle, { top: toggleTop }]}>
-          {(['map', 'list'] as const).map(v => (
-            <Pressable
-              key={v}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: view === v }}
-              onPress={() => { setSelected(null); setView(v); }}
-              style={[s.toggleHalf, view === v && { backgroundColor: p.deep }]}
-            >
-              <Text style={[s.toggleText, view === v && { color: '#fff' }]}>{v === 'map' ? 'Mapa' : 'Paradas'}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Entrar y salir de la guía de la parada visitada */}
-        {view === 'map' && visited && selected == null && !promptOn && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
-        {view === 'map' && !follow && selected == null && !promptOn && (
-          <PressableScale accessibilityRole="button" accessibilityLabel="Centrar en mí" onPress={() => setFollow(true)} scaleTo={0.94} style={[s.center, { bottom: sheetH + (visited ? 72 : 14) }]}>
-            <Svg width={18} height={18} viewBox="0 0 24 24">
+        {/* Entrar y salir de la guía de la parada visitada; «Centrar en mí» encima, solo si el mapa va libre */}
+        {visited && selected == null && !promptOn && !expanded && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
+        {!follow && selected == null && !promptOn && !expanded && (
+          <PressableScale accessibilityRole="button" accessibilityLabel="Centrar en mí" onPress={() => setFollow(true)} scaleTo={0.94} style={[s.center, { bottom: sheetH + (visited ? 72 : 12) }]}>
+            <Svg width={20} height={20} viewBox="0 0 24 24">
               <Circle cx={12} cy={12} r={4} fill="none" stroke={neutral.ink} strokeWidth={2.6} />
               <Path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4" stroke={neutral.ink} strokeWidth={2.6} strokeLinecap="round" />
             </Svg>
-            <Text style={s.centerText}>Centrar en mí</Text>
           </PressableScale>
         )}
 
         {/* Modo prueba: controles para recorrer el tour sin moverse */}
-        {testMode && view === 'map' && (
-          <View style={[s.test, { top: belowToggle + 8 }]}>
+        {testMode && !expanded && (
+          <View style={[s.test, { top: belowTop + 8 }]}>
             <View style={s.testRow}>
               <Text style={s.testTitle}>Modo prueba</Text>
               <Pressable accessibilityRole="button" onPress={() => { setManual(null); setSource(v => (v === 'gps' ? 'simulated' : 'gps')); }} style={s.testChip}>
@@ -518,7 +552,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
         )}
 
         {/* Estás en otra parada sin sellar */}
-        {offer >= 0 && view === 'map' && (
+        {offer >= 0 && !expanded && (
           <Animated.View entering={FadeInDown.duration(DUR.base).easing(EASE_OUT)} style={[s.popWrap, { bottom: sheetH + 12 }]}>
             <View style={s.offer}>
               <Text style={s.offerTitle}>Estás en {tour.stops[offer].name}</Text>
@@ -550,64 +584,82 @@ function WalkScreen({ tour }: { tour: Tour }) {
           </Animated.View>
         )}
 
-        {/* Hoja inferior (y, después, encima de ella la ventana de la parada elegida en el mapa) */}
-        <Animated.View entering={FadeInDown.delay(150).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })} onLayout={e => setSheetH(e.nativeEvent.layout.height)} style={[s.bottom, { paddingBottom: insets.bottom + 14 }]}>
-          {showWay && (
-            <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(wayScript(way!)))} style={[s.way, { backgroundColor: p.soft }]}>
-              <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>
-              <Text style={[s.wayText, { color: p.deep }]} numberOfLines={1}>{way!.text}</Text>
-            </Pressable>
-          )}
-          <View style={s.progressTop}>
-            <Text style={s.progressLabel}><Text style={{ color: neutral.ink, fontFamily: font.black }}>Parada {Math.min(target, tour.stops.length - 1) + 1}</Text> de {tour.stops.length}</Text>
-            <Text style={s.progressLabel}>{formatDistance(totalBefore + (g?.along ?? 0))} / {formatDistance(total)}</Text>
-          </View>
-          <View style={s.bar}>
-            {tour.stops.map((st, i) => (
-              <View key={st.id} style={[s.seg, stamped.has(st.id) && { backgroundColor: p.t }]}>
-                {i === target && !stamped.has(st.id) && <View style={[StyleSheet.absoluteFill, { width: `${Math.round(frac * 100)}%`, backgroundColor: p.t2, borderRadius: 4 }]} />}
-              </View>
-            ))}
-          </View>
-          <PressableScale accessibilityRole="button" accessibilityLabel={`Abrir ${stop.name}`} onPress={() => openStop(target)} scaleTo={0.98} style={s.next}>
-            <DuotoneImage source={stop.photo} palette={p} style={s.nextPic} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[s.nextOver, { color: p.t }]}>Siguiente</Text>
-              <Text style={s.nextName} numberOfLines={1}>{stop.name}</Text>
+        {/* Hoja inferior: plegada solo deja escuchar la parada; subida, el resto del paseo */}
+        <Animated.View pointerEvents={expanded ? 'auto' : 'none'} style={[StyleSheet.absoluteFill, s.scrim, scrim]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Cerrar el panel" onPress={() => snap(false)} style={StyleSheet.absoluteFill} />
+        </Animated.View>
+        <Animated.View style={[s.bottom, { height: fullH || undefined, paddingBottom: 0 }, sheetMove]}>
+          <GestureDetector gesture={drag}>
+            <View onLayout={e => setHeaderH(e.nativeEvent.layout.height)}>
+              <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Cerrar paradas y opciones' : 'Abrir paradas y opciones'} onPress={() => snap(!expanded)} hitSlop={{ left: 40, right: 40 }} style={s.handleHit}>
+                <View style={s.handle} />
+              </Pressable>
+              {!finished && (
+                <View style={s.listen}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.listenTitle} numberOfLines={2}>{listenCopy.title}</Text>
+                    <Text style={s.listenSub} numberOfLines={2}>{listenCopy.sub}</Text>
+                  </View>
+                  <PressableScale
+                    accessibilityRole="button"
+                    accessibilityLabel={`${listenCopy.title}. ${listenCopy.sub}`}
+                    onPress={() => listen(target)}
+                    scaleTo={0.94}
+                    style={[s.listenPlay, { backgroundColor: mode === 'far' ? p.deep : p.t2 }]}
+                  >
+                    <Text style={[s.listenGlyph, { color: mode === 'far' ? '#fff' : neutral.ink }]}>▶</Text>
+                  </PressableScale>
+                </View>
+              )}
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.eta}>{g ? `${walkingMinutes(g.remaining)} min` : '—'}</Text>
-              <Text style={s.etaSub}>{g ? formatDistance(g.remaining) : ''}</Text>
-            </View>
-          </PressableScale>
-          {!finished && (
-            <PressableScale
-              accessibilityRole="button"
-              accessibilityLabel={`${listenCopy.title}. ${listenCopy.sub}`}
-              onPress={() => listen(target)}
-              scaleTo={0.98}
-              style={[s.listen, mode === 'far' ? { backgroundColor: p.deep } : { backgroundColor: p.t2, borderColor: `${p.t2}66` }]}
-            >
-              <View style={[s.listenPlay, { backgroundColor: mode === 'far' ? p.t : p.deep }]}><Text style={s.listenGlyph}>▶</Text></View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[s.listenTitle, { color: mode === 'far' ? '#fff' : neutral.ink }]} numberOfLines={1}>{listenCopy.title}</Text>
-                <Text style={[s.listenSub, { color: mode === 'far' ? 'rgba(255,255,255,0.8)' : neutral.ink2 }]} numberOfLines={1}>{listenCopy.sub}</Text>
-              </View>
-            </PressableScale>
-          )}
-          <View style={s.actions}>
-            {skipNext >= 0 && (
-              <PressableScale accessibilityRole="button" accessibilityHint="Pasa a la siguiente parada; esta queda sin sellar" onPress={skip} scaleTo={0.96} style={s.action}>
-                <Text style={s.actionText}>Saltar esta parada</Text>
-              </PressableScale>
+          </GestureDetector>
+          <ScrollView
+            accessibilityElementsHidden={!expanded}
+            importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'}
+            onContentSizeChange={(_, h) => setBodyH(h)}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[s.body, { paddingBottom: insets.bottom + 14 }]}
+          >
+            {showWay && (
+              <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(wayScript(way!)))} style={[s.way, { backgroundColor: p.soft }]}>
+                <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>
+                <Text style={[s.wayText, { color: p.deep }]} numberOfLines={1}>{way!.text}</Text>
+              </Pressable>
             )}
-            <PressableScale accessibilityRole="button" accessibilityHint="Guarda el paseo para seguir más tarde" onPress={pause} scaleTo={0.96} style={s.action}>
-              <Text style={s.actionText}>Pausar paseo</Text>
-            </PressableScale>
-            <PressableScale accessibilityRole="button" accessibilityHint="Pide confirmación antes de terminar el paseo" onPress={finish} scaleTo={0.96} style={s.actionQuiet}>
-              <Text style={s.actionQuietText}>Terminar paseo</Text>
-            </PressableScale>
-          </View>
+            <View>
+              {tour.stops.map((st, i) => {
+                const done = stamped.has(st.id);
+                const now = i === target && !done;
+                return (
+                  <PressableScale
+                    key={st.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${done ? 'Volver a escuchar' : 'Escuchar'} ${st.name}. ${statusFor(i)}`}
+                    onPress={() => listen(i)}
+                    scaleTo={0.98}
+                    style={[s.stopRow, now && { backgroundColor: `${p.t2}38` }]}
+                  >
+                    <Text style={[s.stopText, done && { color: p.t }, now && { fontFamily: font.black }]} numberOfLines={1}>
+                      {done ? '✓ ' : ''}{i + 1} · {st.name}{now && g ? ` · ${walkingMinutes(g.remaining)} min` : ''}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+            <View style={s.actions}>
+              {skipNext >= 0 && (
+                <PressableScale accessibilityRole="button" accessibilityHint="Pasa a la siguiente parada; esta queda sin sellar" onPress={skip} scaleTo={0.96} style={s.action}>
+                  <Text style={s.actionText}>Saltar esta parada</Text>
+                </PressableScale>
+              )}
+              <PressableScale accessibilityRole="button" accessibilityHint="Guarda el paseo para seguir más tarde" onPress={pause} scaleTo={0.96} style={s.action}>
+                <Text style={s.actionText}>Pausar paseo</Text>
+              </PressableScale>
+              <PressableScale accessibilityRole="button" accessibilityHint="Pide confirmación antes de terminar el paseo" onPress={finish} scaleTo={0.96} style={s.actionQuiet}>
+                <Text style={s.actionQuietText}>Terminar paseo</Text>
+              </PressableScale>
+            </View>
+          </ScrollView>
         </Animated.View>
         {selected != null && (
           <View style={[s.popWrap, { bottom: sheetH + 12 }]}>
@@ -639,8 +691,11 @@ const s = StyleSheet.create({
   arrow: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   dist: { fontFamily: font.black, fontSize: 32, color: '#fff', letterSpacing: -1, fontVariant: ['tabular-nums'] },
   instr: { fontFamily: font.bold, fontSize: 15, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
-  then: { backgroundColor: 'rgba(0,0,0,0.22)', paddingHorizontal: 14, paddingVertical: 8 },
-  thenText: { fontFamily: font.heavy, fontSize: 13, color: '#fff' },
+  then: { backgroundColor: 'rgba(0,0,0,0.22)', paddingHorizontal: 14, paddingTop: 8, paddingBottom: 10, gap: 8 },
+  thenRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  thenPic: { width: 26, height: 26, borderRadius: 8 },
+  thenText: { flex: 1, fontFamily: font.heavy, fontSize: 13, color: '#fff' },
+  thenCount: { fontFamily: font.black, fontSize: 13, color: '#fff', fontVariant: ['tabular-nums'] },
   notice: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(28,26,23,0.82)', borderRadius: radius.pill, paddingHorizontal: 14, minHeight: 32, justifyContent: 'center' },
   noticeText: { fontFamily: font.black, fontSize: 12, color: '#fff' },
   card: { position: 'absolute', left: 12, right: 12, backgroundColor: neutral.surface, borderRadius: 20, padding: 14, gap: 6, ...shadow[3] },
@@ -650,8 +705,7 @@ const s = StyleSheet.create({
   cardBtn: { height: 38, paddingHorizontal: 16, borderRadius: radius.pill, justifyContent: 'center' },
   cardBtnGhost: { backgroundColor: neutral.bg2 },
   cardBtnText: { fontFamily: font.black, fontSize: 14 },
-  center: { position: 'absolute', right: 14, flexDirection: 'row', alignItems: 'center', gap: 8, height: 44, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.95)', ...shadow[2] },
-  centerText: { fontFamily: font.black, fontSize: 14, color: neutral.ink },
+  center: { position: 'absolute', right: 14, width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.95)', ...shadow[2] },
   test: { position: 'absolute', left: 12, right: 12, backgroundColor: 'rgba(28,26,23,0.86)', borderRadius: 18, padding: 10, gap: 8 },
   testRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   testTitle: { flex: 1, fontFamily: font.black, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: brand.sun },
@@ -663,33 +717,28 @@ const s = StyleSheet.create({
   offer: { backgroundColor: neutral.surface, borderRadius: 22, padding: 14, gap: 2, ...shadow[3] },
   offerTitle: { fontFamily: font.serif, fontSize: 18, color: neutral.ink },
   offerText: { fontFamily: font.bold, fontSize: 13, color: neutral.ink3 },
-  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: neutral.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 18, paddingTop: 14, gap: 10, ...shadow[3] },
-  way: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.pill, padding: 5, paddingRight: 14, marginTop: -2 },
+  scrim: { backgroundColor: neutral.night },
+  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: neutral.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 18, ...shadow[3] },
+  handleHit: { height: 26, alignItems: 'center', justifyContent: 'center' },
+  handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: neutral.line },
+  body: { gap: 12, paddingTop: 12 },
+  bar: { flexDirection: 'row', gap: 4 },
+  seg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', overflow: 'hidden' },
+  way: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.pill, padding: 5, paddingRight: 14 },
   wayPlay: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   wayText: { flex: 1, fontFamily: font.heavy, fontSize: 13 },
-  progressTop: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressLabel: { fontFamily: font.heavy, fontSize: 13.5, color: neutral.ink2, fontVariant: ['tabular-nums'] },
-  bar: { flexDirection: 'row', gap: 4 },
-  seg: { flex: 1, height: 7, borderRadius: 4, backgroundColor: neutral.line, overflow: 'hidden' },
-  next: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
-  nextPic: { width: 56, height: 56, borderRadius: 14 },
-  nextOver: { fontFamily: font.black, fontSize: 11.5, letterSpacing: 1, textTransform: 'uppercase' },
-  nextName: { fontFamily: font.black, fontSize: 18, color: neutral.ink },
-  eta: { fontFamily: font.black, fontSize: 20, color: neutral.ink, fontVariant: ['tabular-nums'] },
-  etaSub: { fontFamily: font.bold, fontSize: 12, color: neutral.ink3 },
-  toggle: { position: 'absolute', left: 12, right: 12, height: 40, flexDirection: 'row', padding: 3, borderRadius: radius.pill, backgroundColor: neutral.surface, ...shadow[2] },
-  toggleHalf: { flex: 1, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  toggleText: { fontFamily: font.black, fontSize: 14, color: neutral.ink },
+  stopRow: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 12 },
+  stopText: { fontFamily: font.heavy, fontSize: 15, color: neutral.ink2 },
   promptTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   promptPic: { width: 64, height: 64, borderRadius: 16 },
-  listen: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 22, borderWidth: 4, borderColor: 'transparent' },
-  listenPlay: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  listenGlyph: { fontFamily: font.black, fontSize: 15, color: '#fff' },
-  listenTitle: { fontFamily: font.black, fontSize: 16 },
-  listenSub: { fontFamily: font.bold, fontSize: 12.5, marginTop: 1 },
+  listen: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingBottom: 2 },
+  listenPlay: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  listenGlyph: { fontFamily: font.black, fontSize: 20 },
+  listenTitle: { fontFamily: font.serif, fontSize: 19, color: neutral.ink },
+  listenSub: { fontFamily: font.bold, fontSize: 12.5, color: neutral.ink3, marginTop: 1 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   action: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: neutral.bg2, justifyContent: 'center' },
   actionQuiet: { height: 36, paddingHorizontal: 8, justifyContent: 'center' },
-  actionQuietText: { fontFamily: font.heavy, fontSize: 13, color: neutral.ink3, textDecorationLine: 'underline' },
+  actionQuietText: { fontFamily: font.heavy, fontSize: 13, color: DANGER },
   actionText: { fontFamily: font.heavy, fontSize: 13, color: neutral.ink2 },
 });
