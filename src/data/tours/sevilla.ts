@@ -5,7 +5,7 @@ import geo from './sevilla.geo.json';
 
 /** Ubicaciones y ruta fija: src/data/tours/sevilla.geo.json (la ruta y las fotos las genera el workflow «Contenido») */
 const coord = (id: string) => geo.stops.find(s => s.id === id)!.coord as LngLat;
-const credit = (id: keyof typeof credits) => ({ author: credits[id].author, license: credits[id].license });
+const credit = (id: keyof typeof credits) => ({ author: credits[id].author, license: credits[id].license, source: credits[id].source });
 
 /*
  * Coordenadas: Archivo de Indias y Giralda según latlong.net; Torre del Oro,
@@ -46,6 +46,7 @@ export const sevilla: Tour = {
       kind: "monument",
       rubber: { shape: 'oval', title: 'TORRE DEL ORO' },
       photo: require('../../../assets/tours/sevilla/torre-oro.jpg'),
+      thumb: require('../../../assets/tours/sevilla/thumbs/torre-oro.jpg'),
       photoCredit: credit("torre-oro"),
       coord: coord("torre-oro"),
       arriveHint: "Mírala desde el río: tiene doce lados y tres cuerpos de distintas épocas.",
@@ -62,6 +63,7 @@ export const sevilla: Tour = {
       kind: "civic",
       rubber: { shape: 'rect', title: 'ARCHIVO DE INDIAS' },
       photo: require('../../../assets/tours/sevilla/archivo.jpg'),
+      thumb: require('../../../assets/tours/sevilla/thumbs/archivo.jpg'),
       photoCredit: credit("archivo"),
       coord: coord("archivo"),
       arriveHint: "Busca la balaustrada del tejado, con sus pináculos de piedra.",
@@ -78,6 +80,7 @@ export const sevilla: Tour = {
       kind: "religious",
       rubber: { shape: 'circle', title: 'LA GIRALDA' },
       photo: require('../../../assets/tours/sevilla/giralda.jpg'),
+      thumb: require('../../../assets/tours/sevilla/thumbs/giralda.jpg'),
       photoCredit: credit("giralda"),
       coord: coord("giralda"),
       arriveHint: "Levanta la vista: arriba del todo gira el Giraldillo.",
@@ -94,6 +97,7 @@ export const sevilla: Tour = {
       kind: "monument",
       rubber: { shape: 'octagon', title: 'REAL ALCÁZAR', label: 'PUERTA DEL LEÓN' },
       photo: require('../../../assets/tours/sevilla/alcazar.jpg'),
+      thumb: require('../../../assets/tours/sevilla/thumbs/alcazar.jpg'),
       photoCredit: credit("alcazar"),
       coord: coord("alcazar"),
       arriveHint: "Sobre la Puerta del León verás un león coronado en azulejo.",
@@ -110,6 +114,7 @@ export const sevilla: Tour = {
       kind: "public",
       rubber: { shape: 'circle', title: 'BARRIO DE SANTA CRUZ' },
       photo: require('../../../assets/tours/sevilla/elvira.jpg'),
+      thumb: require('../../../assets/tours/sevilla/thumbs/elvira.jpg'),
       photoCredit: credit("elvira"),
       coord: coord("elvira"),
       arriveHint: "Estás en la antigua judería: calles estrechas, naranjos y patios.",
@@ -125,7 +130,7 @@ export const sevilla: Tour = {
   legSteps: geo.steps as RouteStep[][],
   onTheWay: [
     { afterStop: 0, name: "Puerto de Indias", text: "De camino: el puerto de Indias", story: "Durante el siglo dieciséis, Sevilla tuvo el monopolio del comercio con América. Los barcos que iban y venían de las Indias atracaban en esta orilla del Guadalquivir." },
-    { afterStop: 1, name: "La Avenida", text: "De camino: la Avenida de la Constitución", story: "Esta avenida es peatonal y por ella circula el tranvía. A tu izquierda se levanta la catedral, una de las mayores catedrales góticas del mundo." },
+    { afterStop: 1, name: "La Avenida", text: "De camino: la Avenida de la Constitución", story: "Esta avenida es peatonal y por ella circula el tranvía. A tu derecha se levanta la catedral, una de las mayores catedrales góticas del mundo." },
     { afterStop: 2, name: "Plaza del Triunfo", text: "De camino: la Plaza del Triunfo", story: "El monumento del centro recuerda que la ciudad salió casi intacta del terremoto de 1755, el mismo que destruyó Lisboa." },
     { afterStop: 3, name: "Patio de Banderas", text: "De camino: el Patio de Banderas", story: "Este patio cerrado, con naranjos, fue la plaza de armas del Alcázar. Por un arco en una de sus esquinas se pasa a la antigua judería." },
   ],
