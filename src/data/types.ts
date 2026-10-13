@@ -140,4 +140,9 @@ export interface LockedTour {
   eur: number;
   /** Foto de portada, si hay; si no, la tarjeta se pinta con la paleta */
   cover?: ImageSourcePropType;
+  /**
+   * Sello de correos exclusivo de la ruta (como `Tour.stamp`), si ya está
+   * dibujado: se enseña desvaído con el candado. Sin él, solo el candado.
+   */
+  stamp?: { art: ImageSourcePropType; symbol: string };
 }

@@ -8,6 +8,7 @@ import { PressableScale } from '@/components/motion';
 import { RouteStamp } from '@/components/RouteStamp';
 import { stopInk } from '@/components/RubberStamp';
 import type { LockedTour, Tour } from '@/data/types';
+import { startLabel } from '@/lib/nearby';
 import { routeProgress, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { brand, functional, neutral, radius, shadow, type TourPalette } from '@/theme/tokens';
@@ -41,7 +42,7 @@ export function Stat({ icon, color, children }: { icon: keyof typeof I; color: s
   return (
     <View style={s.stat}>
       <Icon name={icon} color={color} />
-      <Text style={s.statText}>{children}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={s.statText}>{children}</Text>
     </View>
   );
 }
@@ -79,7 +80,7 @@ export function Trail({ minutes, color }: { minutes: number; color: string }) {
           );
         })}
       </Svg>
-      <Text style={s.trailText}>{durationLabel(minutes)}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={s.trailText}>{durationLabel(minutes)}</Text>
     </View>
   );
 }
@@ -108,13 +109,13 @@ function RouteLine({ width, palette, stamped, dim }: { width: number; palette: T
   const line = (from: number, to: number) => pts.slice(from, to + 1).map(p => p.join(',')).join(' ');
   return (
     <Svg width={width} height={HERO} style={StyleSheet.absoluteFill} opacity={dim ? 0.75 : 1}>
-      {solidTo < n - 1 && <Polyline points={line(solidTo, n - 1)} fill="none" stroke="#fff" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 8" />}
-      {solidTo > 0 && <Polyline points={line(0, solidTo)} fill="none" stroke="#fff" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />}
+      {solidTo < n - 1 && <Polyline points={line(solidTo, n - 1)} fill="none" stroke={neutral.white} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="1 8" />}
+      {solidTo > 0 && <Polyline points={line(0, solidTo)} fill="none" stroke={neutral.white} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />}
       {pts.map(([x, y], i) => {
         const end = i === 0 || i === n - 1;
-        if (i === current) return <Circle key={i} cx={x} cy={y} r={started ? 9.5 : 8.5} fill={palette.t2} stroke="#fff" strokeWidth={3} />;
-        if (stamped[i]) return <Circle key={i} cx={x} cy={y} r={end ? 7 : 6} fill={palette.t} stroke="#fff" strokeWidth={3} />;
-        return <Circle key={i} cx={x} cy={y} r={end ? 7 : 5.5} fill="#fff" stroke={palette.t} strokeWidth={3} />;
+        if (i === current) return <Circle key={i} cx={x} cy={y} r={started ? 9.5 : 8.5} fill={palette.t2} stroke={neutral.white} strokeWidth={3} />;
+        if (stamped[i]) return <Circle key={i} cx={x} cy={y} r={end ? 7 : 6} fill={palette.t} stroke={neutral.white} strokeWidth={3} />;
+        return <Circle key={i} cx={x} cy={y} r={end ? 7 : 5.5} fill={neutral.white} stroke={palette.t} strokeWidth={3} />;
       })}
     </Svg>
   );
@@ -139,7 +140,7 @@ function Tag({ label, bg, color, icon }: { label: string; bg: string; color: str
   return (
     <View style={[s.tag, { backgroundColor: bg }]}>
       {icon}
-      <Text style={[s.tagText, { color }]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={[s.tagText, { color }]}>{label}</Text>
     </View>
   );
 }
@@ -147,17 +148,18 @@ function Tag({ label, bg, color, icon }: { label: string; bg: string; color: str
 /* ── Tarjetas de tour ────────────────────────────────────────────── */
 
 /** Tour que se puede hacer: su foto en duotono con la ruta encima, y debajo título, estado y datos */
-export function TourRouteCard({ tour, route }: { tour: Tour; route: UserRoute | undefined }) {
+export function TourRouteCard({ tour, route, startMeters }: { tour: Tour; route: UserRoute | undefined; /** Distancia al inicio de la ruta, si se sabe dónde estás */ startMeters?: number | null }) {
   const [w, setW] = useState(0);
   const p = tour.palette;
   const prog = routeProgress(tour.id, route);
   const stamped = stopInks(tour, route).map(Boolean);
   const next = stamped.indexOf(false);
+  const near = startLabel(startMeters);
   // Solo el precio: si la ruta está hecha o a medias ya lo dicen el sello y la línea
   const tag = tour.price === 'free'
     ? <Tag label="Gratis" bg={brand.sun} color={neutral.ink} />
-    : <Tag label={euros(tour.price.eur)} bg={functional.premium} color="#fff" icon={<Icon name="lock" color={functional.gold} size={12} />} />;
-  const label = `${tour.title}. ${prog.completed ? 'Completada' : prog.started ? `Vas por la parada ${next + 1} de ${prog.total}` : `${prog.total} paradas`}`;
+    : <Tag label={euros(tour.price.eur)} bg={functional.premium} color={neutral.white} icon={<Icon name="lock" color={functional.gold} size={12} />} />;
+  const label = `${tour.title}. ${prog.completed ? 'Completada' : prog.started ? `Vas por la parada ${next + 1} de ${prog.total}` : `${prog.total} paradas`}${near ? `. ${near}` : ''}`;
 
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={label} scaleTo={0.975} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: tour.id } })} style={s.card}>
@@ -176,6 +178,7 @@ export function TourRouteCard({ tour, route }: { tour: Tour; route: UserRoute | 
           {tag}
         </View>
         <Trail minutes={tour.durationMin} color={p.t} />
+        {near && <Text maxFontSizeMultiplier={1.3} style={s.near}>{near}</Text>}
       </View>
     </PressableScale>
   );
@@ -191,7 +194,7 @@ export function LockedRouteCard({ tour, onPress }: { tour: LockedTour; onPress: 
         <Drawn palette={p} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(29,43,79,0.5)' }]} />
         <RouteLine width={w} palette={p} stamped={Array(tour.stops).fill(false)} dim />
-        <RouteStamp height={60} rotate={4} style={s.corner} />
+        <RouteStamp locked={tour} height={60} rotate={4} style={s.corner} />
       </View>
       <View style={s.body}>
         <View style={s.row}>
@@ -199,7 +202,7 @@ export function LockedRouteCard({ tour, onPress }: { tour: LockedTour; onPress: 
             <Text style={[s.cat, { color: p.t }]} numberOfLines={1}>{tour.category}</Text>
             <Text style={s.title}>{tour.title}</Text>
           </View>
-          <Tag label={euros(tour.eur)} bg={functional.premium} color="#fff" icon={<Icon name="lock" color={functional.gold} size={12} />} />
+          <Tag label={euros(tour.eur)} bg={functional.premium} color={neutral.white} icon={<Icon name="lock" color={functional.gold} size={12} />} />
         </View>
         <Trail minutes={tour.durationMin} color={neutral.ink3} />
       </View>
@@ -214,10 +217,11 @@ const s = StyleSheet.create({
   body: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14, gap: 8 },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   cat: { fontFamily: font.black, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
-  title: { fontFamily: font.serif, fontSize: 19, lineHeight: 22, color: neutral.ink, marginTop: 1 },
-  tag: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 26, paddingHorizontal: 10, borderRadius: radius.pill },
+  title: { fontFamily: font.serifBold, fontSize: 19, lineHeight: 22, color: neutral.ink, marginTop: 1 },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 26, paddingVertical: 3, paddingHorizontal: 10, borderRadius: radius.pill },
   tagText: { fontFamily: font.black, fontSize: 12 },
   trail: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  near: { fontFamily: font.bold, fontSize: 12.5, color: neutral.ink2 },
   trailText: { fontFamily: font.black, fontSize: 14, color: neutral.ink },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   statText: { fontFamily: font.black, fontSize: 13.5, color: neutral.ink },
