@@ -17,6 +17,20 @@ export const POSTCARD_THUMB: Record<string, ImageSourcePropType> = {
   'sevilla-arenal': require('../../assets/postcards/thumb/sevilla-arenal.jpg'),
 };
 
+/** Postales a 832 px (scripts/shrink-assets.py), para las de la lista: la de 1664 px solo a pantalla completa */
+export const POSTCARD_MID: Record<string, ImageSourcePropType> = {
+  'tomares-4-paradas': require('../../assets/postcards/mid/tomares.jpg'),
+  'sevilla-centro': require('../../assets/postcards/mid/sevilla.jpg'),
+  'sevilla-arenal': require('../../assets/postcards/mid/sevilla-arenal.jpg'),
+};
+
+/** Silueta ya difuminada de las postales sin ganar (scripts/shrink-assets.py): sin blurRadius en el móvil */
+export const POSTCARD_BLUR: Record<string, ImageSourcePropType> = {
+  'tomares-4-paradas': require('../../assets/postcards/blur/tomares.jpg'),
+  'sevilla-centro': require('../../assets/postcards/blur/sevilla.jpg'),
+  'sevilla-arenal': require('../../assets/postcards/blur/sevilla-arenal.jpg'),
+};
+
 export const POSTCARD = { w: 900, h: 600, art: { x: 34, y: 34, w: 832, h: 444 } };
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');

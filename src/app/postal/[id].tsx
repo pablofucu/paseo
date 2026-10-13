@@ -104,10 +104,11 @@ function Postal({ tour }: { tour: Tour }) {
         <Pressable accessibilityRole="button" accessibilityLabel={back ? 'Ver el anverso' : 'Dar la vuelta a la postal'} onPress={flip} style={{ marginTop: 18 }}>
           <ShareMat ref={card} tour={tour}>
           <Animated.View style={[{ width: w, height: postcardHeight(w) }, style]}>
-            <Animated.View style={[StyleSheet.absoluteFill, frontFace]}>
+            {/* Cada cara se pinta una vez como textura: al girar solo se mueve la imagen, sin volver a dibujar el SVG y los textos */}
+            <Animated.View style={[StyleSheet.absoluteFill, frontFace]} renderToHardwareTextureAndroid shouldRasterizeIOS>
               <Postcard tour={tour} route={route} width={w} />
             </Animated.View>
-            <Animated.View style={[StyleSheet.absoluteFill, backFace]}>
+            <Animated.View style={[StyleSheet.absoluteFill, backFace]} renderToHardwareTextureAndroid shouldRasterizeIOS>
               <Postcard tour={tour} route={route} width={w} back />
             </Animated.View>
           </Animated.View>

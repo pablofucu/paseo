@@ -10,7 +10,8 @@ import { getTour } from '@/data/tours';
 import { tintaDeRuta } from '@/lib/ink';
 import { SHEET_RATIO } from '@/lib/sheet';
 import { cityVisas } from '@/lib/visa';
-import { knownRoutes, usePassport, usePassportHydrated } from '@/store/passport';
+import type { Tour } from '@/data/types';
+import { knownRoutes, usePassport, usePassportHydrated, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
 import { type } from '@/theme/type';
@@ -34,7 +35,11 @@ export default function Pasaporte() {
   const pageW = Math.floor(Math.min(spread ? (width - 64) / 2 : width - 32, maxH * SHEET_RATIO, 520));
 
   const pages = useMemo(() => knownRoutes(passport.pageOrder), [passport.pageOrder]);
-  const visas = useMemo(() => cityVisas(routes), [routes]);
+  // Las hojas no se rehacen con cada sello: cada hoja de ruta lee su ruta del almacén.
+  // Los visados solo cambian al completar todas las rutas de una ciudad
+  const visaKey = cityVisas(routes).map(v => v.area).join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const visas = useMemo(() => cityVisas(routes), [visaKey]);
 
   const { leaves, tabs } = useMemo(() => {
     const out: Leaf[] = [
@@ -47,7 +52,7 @@ export default function Pasaporte() {
       tabs.push({ key: id, color: tintaDeRuta(tour.accent), label: tour.title, index: out.length });
       out.push({
         key: id,
-        front: <RouteSheet tour={tour} route={routes[id]} width={pageW} pageNumber={i + 2} />,
+        front: <RouteLeaf tour={tour} width={pageW} pageNumber={i + 2} />,
         back: <SheetBack width={pageW} />,
       });
     });
@@ -55,13 +60,13 @@ export default function Pasaporte() {
     visas.forEach((visa, i) => {
       out.push({
         key: `visa-${visa.area}`,
-        front: <CityVisaPage width={pageW} pageNumber={pages.length + 2 + i} visa={visa} routes={routes} />,
+        front: <CityVisaPage width={pageW} pageNumber={pages.length + 2 + i} visa={visa} />,
         back: <SheetBack width={pageW} />,
       });
     });
     out.push({ key: 'next', front: <NextRoute width={pageW} pageNumber={pages.length + visas.length + 2} />, back: <SheetBack width={pageW} /> });
     return { leaves: out, tabs };
-  }, [pages, visas, routes, pageW]);
+  }, [pages, visas, pageW]);
 
   const stamps = pages.reduce((a, id) => a + (routes[id]?.stamps.length ?? 0), 0);
 
@@ -86,6 +91,12 @@ export default function Pasaporte() {
       </Animated.View>
     </View>
   );
+}
+
+/** Hoja de una ruta con su ruta leída del almacén: al poner un sello solo se repinta esa hoja */
+function RouteLeaf({ tour, width, pageNumber }: { tour: Tour; width: number; pageNumber: number }) {
+  const route = useRoute(tour.id);
+  return <RouteSheet tour={tour} route={route} width={width} pageNumber={pageNumber} />;
 }
 
 const s = StyleSheet.create({

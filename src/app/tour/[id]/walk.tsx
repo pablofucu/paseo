@@ -11,7 +11,6 @@ import { DuotoneImage } from '@/components/DuotoneImage';
 import { GuideButton } from '@/components/GuideButton';
 import { ManeuverIcon, type ManeuverKind } from '@/components/ManeuverIcon';
 import { StopMarkers, StopPopup } from '@/components/MapPins';
-import { MapPoints } from '@/components/MapPoints';
 import { MeMarker } from '@/components/MeMarker';
 import { DUR, EASE_OUT, PressableScale } from '@/components/motion';
 import { IconButton } from '@/components/ui';
@@ -274,7 +273,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const lens = useMemo(() => route.legs.map(l => cumulative(l.line).at(-1) ?? 0), [route.legs]);
   const total = useMemo(() => lens.reduce((a, l) => a + l, 0), [lens]);
   const totalBefore = useMemo(() => lens.slice(0, Math.max(0, target - 1)).reduce((a, l) => a + l, 0), [lens, target]);
-  const corridor = useMemo(() => route.legs.map(l => l.line), [route.legs]);
   const frac = leg && g && leg.length > 0 ? Math.min(1, Math.max(0, g.along / leg.length)) : 0;
   const way = tour.onTheWay.find(w => w.afterStop === target - 1);
   const showWay = !!way && frac > 0.12 && frac < 0.65;
@@ -359,7 +357,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
             </GeoJSONSource>
           )}
           <StopMarkers stops={tour.stops} stamped={stamped} target={target} selected={selected} palette={p} onSelect={onSelectStop} />
-          <MapPoints position={position} palette={p} corridor={corridor} />
           {position && <MeMarker position={position} heading={heading} />}
         </Map>
 
