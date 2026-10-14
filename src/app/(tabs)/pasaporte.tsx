@@ -7,6 +7,7 @@ import { rise } from '@/components/motion';
 import { Book, type BookTab, type Leaf } from '@/components/passport/Book';
 import { CityVisaPage, Cover, Holder, NextRoute, SheetBack } from '@/components/passport/Pages';
 import { RouteSheet } from '@/components/passport/RouteSheet';
+import { StampMemory, type Picked } from '@/components/passport/StampMemory';
 import { getTour } from '@/data/tours';
 import { tintaDeRuta } from '@/lib/ink';
 import { SHEET_RATIO } from '@/lib/sheet';
@@ -29,6 +30,8 @@ export default function Pasaporte() {
   const routes = usePassport(s => s.routes);
   const hydrated = usePassportHydrated();
   const [index, setIndex] = useState(0);
+  // Sello tocado: se enseña su recuerdo
+  const [picked, setPicked] = useState<Picked | null>(null);
   // «Mi pasaporte» al terminar una ruta llega con ?ruta=<tourId>: el libro se abre en su hoja
   const { ruta } = useLocalSearchParams<{ ruta?: string }>();
 
@@ -44,12 +47,14 @@ export default function Pasaporte() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const visas = useMemo(() => cityVisas(routes), [visaKey]);
 
-  useEffect(() => {
-    if (!ruta || !hydrated) return;
-    const at = pages.indexOf(ruta);
-    if (at >= 0) setIndex(2 + at);
-    router.setParams({ ruta: undefined });
-  }, [ruta, hydrated, pages]);
+  const [opened, setOpened] = useState<string | undefined>();
+  if (opened !== (hydrated ? ruta : undefined)) {
+    setOpened(hydrated ? ruta : undefined);
+    const at = ruta ? pages.indexOf(ruta) : -1;
+    if (hydrated && at >= 0) setIndex(2 + at);
+  }
+  // Una vez abierta la hoja se quita el parámetro: la próxima visita vuelve a contar
+  useEffect(() => { if (opened) router.setParams({ ruta: undefined }); }, [opened]);
 
   const { leaves, tabs } = useMemo(() => {
     const out: Leaf[] = [
@@ -62,7 +67,7 @@ export default function Pasaporte() {
       tabs.push({ key: id, color: tintaDeRuta(tour.accent), label: tour.title, index: out.length });
       out.push({
         key: id,
-        front: <RouteLeaf tour={tour} width={pageW} pageNumber={i + 2} />,
+        front: <RouteLeaf tour={tour} width={pageW} pageNumber={i + 2} onPick={setPicked} />,
         back: <SheetBack width={pageW} />,
       });
     });
@@ -76,7 +81,7 @@ export default function Pasaporte() {
     });
     out.push({ key: 'next', front: <NextRoute width={pageW} pageNumber={pages.length + visas.length + 2} />, back: <SheetBack width={pageW} /> });
     return { leaves: out, tabs };
-  }, [pages, visas, pageW]);
+  }, [pages, visas, pageW, setPicked]);
 
   const stamps = pages.reduce((a, id) => a + (routes[id]?.stamps.length ?? 0), 0);
 
@@ -99,14 +104,15 @@ export default function Pasaporte() {
         <View accessibilityLabel="Cargando el pasaporte" style={{ opacity: 0.9 }}><Cover width={pageW} /></View>
       )}
       </Animated.View>
+      <StampMemory picked={picked} onClose={() => setPicked(null)} />
     </View>
   );
 }
 
 /** Hoja de una ruta con su ruta leída del almacén: al poner un sello solo se repinta esa hoja */
-function RouteLeaf({ tour, width, pageNumber }: { tour: Tour; width: number; pageNumber: number }) {
+function RouteLeaf({ tour, width, pageNumber, onPick }: { tour: Tour; width: number; pageNumber: number; onPick: (p: Picked) => void }) {
   const route = useRoute(tour.id);
-  return <RouteSheet tour={tour} route={route} width={width} pageNumber={pageNumber} />;
+  return <RouteSheet tour={tour} route={route} width={width} pageNumber={pageNumber} onStampPress={stopId => onPick({ tourId: tour.id, stopId })} />;
 }
 
 const s = StyleSheet.create({

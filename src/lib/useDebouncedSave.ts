@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
  */
 export function useDebouncedSave(draft: string | null, save: (v: string) => void, ms = 500) {
   const saveRef = useRef(save);
-  saveRef.current = save;
+  useEffect(() => { saveRef.current = save; });
   const pending = useRef<string | null>(null);
   useEffect(() => {
     pending.current = draft;

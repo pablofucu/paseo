@@ -16,7 +16,7 @@ const TURN_MS = 750;
  */
 const SEGMENTS = [0.4, 0.3, 0.3];
 const JOINTS = [0, 0.4, 0.6];
-/** Las hojas que no pueden girar ahora van de una pieza: cada tramo vuelve a dibujar la hoja entera */
+/** Las hojas que no pueden girar ahora van de una pieza: sin tramos, una sola copia de cada cara */
 const WHOLE = [1];
 /** Curva total del borde en el punto más alto del giro (grados) */
 const BEND = { paper: 46, cover: 9 };
@@ -214,7 +214,7 @@ export function Book({ leaves, width, spread, index, onIndex, tabs }: Props) {
         <Animated.View style={[{ width: spread ? width * 2 : width, height }, camera]}>
           {visible.map(({ l, i }) => (
             // Solo se parten en tramos las dos hojas del lomo, las únicas que el próximo giro puede mover
-            <Page key={l.key} i={i} strips={i >= index - 1 && i <= index + 1} current={i === index} side={Math.sign(i - index)} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
+            <Page key={l.key} i={i} strips={i >= index - 1 && i <= index} current={i === index} side={Math.sign(i - index)} deg={deg} turning={turningSV} index={indexSV} spread={!!spread} stiff={!!l.stiff} width={width} height={height} left={spread ? width : 0} back={l.back}>
               {l.front}
             </Page>
           ))}
@@ -285,7 +285,7 @@ const Page = memo(function Page({ i, deg, turning, index, spread, stiff, strips,
   // Una hoja que no puede girar ahora solo enseña una cara: la otra ni se monta
   const front = strips || side > 0 ? children : null;
   const rear = strips || side < 0 ? back : null;
-  const seg = { cuts, i, deg, turning, index, stiff, width, height, perspective, front, back: rear, layer: strips };
+  const seg = { cuts, i, deg, turning, index, stiff, width, height, perspective, front, back: rear, layer: strips, touch: current };
   return (
     <Animated.View accessibilityElementsHidden={!current} importantForAccessibility={current ? 'auto' : 'no-hide-descendants'} style={[{ position: 'absolute', left, top: 0, width: edges(width, cuts)[1], height, transformOrigin: 'left center' }, leaf]}>
       <Segment k={0} {...seg} />
@@ -315,13 +315,15 @@ interface SegmentProps {
   back: ReactNode;
   /** Guardar las caras como textura: solo en las hojas que pueden girar (las demás no se mueven y la textura solo gasta memoria) */
   layer: boolean;
+  /** Solo la hoja abierta recibe toques (sellos del pasaporte); las demás y los reversos los dejan pasar */
+  touch: boolean;
 }
 
 /**
  * Un tramo de la hoja: recorta su franja del anverso y del reverso, y lleva
  * colgado el siguiente tramo de su borde derecho, doblado un poco más.
  */
-const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, width, height, perspective, front, back, layer }: SegmentProps) {
+const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, width, height, perspective, front, back, layer, touch }: SegmentProps) {
   const e = edges(width, cuts);
   const x = e[k], w = e[k + 1] - x;
   const last = k === cuts.length - 1;
@@ -364,10 +366,10 @@ const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, 
   // vuelven a dibujar los SVG del papel y los sellos en cada fotograma
   return (
     <>
-      <Animated.View style={[clip, face]} renderToHardwareTextureAndroid={layer} shouldRasterizeIOS={layer}>
+      <Animated.View pointerEvents={touch ? 'auto' : 'none'} style={[clip, face]} renderToHardwareTextureAndroid={layer} shouldRasterizeIOS={layer}>
         <View style={sheet}>{front}</View>
       </Animated.View>
-      <Animated.View style={[clip, rear]} renderToHardwareTextureAndroid={layer} shouldRasterizeIOS={layer}>
+      <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[clip, rear]} renderToHardwareTextureAndroid={layer} shouldRasterizeIOS={layer}>
         <View style={[sheet, { transform: [{ scaleX: -1 }] }]}>{back}</View>
       </Animated.View>
       <Animated.View pointerEvents="none" style={[clip, shade]}>
@@ -377,8 +379,8 @@ const Segment = memo(function Segment({ cuts, k, i, deg, turning, index, stiff, 
         <View style={[sheet, s.shadeBack, { transform: [{ scaleX: -1 }] }]} />
       </Animated.View>
       {!last && (
-        <Animated.View style={[{ position: 'absolute', left: w, top: 0, width: e[k + 2] - e[k + 1], height, transformOrigin: 'left center' }, joint]}>
-          <Segment {...{ cuts, i, deg, turning, index, stiff, width, height, perspective, front, back, layer }} k={k + 1} />
+        <Animated.View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[{ position: 'absolute', left: w, top: 0, width: e[k + 2] - e[k + 1], height, transformOrigin: 'left center' }, joint]}>
+          <Segment {...{ cuts, i, deg, turning, index, stiff, width, height, perspective, front, back, layer, touch }} k={k + 1} />
         </Animated.View>
       )}
     </>
