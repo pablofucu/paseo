@@ -45,10 +45,10 @@ export function StopList({ tour, stamped, target, position, status, onPlay, top,
               <Text style={[s.over, { color: p.t }]}>Parada {i + 1}</Text>
               <Text style={s.name} numberOfLines={2}>{st.name}</Text>
               <View style={s.statusRow}>
-                <Text style={s.status} numberOfLines={1}>{done || isTarget || !position ? status(i) : `A ${formatDistance(distance(position, st.coord))}`}</Text>
+                <Text style={s.status} numberOfLines={1}>{status(i)}</Text>
                 {isTarget && !done && <View style={[s.pill, { backgroundColor: p.t2 }]}><Text style={s.pillText}>Te toca</Text></View>}
               </View>
-              {isTarget && !done && position && <Text style={s.status}>A {formatDistance(distance(position, st.coord))}</Text>}
+              {!done && position && <Text style={s.status}>A {formatDistance(distance(position, st.coord))}</Text>}
             </View>
             <PressableScale
               accessibilityRole="button"
