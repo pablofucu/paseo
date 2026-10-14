@@ -32,3 +32,11 @@ export function startLabel(meters: number | null | undefined): string | null {
   if (meters == null || meters > NEARBY_MAX_M) return null;
   return meters < 8 ? 'Estás en el inicio' : `A ${formatDistance(meters)} del inicio`;
 }
+
+/** Espera a `promise` como mucho `ms`; si tarda más, null (y lo que llegue tarde se ignora) */
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise<T | null>((resolve, reject) => {
+    const t = setTimeout(() => resolve(null), ms);
+    promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+}

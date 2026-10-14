@@ -83,10 +83,10 @@ export default function CityRoutes() {
         {filtering && (
           <Animated.View entering={rise(3)} style={{ gap: 8 }}>
             <View style={s.chips}>
-              {DURATION_FILTERS.map(f => <FilterChip key={f.id} label={f.label} on={duration === f.id} onPress={() => setDuration(f.id)} />)}
+              {DURATION_FILTERS.map(f => <FilterChip key={f.id} label={f.label} on={duration === f.id} onPress={() => setDuration(duration === f.id ? 'all' : f.id)} />)}
             </View>
             <View style={s.chips}>
-              {PRICE_FILTERS.map(f => <FilterChip key={f.id} label={f.label} on={price === f.id} onPress={() => setPrice(f.id)} />)}
+              {PRICE_FILTERS.map(f => <FilterChip key={f.id} label={f.label} on={price === f.id} onPress={() => setPrice(price === f.id ? 'all' : f.id)} />)}
             </View>
           </Animated.View>
         )}

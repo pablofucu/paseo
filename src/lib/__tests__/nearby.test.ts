@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { nearestStart, sortByDistance, startLabel } from '../nearby';
-import { matchesDuration, matchesPrice, shouldFilter } from '../routeFilter';
+import { nearestStart, sortByDistance, startLabel, withTimeout } from '../nearby';
+import { DURATION_FILTERS, matchesDuration, matchesPrice, PRICE_FILTERS, shouldFilter } from '../routeFilter';
 import { LARGE_TEXT_SCALE, scaleType, type } from '@/theme/type';
 
 const at = (lng: number, lat: number) => ({ stops: [{ coord: [lng, lat] as [number, number] }] }) as never;
@@ -43,9 +43,15 @@ describe('filtros de rutas', () => {
     expect(matchesPrice(false, 'paid')).toBe(true);
   });
 
-  it('solo ofrece filtros con más de 3 rutas', () => {
+  it('solo ofrece filtros a partir de 7 rutas', () => {
     expect(shouldFilter(3)).toBe(false);
-    expect(shouldFilter(4)).toBe(true);
+    expect(shouldFilter(6)).toBe(false);
+    expect(shouldFilter(7)).toBe(true);
+  });
+
+  it('no hay opciones redundantes: «todas» es no elegir ninguna', () => {
+    expect(DURATION_FILTERS.some(f => f.id === 'all')).toBe(false);
+    expect(PRICE_FILTERS.some(f => f.id === 'all')).toBe(false);
   });
 });
 
@@ -55,5 +61,15 @@ describe('texto grande', () => {
     expect(big.body.fontSize).toBeCloseTo(16 * LARGE_TEXT_SCALE, 0);
     expect(big.body.lineHeight).toBeGreaterThan(25);
     expect(scaleType(1)).toBe(type);
+  });
+});
+
+describe('withTimeout', () => {
+  it('devuelve el valor si llega a tiempo y null si tarda', async () => {
+    expect(await withTimeout(Promise.resolve(5), 50)).toBe(5);
+    expect(await withTimeout(new Promise<number>(() => {}), 10)).toBeNull();
+  });
+  it('propaga el error', async () => {
+    await expect(withTimeout(Promise.reject(new Error('x')), 50)).rejects.toThrow('x');
   });
 });
