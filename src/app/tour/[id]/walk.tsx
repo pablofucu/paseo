@@ -1,5 +1,4 @@
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
-import { useKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
 import { Redirect, router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -79,7 +78,6 @@ export default function Walk() {
 }
 
 function WalkScreen({ tour }: { tour: Tour }) {
-  useKeepAwake();
   const focused = useIsFocused();
   const rawParam = Number(useLocalSearchParams<{ target: string }>().target ?? 0);
   // El parámetro puede venir roto (NaN, negativo, pasado de rango): se queda en una parada que exista
@@ -107,7 +105,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const winH = useWindowDimensions().height;
   const [bannerH, setBannerH] = useState(120);
   // Si se entra directamente (sin pasar por la ficha), el paseo empieza aquí
-  useEffect(() => { if (!mine) startWalk(tour.id, param); }, [mine, startWalk, tour.id, param]);
+  // (no con otra pantalla encima: al acabar la ruta, «done» cierra el paseo y el mapa de debajo no debe reabrirlo)
+  useEffect(() => { if (!mine && focused) startWalk(tour.id, param); }, [mine, focused, startWalk, tour.id, param]);
   // Pasada la última parada, al resumen final (cuando el mapa vuelve a estar delante, no con la guía encima)
   useFocusEffect(useCallback(() => {
     if (finished) router.replace({ pathname: '/tour/[id]/done', params: { id: tour.id } });
@@ -221,7 +220,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
     setPrompt(null);
     setFollow(true);
   }, [target]);
-  /** Abre la parada; con `arrived` el audio empieza solo (el usuario ha elegido escucharla) */
+  /** Abre la parada; con `arrived` se muestra el aviso de llegada (el audio solo suena si se toca ▶) */
   const openStop = useCallback((n: number, arrived?: '1' | 'repeat') => {
     narration.stop();
     setSelected(null);
