@@ -5,11 +5,11 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DUR, EASE_OUT } from '@/components/motion';
-import { Postcard, postcardHeight } from '@/components/Postcard';
+import { PackPostcard, postcardHeight } from '@/components/Postcard';
 import { ShareMat } from '@/components/ShareMat';
-import type { Tour } from '@/data/types';
-import { sharePostcard } from '@/lib/share';
-import type { UserRoute } from '@/store/passport';
+import type { Pack } from '@/data/packs';
+import { getCity } from '@/data/tours';
+import { sharePackPostcard } from '@/lib/share';
 import { font } from '@/theme/fonts';
 
 /** Fondo de la postal: el mismo en esta lámina y en la pantalla de la postal (postal/[id]) */
@@ -20,12 +20,12 @@ const SPIN_DELAY = 180;
 const SPIN_MS = 760;
 
 /**
- * «Postal desbloqueada»: se oscurece el fondo y la lámina sube suave;
+ * «Postal desbloqueada» (la de un pack completo): se oscurece el fondo y la lámina sube suave;
  * la postal llega un poco después, girando sin pasarse hasta quedarse a −3°,
  * y al asentarse vibra y la cruza un brillo. Con «Ver la postal», «Compartir» y
  * «Seguir»; tocar fuera de la lámina también la cierra.
  */
-export function PostcardUnlock({ tour, route, onClose }: { tour: Tour; route: UserRoute | undefined; onClose: () => void }) {
+export function PostcardUnlock({ pack, onClose }: { pack: Pack; onClose: () => void }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -35,6 +35,7 @@ export function PostcardUnlock({ tour, route, onClose }: { tour: Tour; route: Us
   const card = useRef<View>(null);
   const w = Math.min(width - 48 - 24, 520);
   const ch = postcardHeight(w);
+  const city = getCity(pack.city)?.name;
 
   useEffect(() => {
     y.set(withTiming(0, { duration: DUR.slow + 80, easing: EASE_OUT }));
@@ -71,20 +72,21 @@ export function PostcardUnlock({ tour, route, onClose }: { tour: Tour; route: Us
       </Animated.View>
       <Animated.View style={[s.sheet, { paddingBottom: insets.bottom + 18 }, style]}>
         <Text style={s.over}>Postal desbloqueada</Text>
-        <Text style={s.title}>{tour.title}</Text>
+        <Text style={s.title}>{pack.name}</Text>
+        {city ? <Text style={s.sub}>{city}</Text> : null}
         <Animated.View style={[{ marginVertical: 8 }, cardStyle]}>
-          <ShareMat ref={card} tour={tour}>
-            <Postcard tour={tour} route={route} width={w} />
+          <ShareMat ref={card} pack={pack}>
+            <PackPostcard pack={pack} unlocked width={w} />
           </ShareMat>
           <View pointerEvents="none" style={[s.sheenClip, { left: 12, top: 12, width: w, height: ch }]}>
             <Animated.View style={[s.band, { height: ch * 1.8, top: -ch * 0.4 }, band]} />
           </View>
         </Animated.View>
         <View style={s.row}>
-          <Pressable accessibilityRole="button" onPress={() => { onClose(); router.push({ pathname: '/postal/[id]', params: { id: tour.id } }); }} style={[s.btn, s.primary]}>
+          <Pressable accessibilityRole="button" onPress={() => { onClose(); router.push({ pathname: '/postal/[id]', params: { id: pack.id } }); }} style={[s.btn, s.primary]}>
             <Text style={[s.btnText, { color: '#1c1a17' }]}>Ver la postal</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => sharePostcard(card, tour.title)} style={[s.btn, s.secondary]}>
+          <Pressable accessibilityRole="button" onPress={() => sharePackPostcard(card, pack.name)} style={[s.btn, s.secondary]}>
             <Text style={[s.btnText, { color: '#fff' }]}>Compartir</Text>
           </Pressable>
         </View>
@@ -100,6 +102,7 @@ const s = StyleSheet.create({
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingTop: 22, paddingHorizontal: 18, backgroundColor: FONDO_POSTAL, borderTopLeftRadius: 26, borderTopRightRadius: 26, boxShadow: '0px -10px 40px rgba(0,0,0,0.4)' },
   over: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.6, textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)' },
   title: { fontFamily: font.serif, fontSize: 24, color: '#fff', marginTop: 2, textAlign: 'center' },
+  sub: { fontFamily: font.bold, fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   row: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 10 },
   btn: { flex: 1, height: 52, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   primary: { backgroundColor: '#fff' },
