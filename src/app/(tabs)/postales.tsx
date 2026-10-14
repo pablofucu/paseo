@@ -52,7 +52,7 @@ export default function Coleccion() {
       <View style={s.head}>
         <View style={{ flex: 1 }}>
           <Text style={type.overline}>Colección</Text>
-          <Text style={s.title}>{view === 'list' ? 'Sellos y postales' : 'Mapa'}</Text>
+          <Text style={s.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{view === 'list' ? 'Sellos y postales' : 'Mapa'}</Text>
           <Text style={type.caption}>{totals.stamps} de {totals.totalStamps} sellos · {totals.postcards} de {totals.totalPostcards} postales</Text>
         </View>
         <View style={s.toggle} accessibilityRole="tablist">
