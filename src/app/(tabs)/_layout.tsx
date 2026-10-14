@@ -51,7 +51,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Inicio', tabBarIcon: icon('index') }} />
       <Tabs.Screen name="pasaporte" options={{ title: 'Pasaporte', tabBarIcon: icon('pasaporte') }} />
-      <Tabs.Screen name="postales" options={{ title: 'Postales', tabBarIcon: icon('postales') }} />
+      <Tabs.Screen name="postales" options={{ title: 'Colección', tabBarIcon: icon('postales') }} />
     </Tabs>
   );
 }

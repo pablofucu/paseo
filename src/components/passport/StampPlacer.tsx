@@ -131,7 +131,7 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
       </GestureDetector>
       {fresh ? (
         <Text style={[s.hint, { color: hintColor, textAlign: 'center' }]}>
-          {prog.allStamped ? '¡Ruta completada! Has ganado la postal' : `Sello ${prog.done} de ${prog.total}`}
+          {prog.allStamped ? '¡Ruta completada! Has ganado su sello de carta' : `Sello ${prog.done} de ${prog.total}`}
         </Text>
       ) : hand ? (
         <View style={s.row}>

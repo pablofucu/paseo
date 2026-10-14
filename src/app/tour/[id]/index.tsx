@@ -10,12 +10,14 @@ import { Scrim } from '@/components/Scrim';
 import { DUR, EASE_OUT, rise } from '@/components/motion';
 import { OfflinePack } from '@/components/OfflinePack';
 import { TourMapPreview } from '@/components/TourMapPreview';
-import { Postcard } from '@/components/Postcard';
+import { PackPostcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { RouteStamp } from '@/components/RouteStamp';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
+import { packOf } from '@/data/packs';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
+import { packProgress, postcardUnlocked } from '@/lib/packs';
 import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
 import { stampBox } from '@/lib/sheet';
@@ -36,6 +38,10 @@ export default function Cover() {
   const startWalk = usePassport(s => s.startWalk);
   const saved = useRoute(tour.id);
   const prog = routeProgress(tour.id, saved);
+  const routes = usePassport(s => s.routes);
+  const pack = packOf(tour.id);
+  const packProg = pack ? packProgress(pack, routes) : null;
+  const packPost = pack ? postcardUnlocked(pack, routes) : false;
   const route = useTourRoute(tour);
   const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
   const p = tour.palette;
@@ -121,11 +127,17 @@ export default function Cover() {
             <Text style={[type.body, { flex: 1 }]}>{tour.stamp.symbol}</Text>
           </View>
 
-          <Text style={[type.headline, s.h]}>Tu postal</Text>
-          <Pressable accessibilityRole="button" disabled={!prog.completed} onPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} style={{ alignItems: 'center', gap: 6 }}>
-            <Postcard tour={tour} route={saved} width={300} />
-            <Text style={type.caption}>{prog.completed ? 'Ganada · tócala para verla' : 'Con todos los sellos te llevas esta postal'}</Text>
-          </Pressable>
+          {pack && packProg && (
+            <>
+              <Text style={[type.headline, s.h]}>Postal del pack</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Pack ${pack.name}`} onPress={() => (packPost ? router.push({ pathname: '/postal/[id]', params: { id: pack.id } }) : (router.dismissTo('/'), router.navigate('/postales')))} style={{ alignItems: 'center', gap: 6 }}>
+                {pack.postcard && <PackPostcard pack={pack} unlocked={packPost} progress={packProg.won / packProg.total} width={300} />}
+                <Text style={type.caption}>
+                  {pack.name} · {packProg.won} de {packProg.total} sellos{packPost ? ' · postal ganada, tócala para verla' : packProg.complete ? ' · postal por dibujar' : ' · con todos te llevas su postal'}
+                </Text>
+              </Pressable>
+            </>
+          )}
 
         </Animated.View>
       </Animated.ScrollView>
