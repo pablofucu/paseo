@@ -7,10 +7,19 @@ import { rise } from '@/components/motion';
 import { thenYear } from '@/components/ThenNow';
 import { IconButton } from '@/components/ui';
 import { TOURS } from '@/data/tours';
-import { creditPending } from '@/data/types';
+import { creditPending, type Tour } from '@/data/types';
 import { font } from '@/theme/fonts';
 import { neutral, shadow } from '@/theme/tokens';
 import { type } from '@/theme/type';
+
+const stopCredits = (t: Tour) => t.stops.flatMap(st => [st.photoCredit, ...(st.then ? [st.then.credit] : [])]);
+const withPending = TOURS.filter(t => stopCredits(t).some(c => creditPending(c))).map(t => t.city);
+const withCredit = TOURS.filter(t => stopCredits(t).some(c => !creditPending(c))).map(t => t.city);
+const list = (xs: string[]) => [...new Set(xs)].join(' y ');
+/** Dice la verdad de cada ruta: las fotos con crédito vienen de Wikimedia Commons; las que no, aún están por comprobar */
+const INTRO = withPending.length
+  ? `Las fotos de ${list(withCredit)} son libres y vienen de Wikimedia Commons: toca una para abrir su página de origen. En ${list(withPending)} aún falta comprobar la autoría de las fotos y se marcan como «pendiente».`
+  : 'Las fotos de las paradas son libres y vienen de Wikimedia Commons. Toca una para abrir su página de origen.';
 
 /** Créditos de las fotos: autoría, licencia y enlace a la fuente de cada una, por ruta */
 export default function Creditos() {
@@ -20,7 +29,7 @@ export default function Creditos() {
       <View style={{ gap: 10 }}>
         <IconButton label="Volver" icon="back" onPress={() => router.back()} />
         <Animated.Text entering={rise(0)} style={type.title}>Créditos de las fotos</Animated.Text>
-        <Animated.Text entering={rise(1)} style={type.body}>Las fotos de las paradas son libres y vienen de Wikimedia Commons. Toca una para abrir su página de origen. Donde pone «pendiente» aún falta comprobar la autoría.</Animated.Text>
+        <Animated.Text entering={rise(1)} style={type.body}>{INTRO}</Animated.Text>
       </View>
 
       {TOURS.map((tour, t) => (
