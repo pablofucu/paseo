@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Compass } from '@/components/Compass';
@@ -13,7 +13,10 @@ import { brand, neutral } from '@/theme/tokens';
 
 /** Entrada suave: sube 14 px y aparece, sin rebote */
 const up = (delay: number, duration: number = DUR.slow) =>
-  FadeInDown.delay(delay).duration(duration).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] });
+  // En la web una entrada a medida deja el bloque fuera del flujo (ver `rise`): allí, solo fundido
+  Platform.OS === 'web'
+    ? FadeIn.delay(delay).duration(duration).easing(EASE_OUT)
+    : FadeInDown.delay(delay).duration(duration).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] });
 
 /** Cómo funciona, en tres frases */
 const HOW = ['Camina por la ruta, parada a parada.', 'Escucha la audioguía cuando quieras.', 'Sella cada parada y gana tu postal.'];

@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { forwardRef, type ReactNode } from 'react';
-import { Pressable, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 /*
@@ -54,7 +54,10 @@ export const PressableScale = forwardRef<View, Props>(function PressableScale({ 
 
 /** Entrada escalonada: sube 12 px y aparece, `i` pasos de 50 ms después, sin rebote */
 export const rise = (i = 0) =>
-  FadeInDown.delay(i * 50).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 12 }] });
+  // En la web, Reanimated fija en absoluto (fuera del flujo) los bloques con una entrada a medida y los de debajo se les montan encima: allí solo se usa el fundido predefinido
+  Platform.OS === 'web'
+    ? FadeIn.delay(i * 50).duration(DUR.base).easing(EASE_OUT)
+    : FadeInDown.delay(i * 50).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 12 }] });
 
 /** Aparición sin desplazamiento, para lo que no debe moverse (overlays, textos sobre fotos) */
 export const appear = (delay = 0) => FadeIn.delay(delay).duration(DUR.base).easing(EASE_OUT);
