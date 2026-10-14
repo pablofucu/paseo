@@ -30,7 +30,7 @@ function Aviso({ title, text, action }: { title: string; text: string; action?: 
       <StatusBar style="light" />
       <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
       <View style={s.center}>
-        <Text style={s.title}>{title}</Text>
+        <Text accessibilityRole="header" style={s.title}>{title}</Text>
         <Text style={[s.hint, { textAlign: 'center', paddingHorizontal: 32 }]}>{text}</Text>
       </View>
       {action && (
@@ -99,7 +99,7 @@ function Postal({ tour }: { tour: Tour }) {
       <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
       <View style={s.center}>
         <Animated.Text entering={appear(120)} style={s.over}>{tour.city}</Animated.Text>
-        <Animated.Text entering={appear(180)} style={s.title}>{tour.title}</Animated.Text>
+        <Animated.Text entering={appear(180)} accessibilityRole="header" style={s.title}>{tour.title}</Animated.Text>
         <Animated.View entering={rise(2)}>
         <Pressable accessibilityRole="button" accessibilityLabel={back ? 'Ver el anverso' : 'Dar la vuelta a la postal'} onPress={flip} style={{ marginTop: 18 }}>
           <ShareMat ref={card} tour={tour}>

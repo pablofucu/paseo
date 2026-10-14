@@ -8,11 +8,12 @@ import { Compass } from '@/components/Compass';
 import { TourBanner } from '@/components/TourBanner';
 import { lightTap, PressableScale, rise } from '@/components/motion';
 import { ResumeStrip } from '@/components/ResumeStrip';
-import { Icon } from '@/components/RouteCard';
+import { durationLabel, Icon } from '@/components/RouteCard';
 import { IconButton } from '@/components/ui';
 import { CITIES, getCity, getTour, toursIn, TOURS, type City } from '@/data/tours';
 import type { LngLat } from '@/data/types';
 import { nearestStart, sortByDistance, startLabel, NEARBY_MAX_M } from '@/lib/nearby';
+import { shortestFree } from '@/lib/routeFilter';
 import { useNearby } from '@/lib/useNearby';
 import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
 import { useSettings } from '@/store/settings';
@@ -87,6 +88,9 @@ export default function Home() {
   // Tu colección: todos los sellos, los más recientes delante
   const stamps = TOURS.flatMap(t => (routes[t.id]?.stamps ?? []).map(st => ({ date: st.date, ink: getCity(t.area)?.palette.t ?? brand.primary }))).sort((a, b) => b.date.localeCompare(a.date));
 
+  // Sin ningún sello aún: se sugiere la ruta gratis más corta
+  const first = stamps.length === 0 ? shortestFree(TOURS) : undefined;
+
   return (
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 20, gap: 12 }}>
       <Animated.View entering={rise(0)} style={s.top}>
@@ -98,9 +102,16 @@ export default function Home() {
         <IconButton label="Mapa de rutas" icon="map" onPress={() => router.push('/mapa')} style={s.settings} />
         <IconButton label="Ajustes" icon="settings" onPress={() => router.push('/ajustes')} style={s.settings} />
       </Animated.View>
-      <Animated.Text entering={rise(1)} style={s.hello}>¿Dónde paseamos hoy?</Animated.Text>
+      <Animated.Text entering={rise(1)} accessibilityRole="header" style={s.hello}>¿Dónde paseamos hoy?</Animated.Text>
       <Animated.View entering={rise(2)} style={{ gap: 6 }}>
-        <View style={{ flexDirection: 'row' }}>
+        {first ? (
+          <PressableScale accessibilityRole="button" accessibilityLabel={`Tu primer paseo: ${first.title}, ${durationLabel(first.durationMin)}, ${first.stops.length} paradas, gratis`} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: first.id } })} scaleTo={0.975} style={[s.first, { backgroundColor: first.palette.deep }]}>
+            <Text style={[s.firstOver, { color: first.palette.t2 }]}>Tu primer paseo</Text>
+            <Text style={s.firstTitle}>{first.title}</Text>
+            <Text style={s.firstMeta}>{durationLabel(first.durationMin)} · {first.stops.length} paradas · gratis</Text>
+          </PressableScale>
+        ) : null}
+        {stamps.length > 0 && <View style={{ flexDirection: 'row' }}>
         <PressableScale accessibilityRole="button" accessibilityLabel={`Tu colección: ${stamps.length} sellos. Abrir el pasaporte`} onPress={() => router.push('/pasaporte')} style={s.sumpill}>
           {stamps.length > 0 && (
             <View style={{ flexDirection: 'row' }}>
@@ -109,8 +120,8 @@ export default function Home() {
           )}
           <Text maxFontSizeMultiplier={1.3} style={s.sumText}>Tu colección · {stamps.length} {stamps.length === 1 ? 'sello' : 'sellos'}</Text>
         </PressableScale>
-        </View>
-        {stamps.length === 0 && <Text style={[type.caption, { marginLeft: 6 }]}>Haz tu primera ruta para ganar un sello</Text>}
+        </View>}
+        {stamps.length === 0 && !first && <Text style={[type.caption, { marginLeft: 6 }]}>Haz tu primera ruta para ganar un sello</Text>}
       </Animated.View>
 
       <View style={{ height: 4 }} />
@@ -129,6 +140,10 @@ const s = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   settings: { width: 38, height: 38, backgroundColor: neutral.surface, ...shadow[1] },
   hello: { fontFamily: font.serifBold, fontSize: 30, lineHeight: 34, color: neutral.ink },
+  first: { borderRadius: 20, padding: 16, gap: 3, ...shadow[1] },
+  firstOver: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase' },
+  firstTitle: { fontFamily: font.serifBold, fontSize: 22, lineHeight: 26, color: neutral.white },
+  firstMeta: { fontFamily: font.bold, fontSize: 13.5, color: 'rgba(255,255,255,0.85)' },
   sumpill: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36, paddingVertical: 4, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: neutral.ink },
   mini: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: neutral.ink },
   sumText: { fontFamily: font.black, fontSize: 13, color: neutral.white, paddingLeft: 6 },

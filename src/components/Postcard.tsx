@@ -3,6 +3,7 @@ import { memo, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import type { Tour } from '@/data/types';
+import { completedPhrase } from '@/lib/dates';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { PAPEL_POSTAL, tintaDeRuta } from '@/lib/ink';
 import { POSTCARD, POSTCARD_BLUR, POSTCARD_MID, POSTCARD_THUMB, postcardBlankXml, postcardFaceXml } from '@/lib/postcard';
@@ -91,7 +92,7 @@ function PostcardBack({ tour, route, width, accent }: { tour: Tour; route: UserR
       <Paper width={width} height={height} />
       <View style={[s.abs, { left: 60 * k, top: 60 * k, width: 420 * k, bottom: 60 * k }]}>
         <Text style={[s.msg, { fontSize: fs(25), lineHeight: fs(38) }]}>
-          ¡Hola! Hoy he completado «{tour.title}»: {tour.stops.length} paradas y {formatDistance(meters)} a pie por {tour.city}.
+          ¡Hola! {completedPhrase(date)} «{tour.title}»: {tour.stops.length} paradas y {formatDistance(meters)} a pie por {tour.city}.
         </Text>
         <Text style={[s.msgSmall, { fontSize: fs(19), lineHeight: fs(28), marginTop: 14 * k }]}>{tour.stops.map(st => st.name).join(' · ')}</Text>
         <Text style={[s.msg, { fontSize: fs(23), marginTop: 'auto' }]}>{tour.city}, {when}{owner ? `\n— ${owner}` : ''}</Text>

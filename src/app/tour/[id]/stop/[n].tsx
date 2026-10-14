@@ -135,7 +135,7 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
 
         <View style={s.body}>
           <Animated.Text entering={rise(1)} style={[type.overline, { color: p.t }]}>Parada {n + 1} de {tour.stops.length} · {KIND_LABEL[stop.kind]}</Animated.Text>
-          <Animated.Text entering={rise(2)} style={type.title}>{stop.name}</Animated.Text>
+          <Animated.Text entering={rise(2)} accessibilityRole="header" style={type.title}>{stop.name}</Animated.Text>
           <Animated.View entering={rise(3)}><AudioPlayer title={stop.audioTitle} player={player} /></Animated.View>
           <Animated.Text entering={rise(4)} style={type.body}>{stop.p1}</Animated.Text>
           <Animated.View entering={rise(5)} style={[s.look, { backgroundColor: p.soft }]}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { bearing, boundsOf, cumulative, destination, distance, formatDistance, maneuvers, pointAlong, projectOnRoute, turnAngle } from '../geo';
+import { bearing, boundsOf, cumulative, destination, distance, formatDistance, maneuvers, pointAlong, projectOnRoute, turnAngle, walkedMeters } from '../geo';
 import { arrivalAllowed, guide, instruction, prepareLeg } from '../guidance';
 import type { LngLat } from '@/data/types';
 
@@ -150,5 +150,14 @@ describe('boundsOf', () => {
   it('con un solo punto la caja es ese punto y sin puntos no hay caja', () => {
     expect(boundsOf([A])).toEqual([A[0], A[1], A[0], A[1]]);
     expect(boundsOf([])).toBeNull();
+  });
+});
+
+describe('walkedMeters', () => {
+  it('suma los tramos hasta la parada sellada más lejana', () => {
+    expect(walkedMeters([100, 200, 300], [])).toBe(0);
+    expect(walkedMeters([100, 200, 300], [0])).toBe(0);
+    expect(walkedMeters([100, 200, 300], [0, 2])).toBe(300);
+    expect(walkedMeters([100, 200, 300], [3, 1])).toBe(600);
   });
 });

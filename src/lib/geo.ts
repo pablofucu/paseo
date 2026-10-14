@@ -127,6 +127,12 @@ export function formatDistance(m: number): string {
   return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 }
 
+/** Metros andados hasta la parada sellada más lejana (legMeters[i] va de la parada i a la i + 1); 0 sin sellos */
+export function walkedMeters(legMeters: number[], stampedIdx: number[]): number {
+  if (!stampedIdx.length) return 0;
+  return legMeters.slice(0, Math.max(...stampedIdx)).reduce((a, m) => a + m, 0);
+}
+
 /** Minutos a pie a 4,5 km/h, como mínimo 1. */
 export const walkingMinutes = (m: number) => Math.max(1, Math.ceil(m / 75));
 

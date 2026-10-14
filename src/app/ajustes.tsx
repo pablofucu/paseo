@@ -16,7 +16,7 @@ function Section({ title, i, children }: { title: string; i: number; children: R
   const type = useType();
   return (
     <Animated.View entering={rise(i)} style={{ gap: 8 }}>
-      <Text style={[type.overline, { marginLeft: 4 }]}>{title}</Text>
+      <Text accessibilityRole="header" style={[type.overline, { marginLeft: 4 }]}>{title}</Text>
       <View style={s.group}>{children}</View>
     </Animated.View>
   );
@@ -46,7 +46,7 @@ export default function Ajustes() {
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 20, gap: 22 }}>
       <View style={{ gap: 10 }}>
         <IconButton label="Volver" icon="back" onPress={goBack} />
-        <Animated.Text entering={rise(0)} style={type.title}>Ajustes</Animated.Text>
+        <Animated.Text entering={rise(0)} accessibilityRole="header" style={type.title}>Ajustes</Animated.Text>
       </View>
 
       <Section title="Idioma · Language" i={1}>

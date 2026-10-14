@@ -28,13 +28,13 @@ export default function Creditos() {
     <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32, paddingHorizontal: 20, gap: 22 }}>
       <View style={{ gap: 10 }}>
         <IconButton label="Volver" icon="back" onPress={() => router.back()} />
-        <Animated.Text entering={rise(0)} style={type.title}>Créditos de las fotos</Animated.Text>
+        <Animated.Text entering={rise(0)} accessibilityRole="header" style={type.title}>Créditos de las fotos</Animated.Text>
         <Animated.Text entering={rise(1)} style={type.body}>{INTRO}</Animated.Text>
       </View>
 
       {TOURS.map((tour, t) => (
         <Animated.View key={tour.id} entering={rise(t + 2)} style={{ gap: 8 }}>
-          <Text style={[type.overline, { marginLeft: 4 }]}>{tour.title}</Text>
+          <Text accessibilityRole="header" style={[type.overline, { marginLeft: 4 }]}>{tour.title}</Text>
           <View style={s.group}>
             {tour.stops.flatMap(st => [
               { key: st.id, name: st.name, thumb: st.thumb, c: st.photoCredit },

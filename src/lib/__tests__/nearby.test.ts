@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { nearestStart, sortByDistance, startLabel, withTimeout } from '../nearby';
-import { DURATION_FILTERS, matchesDuration, matchesPrice, PRICE_FILTERS, shouldFilter } from '../routeFilter';
+import { nearestStart, sortByDistance, startLabel, walkingDirectionsUrl, withTimeout } from '../nearby';
+import { DURATION_FILTERS, matchesDuration, matchesPrice, PRICE_FILTERS, shortestFree, shouldFilter } from '../routeFilter';
 import { LARGE_TEXT_SCALE, scaleType, type } from '@/theme/type';
 
 const at = (lng: number, lat: number) => ({ stops: [{ coord: [lng, lat] as [number, number] }] }) as never;
@@ -71,5 +71,22 @@ describe('withTimeout', () => {
   });
   it('propaga el error', async () => {
     await expect(withTimeout(Promise.reject(new Error('x')), 50)).rejects.toThrow('x');
+  });
+});
+
+describe('primer paseo', () => {
+  it('elige la ruta gratis más corta', () => {
+    const t = [{ id: 'a', price: 'free' as const, durationMin: 90 }, { id: 'b', price: { eur: 3 }, durationMin: 30 }, { id: 'c', price: 'free' as const, durationMin: 60 }];
+    expect(shortestFree(t)?.id).toBe('c');
+    expect(shortestFree([t[1]])).toBeUndefined();
+  });
+});
+
+describe('cómo llegar', () => {
+  const c: [number, number] = [-6.07, 37.37];
+  it('usa las coordenadas, a pie, según la plataforma', () => {
+    expect(walkingDirectionsUrl(c, 'Rotonda', 'ios')).toBe('http://maps.apple.com/?daddr=37.37,-6.07&dirflg=w');
+    expect(walkingDirectionsUrl(c, 'Plaza de España', 'android')).toBe('geo:37.37,-6.07?q=37.37,-6.07(Plaza%20de%20Espa%C3%B1a)');
+    expect(walkingDirectionsUrl(c, 'x', 'web')).toBe('https://www.google.com/maps/dir/?api=1&destination=37.37,-6.07&travelmode=walking');
   });
 });

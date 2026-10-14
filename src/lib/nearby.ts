@@ -40,3 +40,14 @@ export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | nul
     promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
   });
 }
+
+/**
+ * Enlace para abrir el mapa del móvil con la ruta a pie hasta unas coordenadas
+ * (no una dirección: hay rutas que empiezan en una rotonda sin calle).
+ */
+export function walkingDirectionsUrl(coord: LngLat, name: string, os: string): string {
+  const [lng, lat] = coord;
+  if (os === 'ios') return `http://maps.apple.com/?daddr=${lat},${lng}&dirflg=w`;
+  if (os === 'android') return `geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(name)})`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+}
