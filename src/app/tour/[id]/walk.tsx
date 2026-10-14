@@ -59,6 +59,9 @@ const DANGER = '#B3261E';
 const FOLLOW_RESUME_MS = 12000;
 /** Duración de subir y bajar la hoja */
 const SHEET_MS = 260;
+/** Inclinación del mapa con la ruta arriba, en grados, y cuánto baja tu punto al seguirte de cerca (fracción del alto de pantalla), para ver más calle por delante */
+const TILT_DEG = 45;
+const TILT_LIFT = 0.16;
 
 const HAPTIC: Record<HapticKind, () => Promise<void>> = {
   light: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
@@ -75,13 +78,13 @@ const RouteLayers = memo(function RouteLayers({ walked, rest, route, road }: { w
     <>
       {walked && (
         <GeoJSONSource id="walked" data={walked}>
-          <Layer id="walked-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': route, 'line-width': 4, 'line-opacity': 0.35 }} />
+          <Layer id="walked-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': route, 'line-width': 5, 'line-opacity': 0.35 }} />
         </GeoJSONSource>
       )}
       {rest && (
         <GeoJSONSource id="route" data={rest}>
-          <Layer id="route-case" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': road, 'line-width': 12 }} />
-          <Layer id="route-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': route, 'line-width': 7.5 }} />
+          <Layer id="route-case" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': road, 'line-width': 16 }} />
+          <Layer id="route-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': route, 'line-width': 10 }} />
         </GeoJSONSource>
       )}
     </>
@@ -390,7 +393,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   }
   const offer = here >= 0 && !g?.arrived && !declined.includes(tour.stops[here].id) && selected == null ? here : -1;
 
-  const style = useMemo(() => buildMapStyle(p), [p]);
+  const style = useMemo(() => buildMapStyle(p, 13), [p]);
   const c = useMemo(() => mapColors(p), [p]);
 
   // El trazo recorrido solo se rehace cuando avanzas unos metros, y la geometría se guarda por tramo
@@ -414,6 +417,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
   // Lejos de la parada (> 150 m) se encuadran tú y la parada, respetando la tarjeta de arriba y la hoja de abajo; de cerca, zoom fijo
   const padBottom = selected != null ? sheetH + 110 : sheetH + 10;
   const padTop = insets.top + bannerH + 16;
+  // Con la ruta arriba, el mapa se inclina como un navegador; con el norte arriba o al elegir una parada, se ve plano desde arriba
+  const tilted = mapOrientation === 'route' && selected == null;
   const [fitting, setFitting] = useState(false);
   const fitD = position && !finished ? distance(position, stop.coord) : null;
   const fittingNow = fitD == null ? false : fitting ? fitD > FIT_BACK_M : fitD > FIT_FAR_M;
@@ -530,9 +535,9 @@ function WalkScreen({ tour }: { tour: Tour }) {
           onRegionDidChange={e => { mapRot.value = e.nativeEvent.bearing; if (e.nativeEvent.userInteraction) touchMap(); }}
         >
           {/* Con una parada elegida, el mapa vuela hasta ella; si no, sigue tu posición */}
-          <Camera center={camCenter} zoom={selected != null ? 17.3 : fit?.zoom ?? FOLLOW_ZOOM} bearing={rot.bearing} duration={selected != null ? 900 : Math.max(700, rot.ms)} easing={selected != null ? 'fly' : 'ease'} padding={{ top: padTop, bottom: padBottom, left: 0, right: 0 }} />
+          <Camera center={camCenter} zoom={selected != null ? 17.3 : fit?.zoom ?? FOLLOW_ZOOM} bearing={rot.bearing} pitch={tilted ? TILT_DEG : 0} duration={selected != null ? 900 : Math.max(700, rot.ms)} easing={selected != null ? 'fly' : 'ease'} padding={{ top: padTop + (tilted && !fit ? Math.round(winH * TILT_LIFT) : 0), bottom: padBottom, left: 0, right: 0 }} />
           <RouteLayers walked={routeGeo?.walked ?? null} rest={routeGeo?.rest ?? null} route={c.route} road={c.road} />
-          <StopMarkers stops={tour.stops} stamped={stamped} target={target} selected={selected} palette={p} onSelect={onSelectStop} />
+          <StopMarkers stops={tour.stops} stamped={stamped} target={target} selected={selected} palette={p} onSelect={onSelectStop} large />
           {position && <MeMarker position={position} heading={heading} />}
         </Map>
 
@@ -546,7 +551,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
         >
           <View style={s.dirMain}>
             <View style={[s.arrow, { backgroundColor: g?.offRoute ? 'rgba(255,255,255,0.55)' : p.t2 }]}>
-              <ManeuverIcon kind={kind} color={neutral.ink} size={34} />
+              <ManeuverIcon kind={kind} color={neutral.ink} size={42} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[s.dist, g?.offRoute && { color: neutral.ink }]}>{bannerDist}</Text>
@@ -600,7 +605,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
         {visited && selected == null && !promptOn && !expanded && <GuideButton to="guide" photo={visited.thumb} palette={p} onPress={() => openStop(walkState!.guide!)} style={{ bottom: sheetH + 12 }} />}
         {!follow && selected == null && !promptOn && !expanded && (
           <PressableScale accessibilityRole="button" accessibilityLabel="Centrar en mí" onPress={() => setFollow(true)} scaleTo={0.94} style={[s.center, { bottom: sheetH + (visited ? 72 : 12) }]}>
-            <Svg width={20} height={20} viewBox="0 0 24 24">
+            <Svg width={24} height={24} viewBox="0 0 24 24">
               <Circle cx={12} cy={12} r={4} fill="none" stroke={neutral.ink} strokeWidth={2.6} />
               <Path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4" stroke={neutral.ink} strokeWidth={2.6} strokeLinecap="round" />
             </Svg>
@@ -784,14 +789,14 @@ function WalkScreen({ tour }: { tour: Tour }) {
 const s = StyleSheet.create({
   dir: { position: 'absolute', left: 12, right: 12, borderRadius: 24, overflow: 'hidden', ...shadow[3] },
   dirMain: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  arrow: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  dist: { fontFamily: font.black, fontSize: 32, color: '#fff', letterSpacing: -1, fontVariant: ['tabular-nums'] },
-  instr: { fontFamily: font.bold, fontSize: 15, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
+  arrow: { width: 66, height: 66, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  dist: { fontFamily: font.black, fontSize: 40, color: '#fff', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  instr: { fontFamily: font.bold, fontSize: 18, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
   then: { backgroundColor: 'rgba(0,0,0,0.22)', paddingHorizontal: 14, paddingTop: 8, paddingBottom: 10, gap: 8 },
   thenRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  thenPic: { width: 26, height: 26, borderRadius: 8 },
-  thenText: { flex: 1, fontFamily: font.heavy, fontSize: 13, color: '#fff' },
-  thenCount: { fontFamily: font.black, fontSize: 13, color: '#fff', fontVariant: ['tabular-nums'] },
+  thenPic: { width: 30, height: 30, borderRadius: 9 },
+  thenText: { flex: 1, fontFamily: font.heavy, fontSize: 15, color: '#fff' },
+  thenCount: { fontFamily: font.black, fontSize: 15, color: '#fff', fontVariant: ['tabular-nums'] },
   notice: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(28,26,23,0.82)', borderRadius: radius.pill, paddingHorizontal: 14, minHeight: 32, justifyContent: 'center' },
   noticeText: { fontFamily: font.black, fontSize: 12, color: '#fff' },
   card: { position: 'absolute', left: 12, right: 12, backgroundColor: neutral.surface, borderRadius: 20, padding: 14, gap: 6, ...shadow[3] },
@@ -801,7 +806,7 @@ const s = StyleSheet.create({
   cardBtn: { height: 38, paddingHorizontal: 16, borderRadius: radius.pill, justifyContent: 'center' },
   cardBtnGhost: { backgroundColor: neutral.bg2 },
   cardBtnText: { fontFamily: font.black, fontSize: 14 },
-  center: { position: 'absolute', right: 14, width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.95)', ...shadow[2] },
+  center: { position: 'absolute', right: 14, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.95)', ...shadow[2] },
   test: { position: 'absolute', left: 12, right: 12, backgroundColor: 'rgba(28,26,23,0.86)', borderRadius: 18, padding: 10, gap: 8 },
   testRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   testTitle: { flex: 1, fontFamily: font.black, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: brand.sun },
@@ -828,10 +833,10 @@ const s = StyleSheet.create({
   promptTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   promptPic: { width: 64, height: 64, borderRadius: 16 },
   listen: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingBottom: 2 },
-  listenPlay: { width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
-  listenGlyph: { fontFamily: font.black, fontSize: 20 },
-  listenTitle: { fontFamily: font.serif, fontSize: 19, color: neutral.ink },
-  listenSub: { fontFamily: font.bold, fontSize: 12.5, color: neutral.ink3, marginTop: 1 },
+  listenPlay: { width: 62, height: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center' },
+  listenGlyph: { fontFamily: font.black, fontSize: 23 },
+  listenTitle: { fontFamily: font.serif, fontSize: 21, color: neutral.ink },
+  listenSub: { fontFamily: font.bold, fontSize: 14, color: neutral.ink3, marginTop: 1 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   action: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: neutral.bg2, justifyContent: 'center' },
   actionQuiet: { height: 36, paddingHorizontal: 8, justifyContent: 'center' },
