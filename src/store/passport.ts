@@ -64,8 +64,10 @@ export type Drop = Omit<PlacedStamp, 'date' | 'stopId'>;
 interface PassportState {
   passport: UserPassport;
   routes: Record<string, UserRoute>;
-  /** Paseo en curso (no se guarda): la ruta, la parada a la que se va y en cuál se está ya */
+  /** Paseo en curso: la ruta, la parada a la que se va y en cuál se está ya. Se guarda 12 h (ver `restoreWalk`) */
   walk: ActiveWalk | null;
+  /** Cuándo cambió el paseo por última vez (ms): de aquí sale su caducidad */
+  walkAt: number | null;
   setOwner: (owner: string) => void;
   /** Empieza (o retoma) el paseo hacia la parada `target` */
   startWalk: (tourId: string, target: number, skipped?: string[]) => void;
@@ -87,6 +89,17 @@ interface PassportState {
   reset: () => void;
 }
 
+/** Un paseo guardado caduca a las 12 h sin tocarlo: pasado ese tiempo ya no es «el paseo de ahora» */
+export const WALK_TTL_MS = 12 * 3600 * 1000;
+
+/** El paseo guardado si sigue vigente (no caducado, de una ruta que existe y con la parada en rango); si no, null */
+export function restoreWalk(walk: ActiveWalk | null | undefined, at: number | null | undefined, nowMs: number): ActiveWalk | null {
+  if (!walk || typeof at !== 'number' || !Number.isFinite(at) || nowMs - at > WALK_TTL_MS || at > nowMs + 60_000) return null;
+  const tour = getTour(walk.tourId);
+  if (!tour || !Number.isInteger(walk.target) || walk.target < 0 || walk.target > tour.stops.length) return null;
+  return walk;
+}
+
 const emptyRoute = (routeId: string): UserRoute => ({ routeId, stamps: [], postcardUnlockedAt: null, history: [] });
 const now = () => new Date().toISOString();
 const freshPassport = (): UserPassport => ({ owner: '', issuedAt: now(), pageOrder: [] });
@@ -102,13 +115,14 @@ export const usePassport = create<PassportState>()(
       passport: freshPassport(),
       routes: {},
       walk: null,
+      walkAt: null,
       setOwner: owner => set(s => ({ passport: { ...s.passport, owner: owner.slice(0, 24) } })),
-      startWalk: (tourId, target, skipped) => set({ walk: { tourId, target, arrived: null, guide: null, ...(skipped?.length ? { skipped } : {}) } }),
+      startWalk: (tourId, target, skipped) => set({ walk: { tourId, target, arrived: null, guide: null, ...(skipped?.length ? { skipped } : {}) }, walkAt: Date.now() }),
       skipStop: (stopId, target) =>
-        set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null, skipped: s.walk.skipped?.includes(stopId) ? s.walk.skipped : [...(s.walk.skipped ?? []), stopId] } } : s)),
-      advanceWalk: () => set(s => (s.walk ? { walk: { ...s.walk, target: s.walk.target + 1, arrived: null } } : s)),
-      goTo: target => set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null } } : s)),
-      endWalk: () => set({ walk: null }),
+        set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null, skipped: s.walk.skipped?.includes(stopId) ? s.walk.skipped : [...(s.walk.skipped ?? []), stopId] }, walkAt: Date.now() } : s)),
+      advanceWalk: () => set(s => (s.walk ? { walk: { ...s.walk, target: s.walk.target + 1, arrived: null }, walkAt: Date.now() } : s)),
+      goTo: target => set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null }, walkAt: Date.now() } : s)),
+      endWalk: () => set({ walk: null, walkAt: null }),
       arrive: (tourId, stopId) => {
         let already = false;
         set(s => {
@@ -117,6 +131,7 @@ export const usePassport = create<PassportState>()(
           return {
             routes: { ...s.routes, [tourId]: { ...route, history: [...route.history, { stopId, date: now() }] } },
             walk: s.walk?.tourId === tourId ? { ...s.walk, arrived: stopId, guide: s.walk.target } : s.walk,
+            walkAt: s.walk?.tourId === tourId ? Date.now() : s.walkAt,
           };
         });
         return already;
@@ -152,16 +167,22 @@ export const usePassport = create<PassportState>()(
             routes,
             passport: { ...s.passport, pageOrder: s.passport.pageOrder.filter(id => id !== tourId) },
             walk: s.walk?.tourId === tourId ? null : s.walk,
+            walkAt: s.walk?.tourId === tourId ? null : s.walkAt,
           };
         }),
-      reset: () => set({ passport: freshPassport(), routes: {}, walk: null }),
+      reset: () => set({ passport: freshPassport(), routes: {}, walk: null, walkAt: null }),
     }),
     {
       name: 'paseo-passport',
       version: 2,
       storage: createJSONStorage(() => AsyncStorage),
-      // El paseo en curso no se guarda: al volver a abrir la app hay que volver a llegar para sellar
-      partialize: s => ({ passport: s.passport, routes: s.routes }),
+      // El paseo en curso también se guarda (si Android cierra la app, se retoma); al leerlo caduca a las 12 h
+      partialize: s => ({ passport: s.passport, routes: s.routes, walk: s.walk, walkAt: s.walkAt }),
+      merge: (saved, current) => {
+        const old = (saved ?? {}) as Partial<PassportState>;
+        const walk = restoreWalk(old.walk, old.walkAt, Date.now());
+        return { ...current, ...old, walk, walkAt: walk ? old.walkAt! : null };
+      },
       migrate: (old, version) => dropFinalStamps(version < 1 ? migrateVisits(old as OldState) : (old as PassportState)) as PassportState,
     },
   ),
