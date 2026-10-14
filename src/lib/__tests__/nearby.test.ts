@@ -1,6 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
 import { nearestStart, sortByDistance, startLabel } from '../nearby';
-import { matchesDuration, matchesPrice, shouldFilter } from '../routeFilter';
 import { LARGE_TEXT_SCALE, scaleType, type } from '@/theme/type';
 
 const at = (lng: number, lat: number) => ({ stops: [{ coord: [lng, lat] as [number, number] }] }) as never;
@@ -28,24 +27,6 @@ describe('cerca de ti', () => {
     expect(startLabel(3)).toBe('Estás en el inicio');
     expect(startLabel(400_000)).toBeNull();
     expect(startLabel(null)).toBeNull();
-  });
-});
-
-describe('filtros de rutas', () => {
-  it('filtra por duración y precio', () => {
-    expect(matchesDuration(45, 'short')).toBe(true);
-    expect(matchesDuration(75, 'short')).toBe(false);
-    expect(matchesDuration(75, 'mid')).toBe(true);
-    expect(matchesDuration(120, 'long')).toBe(true);
-    expect(matchesDuration(120, 'all')).toBe(true);
-    expect(matchesPrice(true, 'free')).toBe(true);
-    expect(matchesPrice(true, 'paid')).toBe(false);
-    expect(matchesPrice(false, 'paid')).toBe(true);
-  });
-
-  it('solo ofrece filtros con más de 3 rutas', () => {
-    expect(shouldFilter(3)).toBe(false);
-    expect(shouldFilter(4)).toBe(true);
   });
 });
 

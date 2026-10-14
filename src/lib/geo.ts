@@ -127,6 +127,13 @@ export function formatDistance(m: number): string {
   return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 }
 
+/** Longitud en metros de la ruta: suma de los tramos a pie entre paradas */
+export function routeMeters(tour: { legs: LngLat[][] }): number {
+  let m = 0;
+  for (const leg of tour.legs) for (let i = 1; i < leg.length; i++) m += distance(leg[i - 1], leg[i]);
+  return m;
+}
+
 /** Minutos a pie a 4,5 km/h, como mínimo 1. */
 export const walkingMinutes = (m: number) => Math.max(1, Math.ceil(m / 75));
 
