@@ -8,6 +8,7 @@ import { tintaDeRuta } from '@/lib/ink';
 import type { CityVisa } from '@/lib/visa';
 import { fechaRomana, fechaSello } from '@/lib/rubber';
 import { sheetFor } from '@/lib/sheet';
+import { useDebouncedSave } from '@/lib/useDebouncedSave';
 import { knownRoutes, routeProgress, usePassport } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
@@ -82,6 +83,8 @@ export const Holder = memo(function Holder({ width }: { width: number }) {
   const pages = useMemo(() => knownRoutes(passport.pageOrder), [passport.pageOrder]);
   const done = pages.filter(id => routeProgress(id, routes[id]).completed).length;
   const name = draft ?? passport.owner;
+  // El nombre se guarda mientras se escribe, no solo al salir del campo
+  useDebouncedSave(draft, v => setOwner(v.trim()));
   const mrz = `P<PASEO<<${plain(passport.owner || 'VIAJERO')}`.padEnd(40, '<').slice(0, 40) +
     `\n${plain(fechaRomana(passport.issuedAt)).replace(/<+/g, '<')}<${TOURS.length}R${pages.length}`.padEnd(41, '<').slice(0, 41);
   const k = width / 330;

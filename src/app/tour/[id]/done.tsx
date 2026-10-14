@@ -10,6 +10,7 @@ import { ShareMat } from '@/components/ShareMat';
 import { GhostButton } from '@/components/ui';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { shareStampSheet } from '@/lib/share';
+import { useDebouncedSave } from '@/lib/useDebouncedSave';
 import { SHEET_RATIO } from '@/lib/sheet';
 import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
@@ -55,6 +56,8 @@ export default function Done() {
   const minutes = span > 0 && span <= 8 * 3_600_000 ? Math.max(1, Math.round(span / 60000)) : null;
   const when = new Date(prog.completedAt ?? today).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
   const saveNote = () => { if (draft != null) setNote(tour.id, draft); setDraft(null); };
+  // La nota se guarda mientras se escribe, no solo al salir del campo
+  useDebouncedSave(draft, v => setNote(tour.id, v));
   const stats = [[`${prog.done}/${prog.total}`, 'sellos'], [formatDistance(meters), 'recorridos'], [minutes ? (minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`) : '—', 'tiempo']];
   const sheetW = Math.floor(Math.min(width - 32, (height - insets.top - 260) * SHEET_RATIO, 480));
 
