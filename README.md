@@ -8,15 +8,15 @@ Tours incluidos:
 - **Sevilla · Del Arenal a la Plaza de España** (6 paradas, ladrillo y azulejo): Real Maestranza, Hospital de la Caridad, Palacio de San Telmo, Real Fábrica de Tabacos, Plaza de España y Parque de María Luisa.
 - **Tomares en 4 paradas** (almagra y albero): letras de la Arboleda, Ayuntamiento, Parroquia de Belén y Royal King Kebab.
 
-## Filosofía: lo que se gana en cada ruta
+## Filosofía: lo que se gana en cada paseo
 
-Cada ruta deja tres recuerdos distintos, y cada uno tiene un papel propio:
+Hay tres recuerdos distintos, y cada uno tiene un papel propio:
 
-1. **Sello de goma, uno por parada.** Dibujo en línea del sitio concreto, estampado con la tinta de la parada y la fecha real. Es el registro de «estuve aquí».
-2. **Postal de la ruta.** Una ilustración en color con **una escena propia**: una vista o un momento del paseo, como una postal de verdad. No es un catálogo de todas las paradas ni tiene por qué juntarlas en una fila; basta con que cuente cómo se siente la ruta (en la del Arenal, la Plaza de España vista desde el canal, con una barca y un puente de azulejo).
-3. **Sello de correos de la ruta.** Un dibujo **exclusivo** que **simboliza la ruta entera** con un emblema: el Giraldillo y el NO8DO en el centro de Sevilla, una rama de olivo del Aljarafe en Tomares, una carabela sobre un azulejo de 1929 en el Arenal. **Nunca es un recorte de la postal ni de una parada.** Se ve en Inicio, en la lista de rutas (en blanco y negro mientras no se consigue, también con candado si la ruta es de pago y aún no se ha comprado; a todo color y matasellado al completarla) y pegado en el reverso de la postal. Cada ruta guarda en sus datos qué representa su sello (`stamp.symbol`).
+1. **Sello de goma, uno por parada.** Dibujo en línea del sitio concreto, estampado con la tinta de la parada y la fecha real. Es el registro de «estuve aquí» y vive en el pasaporte.
+2. **Sello de correos de la ruta (uno por ruta).** Un dibujo **exclusivo** que **simboliza la ruta entera** con un emblema: el Giraldillo y el NO8DO en el centro de Sevilla, una rama de olivo del Aljarafe en Tomares, una carabela sobre un azulejo de 1929 en el Arenal. **Nunca es un recorte de una postal ni de una parada.** Se gana al completar la ruta. Se ve en Inicio, en la lista de rutas y en la Colección (en blanco y negro mientras no se consigue, también con candado si la ruta es de pago y aún no se ha comprado; a todo color al completarla) y pegado en el reverso de la postal. Cada ruta guarda en sus datos qué representa su sello (`stamp.symbol`).
+3. **Postal del pack (una por grupo de rutas).** Las rutas de una ciudad se agrupan en **packs** (2–3 rutas, `src/data/packs.ts`). Al juntar **todos los sellos de correos del pack** se desbloquea su postal: una ilustración en color con **una escena propia**, como una postal de verdad. No es un catálogo de todas las rutas ni de todas las paradas; basta con que cuente cómo se siente el pack (la del pack «Sevilla monumental», la Plaza de España vista desde el canal, con una barca y un puente de azulejo). Hasta entonces se ve difuminada, con candado y lo que falta. Ninguna ruta tiene postal propia.
 
-Al diseñar una ruta nueva hacen falta las tres piezas, y ninguna se saca de otra.
+Al diseñar una ruta nueva hace falta su sello de goma por parada y su sello de correos, y colocarla en un pack; al diseñar un pack, su postal. Ninguna pieza se saca de otra.
 
 Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales** (v2):
 
@@ -25,10 +25,10 @@ Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales**
 - **Inicio:** la primera vez, bienvenida con el idioma (solo hay versión en español; el inglés sale como «próximamente») e Inicio, donde se elige ciudad (Sevilla, con Tomares, o Madrid) con su ilustración entera; al tocar una se ven sus rutas dibujadas sobre la foto de cada tour (paradas selladas rellenas, la siguiente destacada) y, bloqueados, los de pago (solo interfaz: no hay pagos todavía).
 - **El paseo.** Las paradas van en orden. El mapa es la pantalla central del tour: al llegar, la parada se abre encima y al cerrarla se vuelve al mapa; tocando cualquier pin sale su ventana con «Entrar». La guía nunca se abre sola: al llegar (GPS fiable) sale la tarjeta «Estás en…» con «Escuchar» o «Luego», y con la app en segundo plano o la pantalla apagada llega un aviso (ubicación en segundo plano, permiso pedido una sola vez). Un botón fijo en la hoja inferior deja escuchar siempre: tras llegar («Escuchar ahora»), cuando el GPS no es fiable o estás a menos de 150 m («¿Ya estás en…?», que registra la llegada) o de lejos («Escuchar…», sin sello). La lista «Paradas» (que se abre sola sin GPS) y «Estoy aquí: poner el sello» en la parada son el respaldo. Al escuchar, el audio empieza solo y el sello se pone al final, con «Poner el sello»: solo se puede sellar la parada a la que has llegado (GPS, confirmación a mano o «Llegar» en modo prueba).
 - **Tú eliges dónde va el sello.** Al pulsar «Poner el sello» se abre la hoja de la ruta con el sello «en la mano» (vista previa al 35 % que sigue al dedo). Al soltar, cae con la animación de la guía (550 ms, impacto a los 300 ms con «clac + pum», vibración y golpe de hoja). Márgenes de 16 px, sin pisar cabecera ni pie y como mucho un 35 % encima de otro sello; «Colócalo tú» busca un hueco libre. Cada sello sale girado entre 4° y 12° a un lado o al otro, nunca recto.
-- **Ruta completada.** Con el último sello la ruta queda completada y, al terminar, sube la tarjeta de **postal desbloqueada** y el sello de la ruta pasa a todo color con su matasellos. No se estampa ningún sello de goma extra por completarla.
+- **Ruta completada.** Con el último sello la ruta queda completada y, al terminar, el **sello de correos** de la ruta cae grande sobre unos rayos de sol («Nuevo sello de carta»), con el pack al que pertenece y lo que falta para su postal. Si ese sello cierra el pack por primera vez, sale «¡Pack completo!» y sube la tarjeta de **postal desbloqueada**. La hoja de sellos de goma queda tras el botón «Hoja de sellos». No se estampa ningún sello de goma extra por completarla.
 - **Hoja de la ruta.** Papel con un velo suave del color de la ruta y, arriba, solo su nombre y su ciudad, discretos.
 - **Pasaporte** (pestaña): portada de piel azul con dorado, hoja del titular, una hoja por ruta en el orden del primer sello y «Próxima ruta». Las hojas giran sobre el lomo arrastrando con el dedo (doble página en pantallas anchas).
-- **Postales** (pestaña): tarjetero por ciudad, con las rutas a medias como postal en blanco; a pantalla completa se les da la vuelta y se comparten. Vista secundaria en mapa.
+- **Colección** (pestaña, `postales.tsx`): álbum por ciudad con una tarjeta por pack: arriba su postal (difuminada con candado y «Te faltan N sellos» hasta tener todos los sellos de correos, rayada si aún está por dibujar) y debajo la fila de sus sellos, en color los ganados y en gris con candado los que faltan. La postal ganada se abre a pantalla completa, se le da la vuelta y se comparte. Vista secundaria en mapa (los sellos de cada ruta).
 
 ## Tecnología
 
@@ -86,14 +86,15 @@ src/
     (tabs)/index.tsx         Inicio: elegir ciudad (su ilustración entera) y tu colección
     rutas/[ciudad].tsx       rutas de una ciudad: cada tour con su ruta dibujada y su sello de ruta; los de pago, bloqueados
     (tabs)/pasaporte.tsx     el pasaporte (libreta con hojas que se pasan)
-    (tabs)/postales.tsx      tarjetero de postales y mapa
-    postal/[id].tsx          postal a pantalla completa (vuelta y compartir)
-    tour/[id]/index.tsx      portada del tour: paradas, sellos y postal
+    (tabs)/postales.tsx      Colección: packs con su postal y sus sellos, y mapa
+    postal/[id].tsx          postal de un pack a pantalla completa (vuelta y compartir)
+    tour/[id]/index.tsx      portada del tour: paradas, sellos y postal de su pack
     tour/[id]/walk.tsx       mapa (pantalla central del tour), indicaciones y llegada
     tour/[id]/stop/[n].tsx   parada (encima del mapa): audio, textos y sello al final
-    tour/[id]/done.tsx       final: resumen, hoja de la ruta y postal desbloqueada
+    tour/[id]/done.tsx       final: sello de carta nuevo, pack, resumen y hoja de la ruta; «Pack completo» con la postal
   components/passport/       hoja de ruta, colocar sello, caída del sello, libreta
   components/                sello de goma, papel, postal, botones
+  data/packs.ts              packs de rutas por ciudad y su postal
   data/stamps/images.ts      dibujos horneados de los sellos (generado, ver abajo)
   lib/rubber.ts              marcos y fecha de los sellos, matasellos
   lib/placement.ts           reglas para colocar sellos
