@@ -7,6 +7,7 @@ import { TourBanner } from '@/components/TourBanner';
 import { DUR, EASE_OUT, lightTap, PressableScale } from '@/components/motion';
 import { getTour } from '@/data/tours';
 import { usePausedWalk } from '@/lib/pausedWalk';
+import { resyncReminders } from '@/lib/reminders';
 import { routeProgress, unfinishedRoutes, usePassport } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral, radius } from '@/theme/tokens';
@@ -52,7 +53,7 @@ export function ResumeStrip({ tourIds }: { tourIds: string[] }) {
           <Text style={s.title} numberOfLines={1}>¿Cancelar la ruta?</Text>
           <Text style={s.sub} numberOfLines={2}>Se borran sus {prog.done} {prog.done === 1 ? 'sello' : 'sellos'} del pasaporte.</Text>
           <View style={s.askRow}>
-            <PressableScale accessibilityRole="button" accessibilityHint="Borra los sellos de esta ruta del pasaporte. No se puede deshacer" onPress={() => { lightTap(); setAsking(false); clearPause(); dropRoute(tour.id); }} style={[s.askBtn, { backgroundColor: neutral.white }]}>
+            <PressableScale accessibilityRole="button" accessibilityHint="Borra los sellos de esta ruta del pasaporte. No se puede deshacer" onPress={() => { lightTap(); setAsking(false); clearPause(); dropRoute(tour.id); resyncReminders(); }} style={[s.askBtn, { backgroundColor: neutral.white }]}>
               <Text maxFontSizeMultiplier={1.3} style={[s.askText, { color: p.deep }]}>Cancelar ruta</Text>
             </PressableScale>
             <Pressable accessibilityRole="button" onPress={() => setAsking(false)} hitSlop={6} style={s.askBtn}>
