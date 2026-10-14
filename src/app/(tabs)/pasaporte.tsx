@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +29,8 @@ export default function Pasaporte() {
   const routes = usePassport(s => s.routes);
   const hydrated = usePassportHydrated();
   const [index, setIndex] = useState(0);
+  // «Mi pasaporte» al terminar una ruta llega con ?ruta=<tourId>: el libro se abre en su hoja
+  const { ruta } = useLocalSearchParams<{ ruta?: string }>();
 
   const spread = width >= 760;
   // La hoja cabe a lo ancho y a lo alto (dejando sitio a la cabecera, los botones y la barra de pestañas)
@@ -40,6 +43,13 @@ export default function Pasaporte() {
   const visaKey = cityVisas(routes).map(v => v.area).join(',');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const visas = useMemo(() => cityVisas(routes), [visaKey]);
+
+  useEffect(() => {
+    if (!ruta || !hydrated) return;
+    const at = pages.indexOf(ruta);
+    if (at >= 0) setIndex(2 + at);
+    router.setParams({ ruta: undefined });
+  }, [ruta, hydrated, pages]);
 
   const { leaves, tabs } = useMemo(() => {
     const out: Leaf[] = [

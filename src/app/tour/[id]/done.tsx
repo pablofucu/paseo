@@ -113,7 +113,7 @@ export default function Done() {
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, alignSelf: 'stretch' }}>
           <View style={{ flex: 1 }}><GhostButton light label="Inicio" onPress={() => router.dismissTo('/')} /></View>
-          <View style={{ flex: 1 }}><GhostButton label="Mi pasaporte" onPress={() => { router.dismissTo('/'); router.navigate('/pasaporte'); }} /></View>
+          <View style={{ flex: 1 }}><GhostButton label="Mi pasaporte" onPress={() => { router.dismissTo('/'); router.navigate({ pathname: '/pasaporte', params: { ruta: tour.id } }); }} /></View>
         </View>
       </ScrollView>
       {unlocked && <PostcardUnlock tour={tour} route={saved} onClose={() => setUnlocked(false)} />}
