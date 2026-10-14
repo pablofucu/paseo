@@ -4,7 +4,7 @@ import { AppState, Platform } from 'react-native';
 import { getTour } from '@/data/tours';
 import { usePassport } from '@/store/passport';
 import { distance } from './geo';
-import { accuracySlack, ARRIVE_RADIUS_M } from './guidance';
+import { accuracySlack, ARRIVE_RADIUS_M, arriveRadiusOf } from './guidance';
 import { MAX_ACCURACY_M } from './useWalkPosition';
 
 const TASK = 'paseo-arrival-watch';
@@ -26,12 +26,14 @@ export interface NotifyInput {
   done: boolean;
   /** Ya se avisó de esta parada en este paseo */
   notified: boolean;
+  /** Radio de llegada de la parada (plazas grandes); por defecto el general */
+  radius?: number;
 }
 
 /** ¿Toca avisar de la llegada? Solo con buena precisión, dentro del radio de llegada y una vez por parada. */
-export function shouldNotify({ accuracy, distance: d, done, notified }: NotifyInput): boolean {
+export function shouldNotify({ accuracy, distance: d, done, notified, radius = ARRIVE_RADIUS_M }: NotifyInput): boolean {
   if (done || notified || accuracy == null || accuracy > MAX_ACCURACY_M) return false;
-  return d <= ARRIVE_RADIUS_M + accuracySlack(accuracy) / 2;
+  return d <= radius + accuracySlack(accuracy) / 2;
 }
 
 const sent = new Set<string>();
@@ -57,7 +59,7 @@ async function onLocations(locations: Location.LocationObject[]) {
   if (!sent.size) await readSent();
   const done = walk.arrived === stop.id || !!routes[tour.id]?.stamps.some(x => x.stopId === stop.id);
   const d = distance([loc.coords.longitude, loc.coords.latitude], stop.coord);
-  if (!shouldNotify({ accuracy: loc.coords.accuracy ?? null, distance: d, done, notified: sent.has(key) })) return;
+  if (!shouldNotify({ accuracy: loc.coords.accuracy ?? null, distance: d, done, notified: sent.has(key), radius: arriveRadiusOf(stop) })) return;
   sent.add(key);
   await AsyncStorage.setItem(NOTIFIED, JSON.stringify([...sent])).catch(() => {});
   await notifications().scheduleNotificationAsync({

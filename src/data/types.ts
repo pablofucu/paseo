@@ -76,6 +76,8 @@ export interface Stop {
   /** Autoría y licencia de la foto (fotos libres de Wikimedia Commons) */
   photoCredit: PhotoCredit;
   coord: LngLat;
+  /** Radio de llegada en metros, si la parada es una plaza grande (por defecto, ARRIVE_RADIUS_M de lib/guidance) */
+  arriveRadius?: number;
   arriveHint: string;
   audioTitle: string;
   p1: string;
