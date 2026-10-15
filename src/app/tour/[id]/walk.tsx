@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Redirect, router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -849,11 +849,22 @@ function ArrivalHeader({ tour, kind, idx, repeat, onListen, onLater }: ArrivalPr
   const mins = useMemo(() => narrationMinutes(stopScript(st)), [st]);
   const look = stampBox(st.rubber.shape, 40 / 0.325);
   const over = kind === 'arrived' ? `Has llegado · parada ${idx + 1} de ${tour.stops.length}` : kind === 'confirm' ? `¿Ya estás aquí? · parada ${idx + 1}` : 'Otra parada sin sellar';
-  const cta = kind === 'offer' ? 'Sí, sellarla' : kind === 'confirm' ? `▶  Sí, escuchar · ${mins} min` : `▶  Escuchar · ${mins} min`;
-  const hint = kind === 'offer' ? 'No es la que tocaba, pero puedes sellarla ahora.'
+  const offer = kind === 'offer';
+  const cta = `${kind === 'confirm' ? 'Sí, abrir la guía' : 'Abrir la guía'} · ${mins} min`;
+  const hint = offer ? 'No es la que tocaba, pero puedes sellarla ahora.'
     : kind === 'confirm' ? 'El GPS no lo tiene claro: si ya estás, escúchala y podrás sellar.'
     : repeat ? 'Ya tenías su sello. Si sigues andando, esto se pliega solo.'
-    : 'Tu sello te espera al terminar. Si sigues andando, esto se pliega solo.';
+    : 'Si sigues andando, esto se pliega solo.';
+  // Halo del botón: late unas 3 veces (~4 s) al aparecer la cabecera y se para.
+  const reduced = useReducedMotion();
+  const halo = useSharedValue(0);
+  useEffect(() => {
+    if (offer || reduced) return;
+    halo.set(0);
+    halo.set(withRepeat(withTiming(1, { duration: 1300 }), 3, false));
+    return () => cancelAnimation(halo);
+  }, [offer, reduced, halo]);
+  const haloStyle = useAnimatedStyle(() => ({ opacity: 0.55 * (1 - halo.get()), transform: [{ scale: 1 + 0.06 * halo.get() }] }));
   return (
     <Animated.View entering={FadeIn.duration(DUR.base).easing(EASE_OUT)} accessibilityLiveRegion="polite" style={s.arrive}>
       <View style={s.arriveTop}>
@@ -863,9 +874,24 @@ function ArrivalHeader({ tour, kind, idx, repeat, onListen, onLater }: ArrivalPr
           <Text accessibilityRole="header" style={s.arriveName} numberOfLines={2}>{st.name}</Text>
         </View>
       </View>
-      <PressableScale accessibilityRole="button" accessibilityLabel={kind === 'offer' ? `Sellar ${st.name}` : `Escuchar ${st.name}, ${mins} minutos`} onPress={onListen} scaleTo={0.97} style={[s.arriveBtn, { backgroundColor: p.t2 }]}>
-        <Text style={s.arriveBtnText}>{cta}</Text>
-      </PressableScale>
+      {offer ? (
+        <PressableScale accessibilityRole="button" accessibilityLabel={`Sellar ${st.name}`} onPress={onListen} scaleTo={0.97} style={[s.arriveBtn, { backgroundColor: p.t2 }]}>
+          <Text style={s.arriveBtnText}>Sí, sellarla</Text>
+        </PressableScale>
+      ) : (
+        <View style={{ gap: 8 }}>
+          <View>
+            {!reduced && <Animated.View pointerEvents="none" style={[s.arriveHalo, { borderColor: p.t2 }, haloStyle]} />}
+            <PressableScale accessibilityRole="button" accessibilityLabel={`Abrir la guía de ${st.name}: audio de ${mins} minutos, texto, fotos y tu sello`} onPress={onListen} scaleTo={0.97} style={[s.arriveGuide, { backgroundColor: p.deep }]}>
+              <View style={[s.arrivePlay, { backgroundColor: p.t2 }]}>
+                <Text style={s.arrivePlayGlyph}>▶</Text>
+              </View>
+              <Text style={s.arriveGuideText} numberOfLines={1}>{cta}</Text>
+            </PressableScale>
+          </View>
+          <Text style={s.arriveSub}>Audio, texto, fotos y tu sello</Text>
+        </View>
+      )}
       <View style={s.arriveHint}>
         <View style={{ width: 40, alignItems: 'center', opacity: repeat ? 0.9 : 0.3 }}>
           <RubberStamp tour={tour} stop={st} date={new Date().toISOString()} width={look.w} height={look.h} />
@@ -924,6 +950,12 @@ const s = StyleSheet.create({
   arriveName: { fontFamily: font.serif, fontSize: 24, lineHeight: 27, color: neutral.ink, marginTop: 2 },
   arriveBtn: { height: 58, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   arriveBtnText: { fontFamily: font.black, fontSize: 18, color: neutral.ink },
+  arriveGuide: { height: 68, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', gap: 14, paddingLeft: 14, paddingRight: 22 },
+  arrivePlay: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  arrivePlayGlyph: { fontFamily: font.black, fontSize: 15, color: neutral.ink, marginLeft: 2 },
+  arriveGuideText: { flex: 1, fontFamily: font.black, fontSize: 19, color: '#fff' },
+  arriveHalo: { position: 'absolute', top: -5, bottom: -5, left: -5, right: -5, borderRadius: radius.pill, borderWidth: 3 },
+  arriveSub: { textAlign: 'center', fontFamily: font.heavy, fontSize: 13, color: neutral.ink3 },
   arriveHint: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   arriveHintText: { flex: 1, fontFamily: font.bold, fontSize: 13, color: neutral.ink3 },
   arriveLater: { fontFamily: font.black, fontSize: 14, color: neutral.ink2 },
