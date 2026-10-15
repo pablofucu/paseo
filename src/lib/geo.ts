@@ -133,6 +133,13 @@ export function walkedMeters(legMeters: number[], stampedIdx: number[]): number 
   return legMeters.slice(0, Math.max(...stampedIdx)).reduce((a, m) => a + m, 0);
 }
 
+/** Longitud en metros de la ruta: suma de los tramos a pie entre paradas */
+export function routeMeters(tour: { legs: LngLat[][] }): number {
+  let m = 0;
+  for (const leg of tour.legs) for (let i = 1; i < leg.length; i++) m += distance(leg[i - 1], leg[i]);
+  return m;
+}
+
 /** Minutos a pie a 4,5 km/h, como mínimo 1. */
 export const walkingMinutes = (m: number) => Math.max(1, Math.ceil(m / 75));
 
