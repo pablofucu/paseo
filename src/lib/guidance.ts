@@ -19,6 +19,17 @@ export const BACKTRACK_M = 20;
 /** Tiempo mínimo entre dos llegadas seguidas si no te has movido */
 export const MIN_BETWEEN_ARRIVALS_MS = 45000;
 
+/** Radio de llegada de una parada: el suyo si es una plaza grande, o el general */
+export const arriveRadiusOf = (stop: { arriveRadius?: number }) => stop.arriveRadius ?? ARRIVE_RADIUS_M;
+
+/** Parado tanto tiempo cerca de la parada sin llegar, se ofrece confirmar que ya estás */
+export const DWELL_MS = 20000;
+/** Mientras no te alejes más de esto del punto donde te paraste, sigues «parado» */
+export const DWELL_RADIUS_M = 10;
+
+/** ¿Hay que empezar a contar de nuevo el rato parado? (no hay punto de partida, o te has movido de él) */
+export const dwellRestart = (anchor: LngLat | null, position: LngLat) => !anchor || distance(anchor, position) > DWELL_RADIUS_M;
+
 /** Margen extra de los umbrales según el error del GPS (0 si es bueno o se desconoce) */
 export const accuracySlack = (accuracy: number | null | undefined) =>
   accuracy == null ? 0 : Math.min(MAX_SLACK_M, Math.max(0, accuracy - GOOD_ACCURACY_M));
@@ -30,6 +41,8 @@ export interface GuideOptions {
   wasOff?: boolean;
   /** Error del GPS en metros */
   accuracy?: number | null;
+  /** Radio de llegada de la parada (plazas grandes); por defecto ARRIVE_RADIUS_M */
+  arriveRadius?: number;
 }
 
 /**
@@ -84,6 +97,7 @@ export interface Guidance {
  */
 export function guide(leg: PreparedLeg, position: LngLat, stop?: LngLat, opts: GuideOptions = {}): Guidance {
   const slack = accuracySlack(opts.accuracy);
+  const radius = opts.arriveRadius ?? ARRIVE_RADIUS_M;
   const minAlong = Math.max(0, (opts.prevAlong ?? 0) - BACKTRACK_M);
   let proj = minAlong > 0 ? projectOnRoute(leg.line, position, leg.cum, minAlong) : projectOnRoute(leg.line, position, leg.cum);
   // Si hacia delante no hay ruta cerca, se mira entera (te has desviado o has vuelto atrás de verdad)
@@ -105,8 +119,8 @@ export function guide(leg: PreparedLeg, position: LngLat, stop?: LngLat, opts: G
     next,
     distToNext: next ? next.at - proj.along : toStop,
     then: idx >= 0 ? leg.turns[idx + 1] ?? null : null,
-    arrived: toStop <= ARRIVE_RADIUS_M + slack / 2,
-    near: toStop > ARRIVE_RADIUS_M + slack / 2 && toStop <= PREVIEW_RADIUS_M,
+    arrived: toStop <= radius + slack / 2,
+    near: toStop > radius + slack / 2 && toStop <= PREVIEW_RADIUS_M,
     toStop,
   };
 }

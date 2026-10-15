@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { LngLat } from '@/data/types';
-import { bearing, pointAlong } from './geo';
+import { bearing, distance, pointAlong } from './geo';
 import { reliableCourse } from './mapBearing';
 import type { PreparedLeg } from './guidance';
 import { angleDelta } from './smooth';
@@ -40,10 +40,47 @@ export const MAX_ACCURACY_M = 35;
 /** Aunque sea mala, se acepta si llevamos tanto tiempo sin ninguna buena (para no quedarse parado) */
 export const STALE_FIX_MS = 20000;
 
-/** ¿Se usa esta lectura del GPS? La primera siempre, para no dejar al usuario sin posición. */
-export function acceptFix(accuracy: number | null | undefined, hasFix: boolean, sinceLastMs: number): boolean {
+/** Aunque encaje con lo andado, una lectura con peor precisión que esto (m) no se acepta */
+export const MAX_COHERENT_ACCURACY_M = 100;
+/** Velocidad máxima de paseo (m/s) para decidir si una lectura imprecisa encaja con lo andado */
+export const MAX_WALK_SPEED_MS = 2;
+
+/**
+ * ¿Encaja una lectura imprecisa con lo andado? Sí si queda a una distancia del último
+ * punto aceptado que se explica andando (2 m/s × el tiempo pasado) más su propio error.
+ * En calles estrechas el GPS da errores de 40-80 m: así no se congela la posición.
+ */
+export function coherentFix(last: LngLat | null, next: LngLat, accuracy: number | null | undefined, sinceLastMs: number): boolean {
+  if (!last || accuracy == null || accuracy > MAX_COHERENT_ACCURACY_M) return false;
+  return distance(last, next) <= MAX_WALK_SPEED_MS * (sinceLastMs / 1000) + accuracy;
+}
+
+/**
+ * ¿Se usa esta lectura del GPS? La primera siempre, para no dejar al usuario sin posición.
+ * Una imprecisa solo si es coherente con lo andado (`coherent`) o si llevamos mucho sin ninguna.
+ */
+export function acceptFix(accuracy: number | null | undefined, hasFix: boolean, sinceLastMs: number, coherent = false): boolean {
   if (!hasFix || accuracy == null || accuracy <= MAX_ACCURACY_M) return true;
-  return sinceLastMs >= STALE_FIX_MS;
+  return coherent || sinceLastMs >= STALE_FIX_MS;
+}
+
+/** Por debajo de estos cambios la pantalla no se repinta: temblor del GPS */
+export const MIN_MOVE_M = 1;
+export const MIN_COURSE_DEG = 8;
+export const MIN_ACCURACY_STEP_M = 3;
+
+/**
+ * Estado nuevo a partir de una lectura, o el mismo objeto si lo único que cambia es
+ * temblor (menos de ~1 m, pocos grados de rumbo, error casi igual): así React no repinta.
+ */
+export function stableReading(prev: WalkPosition, next: { position: LngLat | null; accuracy: number | null; course: number | null }): WalkPosition {
+  const position = prev.position && next.position && distance(prev.position, next.position) < MIN_MOVE_M ? prev.position : next.position;
+  const course = prev.course != null && next.course != null && Math.abs(angleDelta(prev.course, next.course)) < MIN_COURSE_DEG ? prev.course : next.course;
+  // El error solo cuenta si cambia de verdad o cruza el límite de «señal débil»
+  const sameSide = prev.accuracy != null && next.accuracy != null && (prev.accuracy > MAX_ACCURACY_M) === (next.accuracy > MAX_ACCURACY_M);
+  const accuracy = sameSide && Math.abs(prev.accuracy! - next.accuracy!) < MIN_ACCURACY_STEP_M ? prev.accuracy : next.accuracy;
+  if (position === prev.position && course === prev.course && accuracy === prev.accuracy) return prev;
+  return { ...prev, position, course, accuracy };
 }
 
 const WALK_MS = 1.4;
@@ -61,6 +98,7 @@ export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null,
   const opts = useRef(sim);
   useEffect(() => { opts.current = sim; }, [sim]);
   const lastFix = useRef(0);
+  const lastPoint = useRef<LngLat | null>(null);
   const granted = state.permission === 'granted';
   const { far, heading: headingOn } = gps;
 
@@ -98,9 +136,11 @@ export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null,
           l => {
             const accuracy = l.coords.accuracy ?? null;
             const now = Date.now();
-            const use = acceptFix(accuracy, lastFix.current > 0, now - lastFix.current);
-            if (use) lastFix.current = now;
-            setState(s => ({ ...s, accuracy, position: use ? [l.coords.longitude, l.coords.latitude] : s.position, course: use ? reliableCourse(l.coords.heading, l.coords.speed) : s.course }));
+            const point: LngLat = [l.coords.longitude, l.coords.latitude];
+            const since = now - lastFix.current;
+            const use = acceptFix(accuracy, lastFix.current > 0, since, coherentFix(lastPoint.current, point, accuracy, since));
+            if (use) { lastFix.current = now; lastPoint.current = point; }
+            setState(s => stableReading(s, { accuracy, position: use ? point : s.position, course: use ? reliableCourse(l.coords.heading, l.coords.speed) : s.course }));
           },
         );
         if (cancelled) { sub.remove(); return; }

@@ -33,6 +33,8 @@ export default function Ajustes() {
   const setTestMode = useSettings(s => s.setTestMode);
   const largeText = useSettings(s => s.largeText);
   const setLargeText = useSettings(s => s.setLargeText);
+  const turnHaptics = useSettings(s => s.turnHaptics);
+  const setTurnHaptics = useSettings(s => s.setTurnHaptics);
   const reset = usePassport(s => s.reset);
   const current = language ?? 'es';
 
@@ -93,6 +95,13 @@ export default function Ajustes() {
             <Text style={type.caption}>Agranda los textos de la app, además del tamaño de letra del sistema.</Text>
           </View>
           <Switch accessibilityLabel="Texto grande" value={largeText} onValueChange={on => { lightTap(); setLargeText(on); }} trackColor={{ true: brand.primary, false: neutral.line }} thumbColor={neutral.white} />
+        </View>
+        <View style={[s.row, s.divider]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.rowTitle, rt]}>Vibrar en los giros</Text>
+            <Text style={type.caption}>Dos toques para girar a la izquierda, tres a la derecha y un aviso distinto si te sales de la ruta. Así no tienes que mirar el móvil.</Text>
+          </View>
+          <Switch accessibilityLabel="Vibrar en los giros" value={turnHaptics} onValueChange={on => { lightTap(); setTurnHaptics(on); }} trackColor={{ true: brand.primary, false: neutral.line }} thumbColor={neutral.white} />
         </View>
       </Section>
 

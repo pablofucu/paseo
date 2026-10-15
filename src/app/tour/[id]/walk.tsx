@@ -1,7 +1,7 @@
 import { Camera, GeoJSONSource, Layer, Map } from '@maplibre/maplibre-react-native';
 import * as Haptics from 'expo-haptics';
 import { Redirect, router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -19,10 +19,12 @@ import type { LngLat, Tour } from '@/data/types';
 import { distance, formatDistance, pointAlong, projectOnRoute, walkingMinutes } from '@/lib/geo';
 import { startArrivalWatch, stopArrivalWatch } from '@/lib/arrivalWatch';
 import { entryMode } from '@/lib/entry';
-import { accuracySlack, ARRIVE_RADIUS_M, arrivalAllowed, instruction, prepareLeg } from '@/lib/guidance';
+import { accuracySlack, arriveRadiusOf, arrivalAllowed, DWELL_MS, dwellRestart, instruction, prepareLeg, PREVIEW_RADIUS_M } from '@/lib/guidance';
 import { nextMapBearing, rotateMs, routeBearing } from '@/lib/mapBearing';
+import { FIT_BACK_M, FIT_FAR_M, FOLLOW_ZOOM, fitTwo } from '@/lib/mapFit';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { wayScript } from '@/lib/spoken';
+import { TURN_PATTERNS, turnCue, type HapticKind, type TurnCue } from '@/lib/turnCue';
 import { usePausedWalk } from '@/lib/pausedWalk';
 import { useGuide } from '@/lib/useGuide';
 import { useNarration } from '@/lib/useNarration';
@@ -52,8 +54,38 @@ const NEAR_TARGET_M = 180;
 const WALKED_STEP_M = 3;
 /** Rojo de «Terminar paseo» (la acción que no se puede deshacer) */
 const DANGER = '#B3261E';
+/** Sin tocar el mapa durante tanto tiempo, vuelve a seguirte */
+const FOLLOW_RESUME_MS = 12000;
 /** Duración de subir y bajar la hoja */
 const SHEET_MS = 260;
+
+const HAPTIC: Record<HapticKind, () => Promise<void>> = {
+  light: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
+  medium: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium),
+  heavy: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy),
+  warning: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning),
+};
+/** Vibra el patrón de un giro (toques sueltos, separados por unos ms) */
+const playTurnCue = (cue: TurnCue) => TURN_PATTERNS[cue].forEach(st => setTimeout(() => { HAPTIC[st.kind]().catch(() => {}); }, st.at));
+
+/** Trazo del tramo: lo recorrido atenuado y lo que falta con borde. Aparte y memoizado para que no se rehaga con cada lectura del GPS */
+const RouteLayers = memo(function RouteLayers({ walked, rest, route, road }: { walked: GeoJSON.Feature<GeoJSON.LineString> | null; rest: GeoJSON.Feature<GeoJSON.LineString> | null; route: string; road: string }) {
+  return (
+    <>
+      {walked && (
+        <GeoJSONSource id="walked" data={walked}>
+          <Layer id="walked-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': route, 'line-width': 4, 'line-opacity': 0.35 }} />
+        </GeoJSONSource>
+      )}
+      {rest && (
+        <GeoJSONSource id="route" data={rest}>
+          <Layer id="route-case" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': road, 'line-width': 12 }} />
+          <Layer id="route-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': route, 'line-width': 7.5 }} />
+        </GeoJSONSource>
+      )}
+    </>
+  );
+});
 
 /** Abre la app de mapas del sistema con la ruta a pie hasta un punto */
 function openSystemMaps(coord: LngLat, name: string) {
@@ -102,7 +134,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const [headerH, setHeaderH] = useState(80);
   const [bodyH, setBodyH] = useState(0);
   const [expanded, setExpanded] = useState(false);
-  const winH = useWindowDimensions().height;
+  const { width: winW, height: winH } = useWindowDimensions();
   const [bannerH, setBannerH] = useState(120);
   // Si se entra directamente (sin pasar por la ficha), el paseo empieza aquí
   // (no con otra pantalla encima: al acabar la ruta, «done» cierra el paseo y el mapa de debajo no debe reabrirlo)
@@ -153,7 +185,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   });
   const sheetMove = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - up.get()) * rangeSV.get() }] }));
   const scrim = useAnimatedStyle(() => ({ opacity: up.get() * 0.45 }));
-  const { testMode, simSpeed, setSimSpeed, mapOrientation, setMapOrientation } = useSettings();
+  const { testMode, simSpeed, setSimSpeed, mapOrientation, setMapOrientation, turnHaptics } = useSettings();
   const [source, setSource] = useState<PositionSource>(testMode ? 'simulated' : 'gps');
   const [paused, setPaused] = useState(false);
   /** Modo prueba: posición puesta a mano tocando el mapa (puede estar fuera de la ruta) */
@@ -169,6 +201,16 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const [farTarget, setFarTarget] = useState(false);
   /** Mapa libre: el usuario lo ha movido con el dedo y deja de seguirle */
   const [follow, setFollow] = useState(true);
+  /** Parado cerca de la parada sin haber llegado: parada (índice) para la que se ofrece «¿Ya estás aquí?» */
+  const [confirmFor, setConfirmFor] = useState<number | null>(null);
+  // Tocar el mapa lo suelta; tras un rato sin tocarlo vuelve a seguirte
+  const followTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const touchMap = useCallback(() => {
+    setFollow(false);
+    clearTimeout(followTimer.current);
+    followTimer.current = setTimeout(() => setFollow(true), FOLLOW_RESUME_MS);
+  }, []);
+  useEffect(() => () => clearTimeout(followTimer.current), []);
   const arrive = usePassport(s => s.arrive);
   const narration = useNarration();
 
@@ -219,6 +261,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
     setSelected(null);
     setPrompt(null);
     setFollow(true);
+    setConfirmFor(null);
   }, [target]);
   /** Abre la parada; con `arrived` se muestra el aviso de llegada (el audio solo suena si se toca ▶) */
   const openStop = useCallback((n: number, arrived?: '1' | 'repeat') => {
@@ -243,7 +286,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const farTargetNow = targetD == null ? farTarget : farTarget ? targetD > NEAR_TARGET_M : targetD > FAR_TARGET_M;
   if (farTargetNow !== farTarget) setFarTarget(farTargetNow);
 
-  const g = useGuide(leg, position, stop.coord, source === 'gps' ? accuracy : null);
+  const g = useGuide(leg, position, stop.coord, source === 'gps' ? accuracy : null, stop.arriveRadius);
   // Al salirte del camino (también del tramo fijo entre paradas) se recalcula desde donde estés
   const rerouting = useReroute(!farStart, position, !!g?.offRoute, from => setRerouted({ source, target, from }), quality);
 
@@ -307,12 +350,37 @@ function WalkScreen({ tour }: { tour: Tour }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
   }, [near, target]);
 
+  // Vibración en los giros: un patrón por lado, una vez por giro a unos 25 m, y otro al salirte de la ruta
+  const turnFired = useRef<{ target: number; key: string | null }>({ target, key: null });
+  useEffect(() => {
+    const r = turnCue(g, turnFired.current.target === target ? turnFired.current.key : null);
+    turnFired.current = { target, key: r.fired };
+    if (r.cue && turnHaptics && focused) playTurnCue(r.cue);
+  }, [g, target, turnHaptics, focused]);
+
+  // Parado cerca de la parada sin haber llegado (plaza grande, GPS flojo): se ofrece confirmar que ya estás
+  const dwell = useRef<{ anchor: LngLat | null; timer: ReturnType<typeof setTimeout> | undefined }>({ anchor: null, timer: undefined });
+  const dwelling = source === 'gps' && !finished && !!g && !g.arrived && g.toStop <= PREVIEW_RADIUS_M && !g.offRoute;
+  useEffect(() => {
+    const d = dwell.current;
+    if (!dwelling || !position) {
+      clearTimeout(d.timer);
+      d.anchor = null;
+      return;
+    }
+    if (!dwellRestart(d.anchor, position)) return;
+    clearTimeout(d.timer);
+    d.anchor = position;
+    d.timer = setTimeout(() => setConfirmFor(target), DWELL_MS);
+  }, [dwelling, position, target]);
+  useEffect(() => () => clearTimeout(dwell.current.timer), []);
+
   // Has llegado a OTRA parada sin sellar (no la que toca): se ofrece sellarla
   const [declined, setDeclined] = useState<string[]>([]);
   const here = useMemo(() => {
     if (!position || finished) return -1;
-    const reach = ARRIVE_RADIUS_M + accuracySlack(source === 'gps' ? accuracy : null) / 2;
-    return tour.stops.findIndex((st, i) => i !== target && !stamped.has(st.id) && distance(position, st.coord) <= reach);
+    const slack = accuracySlack(source === 'gps' ? accuracy : null) / 2;
+    return tour.stops.findIndex((st, i) => i !== target && !stamped.has(st.id) && distance(position, st.coord) <= arriveRadiusOf(st) + slack);
   }, [position, finished, tour.stops, target, stamped, source, accuracy]);
   // Lo que dijiste «ahora no» vuelve a ofrecerse cuando te has alejado
   if (position && declined.length) {
@@ -338,15 +406,23 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const way = tour.onTheWay.find(w => w.afterStop === target - 1);
   const showWay = !!way && frac > 0.12 && frac < 0.65;
 
-  // Cámara: sigue tu posición hasta que mueves el mapa; la parada elegida tiene prioridad
-  const [cam, setCam] = useState<LngLat>(position ?? stop.coord);
-  const want = selected != null ? tour.stops[selected].coord : follow ? position ?? stop.coord : null;
-  if (want && (want[0] !== cam[0] || want[1] !== cam[1])) setCam(want);
-  const camCenter = want ?? cam;
   // Giro del mapa: «ruta arriba» pone hacia arriba el camino que te toca seguir (solo mientras te sigue); «norte arriba», el norte
   const [rot, setRot] = useState({ bearing: 0, ms: 700 });
   const wantBearing = mapOrientation === 'north' ? 0 : follow && selected == null ? nextMapBearing(rot.bearing, routeBearing(leg, g, position, course)) : rot.bearing;
   if (wantBearing !== rot.bearing) setRot({ bearing: wantBearing, ms: rotateMs(rot.bearing, wantBearing) });
+  // Lejos de la parada (> 150 m) se encuadran tú y la parada, respetando la tarjeta de arriba y la hoja de abajo; de cerca, zoom fijo
+  const padBottom = selected != null ? sheetH + 110 : sheetH + 10;
+  const padTop = insets.top + bannerH + 16;
+  const [fitting, setFitting] = useState(false);
+  const fitD = position && !finished ? distance(position, stop.coord) : null;
+  const fittingNow = fitD == null ? false : fitting ? fitD > FIT_BACK_M : fitD > FIT_FAR_M;
+  if (fittingNow !== fitting) setFitting(fittingNow);
+  const fit = fitting && follow && selected == null && position ? fitTwo(position, stop.coord, rot.bearing, { width: winW, height: winH, top: padTop, bottom: padBottom }) : null;
+  // Cámara: sigue tu posición hasta que mueves el mapa; la parada elegida tiene prioridad
+  const [cam, setCam] = useState<LngLat>(position ?? stop.coord);
+  const want = selected != null ? tour.stops[selected].coord : follow ? fit?.center ?? position ?? stop.coord : null;
+  if (want && (want[0] !== cam[0] || want[1] !== cam[1])) setCam(want);
+  const camCenter = want ?? cam;
   /** Giro real del mapa (también el que haces con los dedos), para la aguja del botón */
   const mapRot = useSharedValue(0);
   const toggleOrientation = () => {
@@ -354,8 +430,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
     setMapOrientation(mapOrientation === 'route' ? 'north' : 'route');
     setFollow(true);
   };
-  const padBottom = selected != null ? sheetH + 110 : sheetH + 10;
-  const padTop = insets.top + bannerH + 16;
 
   // Avisos debajo de la indicación: uno solo, con todo lo que pasa
   const blocked = source === 'gps' && (permission === 'denied' || permission === 'unavailable');
@@ -437,6 +511,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
     : mode === 'confirm' ? { title: `¿Ya estás en ${stop.name}?`, sub: 'Toca para escuchar y sellar' }
     : { title: `Escuchar ${stop.name}`, sub: 'Puedes escucharla ya; el sello, al llegar' };
   const promptOn = prompt != null && !finished && offer < 0 && selected == null && !expanded;
+  const confirmOn = confirmFor === target && dwelling && !promptOn && offer < 0 && selected == null && !expanded;
 
   return (
     <TourThemeProvider palette={p}>
@@ -449,23 +524,13 @@ function WalkScreen({ tour }: { tour: Tour }) {
           attribution
           attributionPosition={{ bottom: sheetH + 8, right: 8 }}
           onPress={testMode ? e => moveTo(e.nativeEvent.lngLat) : undefined}
-          onRegionWillChange={e => { if (e.nativeEvent.userInteraction) setFollow(false); }}
+          onRegionWillChange={e => { if (e.nativeEvent.userInteraction) touchMap(); }}
           onRegionIsChanging={e => { mapRot.value = e.nativeEvent.bearing; }}
-          onRegionDidChange={e => { mapRot.value = e.nativeEvent.bearing; }}
+          onRegionDidChange={e => { mapRot.value = e.nativeEvent.bearing; if (e.nativeEvent.userInteraction) touchMap(); }}
         >
           {/* Con una parada elegida, el mapa vuela hasta ella; si no, sigue tu posición */}
-          <Camera center={camCenter} zoom={selected != null ? 17.3 : 17} bearing={rot.bearing} duration={selected != null ? 900 : Math.max(700, rot.ms)} easing={selected != null ? 'fly' : 'ease'} padding={{ top: padTop, bottom: padBottom, left: 0, right: 0 }} />
-          {routeGeo?.walked && (
-            <GeoJSONSource id="walked" data={routeGeo.walked}>
-              <Layer id="walked-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': c.route, 'line-width': 4, 'line-opacity': 0.35 }} />
-            </GeoJSONSource>
-          )}
-          {routeGeo?.rest && (
-            <GeoJSONSource id="route" data={routeGeo.rest}>
-              <Layer id="route-case" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': c.road, 'line-width': 12 }} />
-              <Layer id="route-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': c.route, 'line-width': 7.5 }} />
-            </GeoJSONSource>
-          )}
+          <Camera center={camCenter} zoom={selected != null ? 17.3 : fit?.zoom ?? FOLLOW_ZOOM} bearing={rot.bearing} duration={selected != null ? 900 : Math.max(700, rot.ms)} easing={selected != null ? 'fly' : 'ease'} padding={{ top: padTop, bottom: padBottom, left: 0, right: 0 }} />
+          <RouteLayers walked={routeGeo?.walked ?? null} rest={routeGeo?.rest ?? null} route={c.route} road={c.road} />
           <StopMarkers stops={tour.stops} stamped={stamped} target={target} selected={selected} palette={p} onSelect={onSelectStop} />
           {position && <MeMarker position={position} heading={heading} />}
         </Map>
@@ -510,7 +575,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
         )}
         {blocked && (
           <View style={[s.card, { top: belowTop }]}>
-            <Text style={s.cardTitle}>{permission === 'denied' ? 'Paseo necesita tu ubicación' : 'La ubicación está apagada'}</Text>
+            <Text accessibilityRole="header" style={s.cardTitle}>{permission === 'denied' ? 'Paseo necesita tu ubicación' : 'La ubicación está apagada'}</Text>
             <Text style={s.cardText}>{permission === 'denied' ? 'Activa la ubicación en Ajustes para que Paseo te guíe, o usa el paseo simulado.' : 'Enciende la ubicación del móvil para que Paseo te guíe.'}</Text>
             <View style={s.cardRow}>
               <PressableScale accessibilityRole="button" onPress={() => Linking.openSettings().catch(() => {})} style={[s.cardBtn, { backgroundColor: p.t }]}><Text style={[s.cardBtnText, { color: p.on }]}>Abrir ajustes</Text></PressableScale>
@@ -520,7 +585,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
         )}
         {farStart && (
           <View style={[s.card, { top: belowTop }]}>
-            <Text style={s.cardTitle}>Estás lejos del inicio</Text>
+            <Text accessibilityRole="header" style={s.cardTitle}>Estás lejos del inicio</Text>
             <Text style={s.cardText}>La primera parada, {tour.stops[0].name}, queda a {formatDistance(position ? distance(position, tour.stops[0].coord) : FAR_START_M)}. Usa tu app de mapas para llegar; el paseo empieza al acercarte.</Text>
             <View style={s.cardRow}>
               <PressableScale accessibilityRole="button" onPress={() => openSystemMaps(tour.stops[0].coord, tour.stops[0].name)} style={[s.cardBtn, { backgroundColor: p.t }]}><Text style={[s.cardBtnText, { color: p.on }]}>Abrir en Mapas</Text></PressableScale>
@@ -546,12 +611,12 @@ function WalkScreen({ tour }: { tour: Tour }) {
           <View style={[s.test, { top: belowTop + 8 }]}>
             <View style={s.testRow}>
               <Text style={s.testTitle}>Modo prueba</Text>
-              <Pressable accessibilityRole="button" onPress={() => { setManual(null); setSource(v => (v === 'gps' ? 'simulated' : 'gps')); }} style={s.testChip}>
+              <Pressable accessibilityRole="button" accessibilityLabel={source === 'gps' ? 'Cambiar a paseo simulado' : 'Cambiar a GPS real'} onPress={() => { setManual(null); setSource(v => (v === 'gps' ? 'simulated' : 'gps')); }} style={s.testChip}>
                 <Text style={s.testChipText}>{source === 'gps' ? 'GPS real' : 'Simulado'}</Text>
               </Pressable>
             </View>
             <View style={s.testRow}>
-              <Pressable accessibilityRole="button" onPress={() => (manual || paused || source === 'gps' ? resume() : setPaused(true))} style={[s.testChip, s.testOn]}>
+              <Pressable accessibilityRole="button" accessibilityLabel={manual || paused || source === 'gps' ? 'Andar' : 'Parar'} onPress={() => (manual || paused || source === 'gps' ? resume() : setPaused(true))} style={[s.testChip, s.testOn]}>
                 <Text style={[s.testChipText, { color: '#fff' }]}>{manual || paused || source === 'gps' ? '▶ Andar' : 'II Parar'}</Text>
               </Pressable>
               {([1, 4, 16] as SimSpeed[]).map(v => (
@@ -559,7 +624,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
                   <Text style={[s.testChipText, simSpeed === v && { color: '#fff' }]}>{v}×</Text>
                 </Pressable>
               ))}
-              <Pressable accessibilityRole="button" onPress={arriveNow} style={s.testChip}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Llegar a la parada" onPress={arriveNow} style={s.testChip}>
                 <Text style={s.testChipText}>⚑ Llegar</Text>
               </Pressable>
             </View>
@@ -571,11 +636,25 @@ function WalkScreen({ tour }: { tour: Tour }) {
         {offer >= 0 && !expanded && (
           <Animated.View entering={FadeInDown.duration(DUR.base).easing(EASE_OUT)} style={[s.popWrap, { bottom: sheetH + 12 }]}>
             <View style={s.offer}>
-              <Text style={s.offerTitle}>Estás en {tour.stops[offer].name}</Text>
+              <Text accessibilityRole="header" style={s.offerTitle}>Estás en {tour.stops[offer].name}</Text>
               <Text style={s.offerText}>No es la que tocaba, pero puedes sellarla ahora.</Text>
               <View style={s.cardRow}>
                 <PressableScale accessibilityRole="button" onPress={() => doArrive(offer, position)} style={[s.cardBtn, { backgroundColor: p.t }]}><Text style={[s.cardBtnText, { color: p.on }]}>Sí, sellarla</Text></PressableScale>
                 <PressableScale accessibilityRole="button" onPress={() => setDeclined(d => [...d, tour.stops[offer].id])} style={[s.cardBtn, s.cardBtnGhost]}><Text style={[s.cardBtnText, { color: neutral.ink }]}>Ahora no</Text></PressableScale>
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Llevas un rato parado cerca de la parada sin haber llegado: ¿ya estás? */}
+        {confirmOn && (
+          <Animated.View entering={FadeInDown.duration(DUR.base).easing(EASE_OUT)} style={[s.popWrap, { bottom: sheetH + 12 }]}>
+            <View style={s.offer}>
+              <Text accessibilityRole="header" style={s.offerTitle}>¿Ya estás en {stop.name}?</Text>
+              <Text style={s.offerText}>{listenCopy.sub}</Text>
+              <View style={s.cardRow}>
+                <PressableScale accessibilityRole="button" onPress={() => { setConfirmFor(null); listen(target); }} style={[s.cardBtn, { backgroundColor: p.t }]}><Text style={[s.cardBtnText, { color: p.on }]}>Sí, estoy aquí</Text></PressableScale>
+                <PressableScale accessibilityRole="button" onPress={() => setConfirmFor(null)} style={[s.cardBtn, s.cardBtnGhost]}><Text style={[s.cardBtnText, { color: neutral.ink }]}>Ahora no</Text></PressableScale>
               </View>
             </View>
           </Animated.View>
@@ -588,7 +667,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
               <View style={s.promptTop}>
                 <DuotoneImage source={tour.stops[prompt.idx].thumb} palette={p} style={s.promptPic} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.offerTitle}>Estás en {tour.stops[prompt.idx].name}</Text>
+                  <Text accessibilityRole="header" style={s.offerTitle}>Estás en {tour.stops[prompt.idx].name}</Text>
                   <Text style={s.offerText}>¿Escuchas su historia?</Text>
                 </View>
               </View>
@@ -637,7 +716,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
             contentContainerStyle={[s.body, { paddingBottom: insets.bottom + 14 }]}
           >
             {showWay && (
-              <Pressable accessibilityRole="button" onPress={() => (narration.speaking ? narration.stop() : narration.speak(wayScript(way!)))} style={[s.way, { backgroundColor: p.soft }]}>
+              <Pressable accessibilityRole="button" accessibilityLabel={narration.speaking ? 'Parar el aviso del camino' : `Escuchar: ${way!.text}`} onPress={() => (narration.speaking ? narration.stop() : narration.speak(wayScript(way!)))} style={[s.way, { backgroundColor: p.soft }]}>
                 <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>
                 <Text style={[s.wayText, { color: p.deep }]} numberOfLines={1}>{way!.text}</Text>
               </Pressable>
