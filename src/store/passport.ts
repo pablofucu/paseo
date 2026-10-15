@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { PACKS } from '@/data/packs';
 import { getTour } from '@/data/tours';
 import { randomSpot, stampRotation } from '@/lib/placement';
 import { rng } from '@/lib/rubber';
@@ -12,8 +13,9 @@ import { placedBoxes, sheetFor, stampInk } from '@/lib/sheet';
  *   UserPassport { owner, issuedAt, pageOrder }
  *   UserRoute { routeId, stamps[{ stopId, date, x, y, rot, seed }], postcardUnlockedAt }
  * Cada parada se sella una sola vez; las repeticiones van al historial. Con
- * el último sello la ruta queda completada y se gana la postal (no hay sello
- * de ruta completada).
+ * el último sello la ruta queda completada y se gana su sello de carta; con
+ * los de todo un pack (src/data/packs.ts) se desbloquea la postal del pack
+ * (no hay sello de ruta completada).
  */
 
 /** Un sello puesto en la hoja: centro en proporción de la hoja (0–1), giro en grados y semilla de la textura */
@@ -64,6 +66,8 @@ export type Drop = Omit<PlacedStamp, 'date' | 'stopId'>;
 interface PassportState {
   passport: UserPassport;
   routes: Record<string, UserRoute>;
+  /** Packs cuya celebración de «Pack completo» (y su postal) ya se enseñó */
+  packsSeen: Record<string, true>;
   /** Paseo en curso: la ruta, la parada a la que se va y en cuál se está ya. Se guarda 12 h (ver `restoreWalk`) */
   walk: ActiveWalk | null;
   /** Cuándo cambió el paseo por última vez (ms): de aquí sale su caducidad */
@@ -82,6 +86,8 @@ interface PassportState {
   arrive: (tourId: string, stopId: string) => boolean;
   placeStamp: (tourId: string, stopId: string, drop: Drop) => void;
   markPostcardSeen: (tourId: string) => void;
+  /** Se enseñó el «Pack completo» de este pack */
+  markPackSeen: (packId: string) => void;
   /** Guarda la nota del paseo de una ruta (recortada a NOTE_MAX) */
   setNote: (tourId: string, note: string) => void;
   /** Cancelar una ruta: se borran sus sellos y su hoja del pasaporte, y se para el paseo si era esa */
@@ -114,6 +120,7 @@ export const usePassport = create<PassportState>()(
     (set, get) => ({
       passport: freshPassport(),
       routes: {},
+      packsSeen: {},
       walk: null,
       walkAt: null,
       setOwner: owner => set(s => ({ passport: { ...s.passport, owner: owner.slice(0, 24) } })),
@@ -158,32 +165,37 @@ export const usePassport = create<PassportState>()(
         }),
       markPostcardSeen: tourId =>
         set(s => (s.routes[tourId] ? { routes: { ...s.routes, [tourId]: { ...s.routes[tourId], postcardSeen: true } } } : s)),
+      markPackSeen: packId => set(s => (s.packsSeen[packId] ? s : { packsSeen: { ...s.packsSeen, [packId]: true } })),
       setNote: (tourId, note) =>
         set(s => (s.routes[tourId] ? { routes: { ...s.routes, [tourId]: { ...s.routes[tourId], note: note.trim().slice(0, NOTE_MAX) } } } : s)),
       dropRoute: tourId =>
         set(s => {
           const { [tourId]: _dropped, ...routes } = s.routes;
+          // Si el pack deja de estar completo, volverá a celebrarse al recuperarlo
+          const packsSeen = { ...s.packsSeen };
+          for (const p of PACKS) if (p.tours.some(t => t.id === tourId)) delete packsSeen[p.id];
           return {
             routes,
+            packsSeen,
             passport: { ...s.passport, pageOrder: s.passport.pageOrder.filter(id => id !== tourId) },
             walk: s.walk?.tourId === tourId ? null : s.walk,
             walkAt: s.walk?.tourId === tourId ? null : s.walkAt,
           };
         }),
-      reset: () => set({ passport: freshPassport(), routes: {}, walk: null, walkAt: null }),
+      reset: () => set({ passport: freshPassport(), routes: {}, packsSeen: {}, walk: null, walkAt: null }),
     }),
     {
       name: 'paseo-passport',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
       // El paseo en curso también se guarda (si Android cierra la app, se retoma); al leerlo caduca a las 12 h
-      partialize: s => ({ passport: s.passport, routes: s.routes, walk: s.walk, walkAt: s.walkAt }),
+      partialize: s => ({ passport: s.passport, routes: s.routes, packsSeen: s.packsSeen, walk: s.walk, walkAt: s.walkAt }),
       merge: (saved, current) => {
         const old = (saved ?? {}) as Partial<PassportState>;
         const walk = restoreWalk(old.walk, old.walkAt, Date.now());
         return { ...current, ...old, walk, walkAt: walk ? old.walkAt! : null };
       },
-      migrate: (old, version) => dropFinalStamps(version < 1 ? migrateVisits(old as OldState) : (old as PassportState)) as PassportState,
+      migrate: (old, version) => addPacksSeen(version < 2 ? dropFinalStamps(version < 1 ? migrateVisits(old as OldState) : (old as PassportState)) : (old as PassportState)) as PassportState,
     },
   ),
 );
@@ -239,6 +251,12 @@ export function dropFinalStamps<T extends Pick<PassportState, 'routes'>>(state: 
     routes[id] = { ...rest, postcardUnlockedAt: all ? (rest.postcardUnlockedAt ?? finalStamp?.date ?? last) : null, postcardSeen: rest.postcardSeen ?? !!finalStamp };
   }
   return { ...state, routes };
+}
+
+/** Versión 3: los packs de postales. Quien ya tenía pasaporte empieza sin ningún pack celebrado. */
+export function addPacksSeen<T extends object>(state: T): T & Pick<PassportState, 'packsSeen'> {
+  const packsSeen = (state as { packsSeen?: Record<string, true> }).packsSeen;
+  return { ...state, packsSeen: packsSeen ?? {} };
 }
 
 /** Situación de una ruta para la interfaz. Si la ruta ya no existe en la app, todo a cero. */

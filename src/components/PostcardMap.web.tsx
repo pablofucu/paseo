@@ -8,7 +8,7 @@ import { neutral } from '@/theme/tokens';
 export function PostcardMap(_: { tours: Tour[]; routes: Record<string, UserRoute>; onOpen: (t: Tour) => void }) {
   return (
     <View style={s.box}>
-      <Text style={s.text}>El mapa de postales está en la app de iOS y Android.</Text>
+      <Text style={s.text}>El mapa de sellos está en la app de iOS y Android.</Text>
     </View>
   );
 }

@@ -1,13 +1,11 @@
 import { Camera, Map, Marker } from '@maplibre/maplibre-react-native';
-import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { DUR, EASE_OUT, PressableScale, rise, SPRING } from '@/components/motion';
-import { Postcard } from '@/components/Postcard';
+import { RouteStamp } from '@/components/RouteStamp';
 import type { Tour } from '@/data/types';
 import { tintaDeRuta } from '@/lib/ink';
-import { POSTCARD_THUMB } from '@/lib/postcard';
 import { buildMapStyle } from '@/lib/mapStyle';
 import { fechaSello } from '@/lib/rubber';
 import { routeProgress, type UserRoute } from '@/store/passport';
@@ -16,8 +14,8 @@ import { brandPalette, neutral, shadow } from '@/theme/tokens';
 
 const STYLE = buildMapStyle(brandPalette);
 
-/** Pin de una postal: aparece suave al abrir el mapa y crece un poco al elegirlo */
-function PostcardPin({ tour, won, index, selected, onPress }: { tour: Tour; won: boolean; index: number; selected: boolean; onPress: () => void }) {
+/** Pin del sello de una ruta: aparece suave al abrir el mapa y crece un poco al elegirlo */
+function PostcardPin({ tour, done, total, index, selected, onPress }: { tour: Tour; done: number; total: number; index: number; selected: boolean; onPress: () => void }) {
   const reduced = useReducedMotion();
   const drop = useSharedValue(reduced ? 1 : 0);
   const sel = useSharedValue(0);
@@ -28,16 +26,16 @@ function PostcardPin({ tour, won, index, selected, onPress }: { tour: Tour; won:
     transform: [{ translateY: (1 - drop.value) * -14 }, { scale: 1 + sel.value * 0.15 }, { rotate: `${-3 + sel.value * 3}deg` }],
   }));
   return (
-    <PressableScale accessibilityRole="button" accessibilityLabel={`Postal ${tour.title}`} onPress={onPress} scaleTo={0.92}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={`Sello de ${tour.title}`} onPress={onPress} scaleTo={0.92}>
       <Animated.View style={[s.pin, { borderColor: tintaDeRuta(tour.accent) }, style]}>
-        {won ? <Image source={POSTCARD_THUMB[tour.id] ?? tour.postcard.art} style={s.thumb} contentFit="cover" /> : <View style={[s.thumb, s.blank]} />}
+        <RouteStamp tour={tour} done={done} total={total} height={56} />
         <Text style={s.pinText} numberOfLines={1}>{tour.city}</Text>
       </Animated.View>
     </PressableScale>
   );
 }
 
-/** Vista secundaria de Postales: cada ruta en el mapa; al tocarla, su postal sube en una ventana */
+/** Vista secundaria de la Colección: el sello de cada ruta en el mapa; al tocarlo, sube una ventana con la ruta */
 export function PostcardMap({ tours, routes, onOpen }: { tours: Tour[]; routes: Record<string, UserRoute>; onOpen: (t: Tour) => void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const lngs = tours.map(t => t.stops[0].coord[0]), lats = tours.map(t => t.stops[0].coord[1]);
@@ -50,18 +48,18 @@ export function PostcardMap({ tours, routes, onOpen }: { tours: Tour[]; routes: 
         <Camera center={sel ? sel.stops[0].coord : center} zoom={sel ? 13.5 : 11.5} duration={800} easing="fly" />
         {tours.map((t, i) => (
           <Marker key={t.id} id={`postal-${t.id}`} lngLat={t.stops[0].coord} anchor="bottom">
-            <PostcardPin tour={t} index={i} won={routeProgress(t.id, routes[t.id]).completed} selected={selected === t.id} onPress={() => setSelected(v => (v === t.id ? null : t.id))} />
+            <PostcardPin tour={t} index={i} done={routeProgress(t.id, routes[t.id]).done} total={t.stops.length} selected={selected === t.id} onPress={() => setSelected(v => (v === t.id ? null : t.id))} />
           </Marker>
         ))}
       </Map>
       {sel && prog && (
         <Animated.View key={sel.id} entering={rise(0)} exiting={FadeOut.duration(140)} style={s.popup}>
-          <Postcard tour={sel} route={routes[sel.id]} width={120} />
+          <RouteStamp tour={sel} done={prog.done} total={prog.total} height={96} rotate={-3} />
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
             <Text style={s.popTitle} numberOfLines={2}>{sel.title}</Text>
-            <Text style={s.popSub}>{prog.completed ? `Ganada · ${fechaSello(prog.completedAt!)}` : prog.started ? `${prog.done} de ${prog.total} paradas` : 'Sin empezar'}</Text>
+            <Text style={s.popSub}>{prog.completed ? `Sello ganado · ${fechaSello(prog.completedAt!)}` : prog.started ? `${prog.done} de ${prog.total} paradas` : 'Sin empezar'}</Text>
             <PressableScale accessibilityRole="button" onPress={() => onOpen(sel)} style={s.popBtn}>
-              <Text style={s.popBtnText}>{prog.completed ? 'Ver la postal' : 'Ver la ruta'}</Text>
+              <Text style={s.popBtnText}>Ver la ruta</Text>
             </PressableScale>
           </View>
         </Animated.View>
@@ -72,9 +70,7 @@ export function PostcardMap({ tours, routes, onOpen }: { tours: Tour[]; routes: 
 
 const s = StyleSheet.create({
   map: { height: 460, borderRadius: 20, overflow: 'hidden', backgroundColor: neutral.bg2 },
-  pin: { backgroundColor: '#f5eedb', padding: 4, borderWidth: 2, borderRadius: 4, alignItems: 'center' },
-  thumb: { width: 84, height: 45 },
-  blank: { borderWidth: 1, borderStyle: 'dashed', borderColor: '#b9ab88' },
+  pin: { backgroundColor: '#f5eedb', padding: 4, paddingHorizontal: 8, borderWidth: 2, borderRadius: 4, alignItems: 'center' },
   pinText: { fontFamily: font.black, fontSize: 11, color: neutral.ink, marginTop: 2 },
   popup: { position: 'absolute', left: 10, right: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 18, backgroundColor: neutral.surface, ...shadow[3] },
   popTitle: { fontFamily: font.serif, fontSize: 17, lineHeight: 20, color: neutral.ink },

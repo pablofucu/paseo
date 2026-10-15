@@ -7,7 +7,7 @@ Prototipos HTML hechos antes de programar la app. Se abren en cualquier navegado
 - `sellos-costa.html`: sistema de sellos (formas por tipo de lugar, estados y cómo se fabrican)
 - `tour-tomares.html`: prototipo del tour de Tomares con las fotos reales
 - `stamps/*.svg`: escena de cada sello de goma (una por parada)
-- `postcards/*.svg`: ilustración de cada postal, con una escena propia de la ruta. Se dibujan con `scripts/draw-postcard-arenal.mjs` (Plaza de España desde el canal), `scripts/draw-postcard-sevilla-centro.mjs` (Sevilla al atardecer desde la orilla de Triana) y `scripts/draw-postcard-tomares.mjs` (calle encalada del Aljarafe con espadaña y banderines; el olivo queda al fondo porque es el emblema del sello)
+- `postcards/*.svg`: ilustración de cada postal, con una escena propia. Las postales son de los **packs** de rutas (`src/data/packs.ts`), no de cada ruta: hoy se reutilizan las del Arenal y el centro de Sevilla, y las de los packs de Madrid están por dibujar. Se dibujan con `scripts/draw-postcard-arenal.mjs` (Plaza de España desde el canal), `scripts/draw-postcard-sevilla-centro.mjs` (Sevilla al atardecer desde la orilla de Triana) y `scripts/draw-postcard-tomares.mjs` (calle encalada del Aljarafe con espadaña y banderines; el olivo queda al fondo porque es el emblema del sello)
 - `banners/sevilla.svg`: portada de Sevilla (960 × 600), la ciudad al anochecer desde las Setas con la Giralda grande en el centro. La dibuja `scripts/draw-banner-sevilla.mjs`
 - `route-stamps/*.svg`: sello de correos de cada ruta, un emblema exclusivo que la simboliza (nunca un recorte de la postal). Los dibuja `scripts/draw-route-stamps.mjs`, que incluye también los de las rutas de pago bloqueadas (`triana`, `murillo`, `austrias`, `letras`, `retiro-prado`)
 

@@ -5,21 +5,26 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { appear, rise } from '@/components/motion';
-import { Postcard, postcardHeight } from '@/components/Postcard';
 import { FONDO_POSTAL } from '@/components/PostcardUnlock';
 import { ShareMat } from '@/components/ShareMat';
 import { IconButton } from '@/components/ui';
-import { getTour } from '@/data/tours';
-import type { Tour } from '@/data/types';
-import { sharePostcard } from '@/lib/share';
-import { routeProgress, usePassport, useRoute } from '@/store/passport';
+import { getPack, packOf, type Pack } from '@/data/packs';
+import { getCity } from '@/data/tours';
+import { PackPostcard, postcardHeight } from '@/components/Postcard';
+import { postcardUnlocked } from '@/lib/packs';
+import { sharePackPostcard } from '@/lib/share';
+import { usePassport } from '@/store/passport';
+import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 
-/** Postal a pantalla completa: se le da la vuelta tocándola y se comparte */
+/**
+ * Postal de un pack a pantalla completa: se le da la vuelta tocándola y se comparte.
+ * El id es el del pack; con el de una ruta se abre la postal de su pack.
+ */
 export default function PostalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const tour = getTour(id);
-  return tour ? <Postal tour={tour} /> : <Aviso title="Esta postal no existe" text="Quizá la ruta ya no está en la app." />;
+  const pack = getPack(id) ?? packOf(id);
+  return pack ? <Postal pack={pack} /> : <Aviso title="Esta postal no existe" text="Quizá el pack ya no está en la app." />;
 }
 
 /** Pantalla de aviso: postal desconocida o todavía sin ganar */
@@ -44,8 +49,9 @@ function Aviso({ title, text, action }: { title: string; text: string; action?: 
   );
 }
 
-function Postal({ tour }: { tour: Tour }) {
-  const route = useRoute(tour.id);
+function Postal({ pack }: { pack: Pack }) {
+  const routes = usePassport(s => s.routes);
+  const testMode = useSettings(s => s.testMode);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduced = useReducedMotion();
@@ -56,10 +62,8 @@ function Postal({ tour }: { tour: Tour }) {
   useEffect(() => () => clearTimeout(flipTimer.current), []);
   const turn = useSharedValue(0);
   const card = useRef<View>(null);
-  const earned = routeProgress(tour.id, route).completed;
-  // Al abrir una postal ganada deja de ser «nueva» en Postales
-  const markSeen = usePassport(s => s.markPostcardSeen);
-  useEffect(() => { if (earned && !route?.postcardSeen) markSeen(tour.id); }, [earned, route?.postcardSeen, markSeen, tour.id]);
+  const earned = postcardUnlocked(pack, routes, { testMode });
+  const city = getCity(pack.city)?.name ?? '';
 
   // Cabe a lo ancho, o a lo alto en horizontal
   const w = Math.min(width - 24, ((height - insets.top - insets.bottom - 200) * 928) / 628, 900);
@@ -90,8 +94,8 @@ function Postal({ tour }: { tour: Tour }) {
     return (
       <Aviso
         title="Aún no es tuya"
-        text={`Completa «${tour.title}» para ganar su postal.`}
-        action={{ label: 'Ver la ruta', onPress: () => router.replace({ pathname: '/tour/[id]', params: { id: tour.id } }) }}
+        text={pack.postcard ? `Junta los sellos de «${pack.name}» para ganar su postal.` : 'Esta postal todavía está por dibujar.'}
+        action={{ label: 'Ver mi colección', onPress: () => { router.dismissTo('/'); router.navigate('/postales'); } }}
       />
     );
   }
@@ -101,18 +105,18 @@ function Postal({ tour }: { tour: Tour }) {
       <StatusBar style="light" />
       <IconButton label="Cerrar" icon="close" onPress={() => router.back()} style={{ marginLeft: 14 }} />
       <View style={s.center}>
-        <Animated.Text entering={appear(120)} style={s.over}>{tour.city}</Animated.Text>
-        <Animated.Text entering={appear(180)} accessibilityRole="header" style={s.title}>{tour.title}</Animated.Text>
+        <Animated.Text entering={appear(120)} style={s.over}>{city}</Animated.Text>
+        <Animated.Text entering={appear(180)} accessibilityRole="header" style={s.title}>{pack.name}</Animated.Text>
         <Animated.View entering={rise(2)}>
         <Pressable accessibilityRole="button" accessibilityLabel={back ? 'Ver el anverso' : 'Dar la vuelta a la postal'} onPress={flip} style={{ marginTop: 18 }}>
-          <ShareMat ref={card} tour={tour}>
+          <ShareMat ref={card} pack={pack}>
           <Animated.View style={[{ width: w, height: postcardHeight(w) }, style]}>
             {/* Cada cara se pinta una vez como textura: al girar solo se mueve la imagen, sin volver a dibujar el SVG y los textos */}
             <Animated.View style={[StyleSheet.absoluteFill, frontFace]} renderToHardwareTextureAndroid shouldRasterizeIOS>
-              <Postcard tour={tour} route={route} width={w} />
+              <PackPostcard pack={pack} unlocked={earned} width={w} />
             </Animated.View>
             <Animated.View style={[StyleSheet.absoluteFill, backFace]} renderToHardwareTextureAndroid shouldRasterizeIOS>
-              <Postcard tour={tour} route={route} width={w} back />
+              <PackPostcard pack={pack} unlocked={earned} width={w} back />
             </Animated.View>
           </Animated.View>
           </ShareMat>
@@ -124,7 +128,7 @@ function Postal({ tour }: { tour: Tour }) {
         <Pressable accessibilityRole="button" onPress={flip} style={[s.btn, s.ghost]}>
           <Text style={[s.btnText, { color: '#fff' }]}>{back ? 'Ver el anverso' : 'Dar la vuelta'}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: flipping }} disabled={flipping} onPress={() => sharePostcard(card, tour.title)} style={[s.btn, { backgroundColor: '#fff' }, flipping && { opacity: 0.5 }]}>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: flipping }} disabled={flipping} onPress={() => sharePackPostcard(card, pack.name)} style={[s.btn, { backgroundColor: '#fff' }, flipping && { opacity: 0.5 }]}>
           <Text style={s.btnText}>Compartir</Text>
         </Pressable>
       </View>
