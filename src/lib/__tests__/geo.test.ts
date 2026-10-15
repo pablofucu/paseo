@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { bearing, boundsOf, cumulative, destination, distance, formatDistance, maneuvers, pointAlong, projectOnRoute, turnAngle, walkedMeters } from '../geo';
+import { bearing, boundsOf, cumulative, destination, distance, formatDistance, maneuvers, pointAlong, projectOnRoute, routeMeters, turnAngle, walkedMeters } from '../geo';
 import { arrivalAllowed, guide, instruction, prepareLeg } from '../guidance';
 import type { LngLat } from '@/data/types';
 
@@ -159,5 +159,14 @@ describe('walkedMeters', () => {
     expect(walkedMeters([100, 200, 300], [0])).toBe(0);
     expect(walkedMeters([100, 200, 300], [0, 2])).toBe(300);
     expect(walkedMeters([100, 200, 300], [3, 1])).toBe(600);
+  });
+});
+
+describe('routeMeters', () => {
+  it('suma los tramos de todas las piernas y sin piernas es 0', () => {
+    expect(routeMeters({ legs: [[A, B], [B, A]] })).toBeCloseTo(2 * distance(A, B), 6);
+    expect(routeMeters({ legs: [[A, B, A]] })).toBeCloseTo(2 * distance(A, B), 6);
+    expect(routeMeters({ legs: [] })).toBe(0);
+    expect(routeMeters({ legs: [[A]] })).toBe(0);
   });
 });

@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import Svg, { Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { BANNER_POSITION, TourBanner } from '@/components/TourBanner';
 import { euros } from '@/components/LockedTour';
 import { PressableScale } from '@/components/motion';
@@ -10,7 +10,8 @@ import { RouteStamp } from '@/components/RouteStamp';
 import { stopInk } from '@/components/RubberStamp';
 import type { LockedTour, Tour } from '@/data/types';
 import { formatDuration } from '@/lib/duration';
-import { startLabel } from '@/lib/nearby';
+import { formatDistance, routeMeters } from '@/lib/geo';
+import { NEARBY_MAX_M, startLabel } from '@/lib/nearby';
 import { routeProgress, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { brand, functional, neutral, radius, shadow, type TourPalette } from '@/theme/tokens';
@@ -56,34 +57,71 @@ export function stopInks(tour: Tour, route: UserRoute | undefined) {
 
 export const durationLabel = formatDuration;
 
-/* ── Rastro de pasos ──────────────────────────────────────────────── */
+/* ── Trayecto ─────────────────────────────────────────────────────── */
 
-/** Una pisada (24 × 24, punta hacia arriba) */
-const FOOT = 'M12 1.5c3.6 0 5.5 3.6 5.5 7.6S15.6 15 12 15s-5.5-2-5.5-5.9S8.4 1.5 12 1.5zM8.7 16.5h6.6v2.6a3.3 3.3 0 0 1-6.6 0z';
+const J_H = 74, J_Y = 34, J_PAD = 14;
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /**
- * Duración como un rastro de pisadas hacia la derecha, una cada 5 minutos
- * (más largo cuanto más dura el paseo), y los minutos al final.
+ * El paseo como una línea: tú (punto azul), lo que falta hasta el inicio
+ * (punteado) y la ruta en su color, con los km y el tiempo encima.
+ * Sin posición (o lejos, o sin longitud: tour bloqueado) arranca en «INICIO».
  */
-export function Trail({ minutes, color }: { minutes: number; color: string }) {
-  const n = Math.min(18, Math.max(3, Math.round(minutes / 5)));
-  const step = 15, size = 15;
+export function Journey({ color, minutes, meters, stops, startMeters }: {
+  color: string;
+  minutes: number;
+  /** Longitud de la ruta en metros, si se conoce */
+  meters?: number | null;
+  /** Nº de paradas: se dice cuando no hay posición con la que situarte */
+  stops: number;
+  startMeters?: number | null;
+}) {
+  const [w, setW] = useState(0);
+  const here = startMeters != null && startMeters <= NEARBY_MAX_M;
+  const atStart = here && startMeters < 8;
+  const showMe = here && !atStart;
+  const W = Math.max(w, 1);
+  const x0 = J_PAD, x1 = W - J_PAD;
+  // El inicio se sitúa en proporción, sin que el tramo azul quede ridículo ni se coma la ruta
+  const xs = showMe ? x0 + clamp(startMeters / (startMeters + (meters ?? 0) || 1), 0.15, 0.45) * (x1 - x0) : x0;
+  const data = [meters ? formatDistance(meters) : null, durationLabel(minutes), showMe || atStart ? null : `${stops} paradas`].filter(Boolean).join(' · ');
+  const label = (x: number, text: string, align: 'center' | 'left' = 'center') => (
+    <Text maxFontSizeMultiplier={1.3} style={[s.jLbl, { left: align === 'left' ? 0 : clamp(x - 24, 0, W - 48), textAlign: align }]}>{text}</Text>
+  );
+  const val = (x: number, text: string, c: string, size = 14) => (
+    <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[s.jVal, { left: clamp(x - 90, 0, Math.max(0, W - 180)), color: c, fontSize: size }]}>{text}</Text>
+  );
+
   return (
-    <View style={s.trail} accessible accessibilityLabel={`${minutes} minutos a pie`}>
-      <View style={{ flexShrink: 1, overflow: 'hidden' }}>
-      <Svg width={n * step + 4} height={22}>
-        {Array.from({ length: n }, (_, i) => {
-          const up = i % 2 === 0;
-          // Izquierda y derecha alternas, de más clara a más marcada
-          return (
-            <G key={i} opacity={0.35 + (0.65 * (i + 1)) / n} transform={`translate(${i * step} ${up ? 0 : 7}) rotate(${up ? 80 : 100} ${size / 2} ${size / 2}) scale(${size / 24})`}>
-              <Path d={FOOT} fill={color} />
-            </G>
-          );
-        })}
-      </Svg>
-      </View>
-      <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={s.trailText}>{durationLabel(minutes)}</Text>
+    <View
+      style={s.journey}
+      onLayout={e => setW(e.nativeEvent.layout.width)}
+      accessible
+      accessibilityLabel={`${durationLabel(minutes)}${meters ? `, ${formatDistance(meters)}` : ''}${showMe ? `, a ${formatDistance(startMeters)} del inicio` : atStart ? ', estás en el inicio' : `, ${stops} paradas`}`}
+    >
+      {w > 0 && (
+        <>
+          <Svg width={w} height={J_H} style={StyleSheet.absoluteFill}>
+            {showMe && <Line x1={x0 + 8} y1={J_Y} x2={xs - 9} y2={J_Y} stroke={functional.me} strokeWidth={3.5} strokeLinecap="round" strokeDasharray="0.1 7" />}
+            <Line x1={xs} y1={J_Y} x2={x1} y2={J_Y} stroke={color} strokeWidth={7} strokeLinecap="round" />
+            {showMe && (
+              <>
+                <Circle cx={x0} cy={J_Y} r={11} fill={functional.me} opacity={0.22} />
+                <Circle cx={x0} cy={J_Y} r={6.5} fill={functional.me} stroke={neutral.white} strokeWidth={2.5} />
+              </>
+            )}
+            <Circle cx={xs} cy={J_Y} r={9} fill={neutral.white} stroke={color} strokeWidth={4} />
+            <Circle cx={x1} cy={J_Y} r={9} fill={color} />
+            <Path d={`M${x1 - 3} ${J_Y - 5}v10M${x1 - 3} ${J_Y - 5}h6.5l-1.5 2.5 1.5 2.5h-6.5`} fill={neutral.white} stroke={neutral.white} strokeWidth={1.6} strokeLinejoin="round" />
+          </Svg>
+          {showMe && val((x0 + xs) / 2, formatDistance(startMeters), functional.me)}
+          {atStart && <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[s.jVal, { left: 0, textAlign: 'left', color: functional.me }]}>Estás en el inicio</Text>}
+          {val(atStart ? (xs + x1) / 2 + 40 : (xs + x1) / 2, data, color, 15)}
+          {showMe && label(x0, 'TÚ')}
+          {label(xs, 'INICIO', showMe ? 'center' : 'left')}
+          {label(x1, 'FIN')}
+        </>
+      )}
     </View>
   );
 }
@@ -120,11 +158,12 @@ export function TourRouteCard({ tour, route, startMeters }: { tour: Tour; route:
   const prog = routeProgress(tour.id, route);
   const next = stopInks(tour, route).indexOf(null);
   const near = startLabel(startMeters);
+  const meters = routeMeters(tour);
   // Solo el precio: si la ruta está hecha o a medias ya lo dicen el sello y la línea
   const tag = tour.price === 'free'
     ? <Tag label="Gratis" bg={brand.sun} color={neutral.ink} />
     : <Tag label={euros(tour.price.eur)} bg={functional.premium} color={neutral.white} icon={<Icon name="lock" color={functional.gold} size={12} />} />;
-  const label = `${tour.title}. ${prog.completed ? 'Completada' : prog.started ? `Vas por la parada ${next + 1} de ${prog.total}` : `${prog.total} paradas`}${near ? `. ${near}` : ''}`;
+  const label = `${tour.title}. ${prog.completed ? 'Completada' : prog.started ? `Vas por la parada ${next + 1} de ${prog.total}` : `${prog.total} paradas`}. ${durationLabel(tour.durationMin)}, ${formatDistance(meters)}${near ? `. ${near}` : ''}`;
 
   return (
     <PressableScale accessibilityRole="button" accessibilityLabel={label} scaleTo={0.975} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: tour.id } })} style={s.card}>
@@ -140,8 +179,7 @@ export function TourRouteCard({ tour, route, startMeters }: { tour: Tour; route:
           </View>
           {tag}
         </View>
-        <Trail minutes={tour.durationMin} color={p.t} />
-        {near && <Text maxFontSizeMultiplier={1.3} style={s.near}>{near}</Text>}
+        <Journey color={p.t} minutes={tour.durationMin} meters={meters} stops={tour.stops.length} startMeters={startMeters} />
       </View>
     </PressableScale>
   );
@@ -167,7 +205,7 @@ export function LockedRouteCard({ tour, onPress }: { tour: LockedTour; onPress: 
           </View>
           <Tag label={euros(tour.eur)} bg={functional.premium} color={neutral.white} icon={<Icon name="lock" color={functional.gold} size={12} />} />
         </View>
-        <Trail minutes={tour.durationMin} color={neutral.ink3} />
+        <Journey color={neutral.ink3} minutes={tour.durationMin} stops={tour.stops} />
       </View>
     </PressableScale>
   );
@@ -183,9 +221,10 @@ const s = StyleSheet.create({
   title: { fontFamily: font.serifBold, fontSize: 19, lineHeight: 22, color: neutral.ink, marginTop: 1 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 26, paddingVertical: 3, paddingHorizontal: 10, borderRadius: radius.pill },
   tagText: { fontFamily: font.black, fontSize: 12 },
-  trail: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   near: { fontFamily: font.bold, fontSize: 12.5, color: neutral.ink2 },
-  trailText: { flexShrink: 0, fontFamily: font.black, fontSize: 14, color: neutral.ink },
+  journey: { height: J_H },
+  jVal: { position: 'absolute', top: 0, width: 180, textAlign: 'center', fontFamily: font.black },
+  jLbl: { position: 'absolute', top: 52, width: 48, fontFamily: font.black, fontSize: 11, letterSpacing: 0.6, color: neutral.ink3 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   statText: { fontFamily: font.black, fontSize: 13.5, color: neutral.ink },
 });

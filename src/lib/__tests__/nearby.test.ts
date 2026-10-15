@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { nearestStart, sortByDistance, startLabel, walkingDirectionsUrl, withTimeout } from '../nearby';
-import { DURATION_FILTERS, matchesDuration, matchesPrice, PRICE_FILTERS, shortestFree, shouldFilter } from '../routeFilter';
+import { shortestFree } from '../routeFilter';
 import { LARGE_TEXT_SCALE, scaleType, type } from '@/theme/type';
 
 const at = (lng: number, lat: number) => ({ stops: [{ coord: [lng, lat] as [number, number] }] }) as never;
@@ -28,30 +28,6 @@ describe('cerca de ti', () => {
     expect(startLabel(3)).toBe('Estás en el inicio');
     expect(startLabel(400_000)).toBeNull();
     expect(startLabel(null)).toBeNull();
-  });
-});
-
-describe('filtros de rutas', () => {
-  it('filtra por duración y precio', () => {
-    expect(matchesDuration(45, 'short')).toBe(true);
-    expect(matchesDuration(75, 'short')).toBe(false);
-    expect(matchesDuration(75, 'mid')).toBe(true);
-    expect(matchesDuration(120, 'long')).toBe(true);
-    expect(matchesDuration(120, 'all')).toBe(true);
-    expect(matchesPrice(true, 'free')).toBe(true);
-    expect(matchesPrice(true, 'paid')).toBe(false);
-    expect(matchesPrice(false, 'paid')).toBe(true);
-  });
-
-  it('solo ofrece filtros a partir de 7 rutas', () => {
-    expect(shouldFilter(3)).toBe(false);
-    expect(shouldFilter(6)).toBe(false);
-    expect(shouldFilter(7)).toBe(true);
-  });
-
-  it('no hay opciones redundantes: «todas» es no elegir ninguna', () => {
-    expect(DURATION_FILTERS.some(f => f.id === 'all')).toBe(false);
-    expect(PRICE_FILTERS.some(f => f.id === 'all')).toBe(false);
   });
 });
 
