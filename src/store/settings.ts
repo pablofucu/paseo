@@ -32,6 +32,9 @@ interface SettingsState {
   largeText: boolean;
   /** Mapa del paseo «ruta arriba» (por defecto) o «norte arriba» */
   mapOrientation: MapOrientation;
+  /** Vibrar en los giros del paseo (izquierda, derecha, te has salido) */
+  turnHaptics: boolean;
+  setTurnHaptics: (on: boolean) => void;
   setMapOrientation: (o: MapOrientation) => void;
   setLargeText: (on: boolean) => void;
   setTestMode: (on: boolean) => void;
@@ -47,6 +50,8 @@ export const useSettings = create<SettingsState>()(
       simSpeed: 4,
       largeText: false,
       mapOrientation: 'route',
+      turnHaptics: true,
+      setTurnHaptics: turnHaptics => set({ turnHaptics }),
       setMapOrientation: mapOrientation => set({ mapOrientation }),
       setLargeText: largeText => set({ largeText }),
       setTestMode: testMode => set({ testMode }),

@@ -38,7 +38,7 @@ export function OrientationButton({ mode, bearing, accent, onToggle, style }: { 
         style={[s.btn, mode === 'route' && { borderColor: accent }]}
       >
         <Animated.View style={needle}>
-          <Svg width={26} height={26} viewBox="0 0 26 26">
+          <Svg width={32} height={32} viewBox="0 0 26 26">
             <SvgText x={13} y={6.6} fontSize={6.5} fontFamily={font.black} fontWeight="900" fill={brand.rose} textAnchor="middle">N</SvgText>
             <Path d="M13 8 L16.4 15 L9.6 15 Z" fill={brand.rose} />
             <Path d="M13 22 L16.4 15 L9.6 15 Z" fill={neutral.ink3} />
@@ -56,7 +56,7 @@ export function OrientationButton({ mode, bearing, accent, onToggle, style }: { 
 
 const s = StyleSheet.create({
   wrap: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 8 },
-  btn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.95)', borderWidth: 2.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center', ...shadow[2] },
+  btn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.95)', borderWidth: 2.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center', ...shadow[2] },
   label: { backgroundColor: 'rgba(28,26,23,0.82)', borderRadius: radius.pill, paddingHorizontal: 12, height: 30, justifyContent: 'center' },
   labelText: { fontFamily: font.black, fontSize: 12.5, color: '#fff' },
 });

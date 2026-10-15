@@ -30,6 +30,9 @@ export function splitSentences(text: string): string[] {
   return (text.match(/[^.!?…]+[.!?…]*["»”)]?\s*/g) ?? [text]).map(s => s.trim()).filter(Boolean).flatMap(splitLong);
 }
 
+/** Minutos (redondeados, al menos 1) que dura un guion a velocidad normal */
+export const narrationMinutes = (text: string) => Math.max(1, Math.round(splitSentences(text).reduce((a, s) => a + Math.max(1.2, s.length / CPS), 0) / 60));
+
 export interface NarrationPlayer {
   sentences: string[];
   /** Segundo (estimado) en que empieza cada frase */
@@ -68,8 +71,10 @@ function configureNarrationAudio() {
 /**
  * Reproductor de la narración. Mientras no haya audios grabados usa la voz del
  * sistema (expo-speech); el tiempo de cada frase se estima por su longitud.
+ * Si cambia el texto, vuelve al principio; con `autoplay` empieza a sonar
+ * (solo cuando el usuario ya ha pedido escucharlo).
  */
-export function useNarrationPlayer(text: string): NarrationPlayer {
+export function useNarrationPlayer(text: string, autoplay = false): NarrationPlayer {
   const sentences = useMemo(() => splitSentences(text), [text]);
   const [rate, setRateState] = useState(1);
   const [index, setIndex] = useState(0);
@@ -99,6 +104,24 @@ export function useNarrationPlayer(text: string): NarrationPlayer {
   }, [sentences, durs]);
 
   useEffect(() => { nextRef.current = speakFrom; }, [speakFrom]);
+
+  // Otro guion: vuelve al principio…
+  const [script, setScript] = useState(sentences);
+  if (script !== sentences) {
+    setScript(sentences);
+    setIndex(0); setElapsed(0); setPlaying(false); setEnded(false);
+  }
+  // …se calla lo que sonaba y, si el usuario ya ha pedido escucharlo, empieza a sonar
+  const firstScript = useRef(true);
+  useEffect(() => {
+    if (firstScript.current) firstScript.current = false;
+    else { token.current++; Speech.stop(); }
+    if (!autoplay || !sentences.length) return;
+    const t = setTimeout(() => nextRef.current(0, rate), 0);
+    return () => clearTimeout(t);
+    // Solo al cambiar de guion: `autoplay` y `rate` se leen en ese momento
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentences]);
 
   // El reloj avanza mientras suena la frase, sin pasar de su duración estimada
   useEffect(() => {
