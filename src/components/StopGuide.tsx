@@ -123,7 +123,7 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
     onClose();
   };
   const settleRef = useRef(settle);
-  settleRef.current = settle;
+  useEffect(() => { settleRef.current = settle; });
   useEffect(() => {
     if (!justStamped) return;
     const t = setTimeout(() => settleRef.current(), STAMPED_MS);
