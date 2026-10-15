@@ -7,6 +7,7 @@ import { getTour, LOCKED_TOURS } from '@/data/tours';
 import { PAPEL_POSTAL } from '@/lib/ink';
 import { missingText, packProgress } from '@/lib/packs';
 import type { UserRoute } from '@/store/passport';
+import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { neutral, shadow } from '@/theme/tokens';
 
@@ -44,7 +45,8 @@ interface Props {
  * en color los ganados, en gris y con candado los que faltan.
  */
 export function PackCard({ pack, routes, width, onOpenTour, onOpenPostcard }: Props) {
-  const prog = packProgress(pack, routes);
+  const testMode = useSettings(s => s.testMode);
+  const prog = packProgress(pack, routes, { testMode });
   const frame = 7;
   const innerW = width - 28 - frame * 2;
   const innerH = Math.round(innerW / ART_RATIO);
@@ -88,7 +90,7 @@ export function PackCard({ pack, routes, width, onOpenTour, onOpenPostcard }: Pr
           const label = `${st.title}: ${st.won ? 'sello ganado' : st.open ? 'sello sin ganar' : 'ruta bloqueada'}`;
           const stamp = (
             <>
-              <RouteStamp tour={tour} locked={tour ? undefined : locked} done={st.won ? st.total : 0} total={st.total} height={STAMP_H} lockBadge />
+              <RouteStamp tour={tour} locked={tour ? undefined : locked} done={st.won ? st.total : 0} total={st.total} height={STAMP_H} lockBadge won={st.testWon} />
               <Text style={s.label} numberOfLines={2}>{st.label}</Text>
             </>
           );

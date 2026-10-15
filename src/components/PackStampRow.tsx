@@ -16,7 +16,7 @@ export function PackStampRow({ stamps, height, highlight }: { stamps: PackStamp[
         const tour = getTour(st.id);
         return (
           <View key={st.id} style={[{ width: w, height }, st.id === highlight && s.glow]}>
-            <RouteStamp tour={tour} locked={tour ? undefined : LOCKED_TOURS.find(l => l.id === st.id)} done={st.won ? st.total : 0} total={st.total} height={height} lockBadge />
+            <RouteStamp tour={tour} locked={tour ? undefined : LOCKED_TOURS.find(l => l.id === st.id)} done={st.won ? st.total : 0} total={st.total} height={height} lockBadge won={st.testWon} />
           </View>
         );
       })}

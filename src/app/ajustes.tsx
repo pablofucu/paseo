@@ -112,6 +112,7 @@ export default function Ajustes() {
           <View style={{ flex: 1 }}>
             <Text style={[s.rowTitle, rt]}>Modo prueba</Text>
             <Text style={type.caption}>Recorre los tours sin moverte: paseo simulado, velocidad, llegar a la parada o tocar el mapa para moverte.</Text>
+            {testMode && <Text style={type.caption}>Triana cuenta como hecha: completa Tomares para ganar la postal de “Al otro lado del río”.</Text>}
           </View>
           <Switch accessibilityLabel="Modo prueba" value={testMode} onValueChange={setTestMode} trackColor={{ true: brand.primary, false: neutral.line }} thumbColor={neutral.white} />
         </View>

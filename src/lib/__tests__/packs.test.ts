@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { getPack, PACKS, packOf } from '@/data/packs';
 import { getTour, LOCKED_TOURS, TOURS } from '@/data/tours';
-import { collectionTotals, missingText, packCompletedAt, packProgress, postcardUnlocked } from '@/lib/packs';
+import { collectionTotals, missingText, packCompletedAt, packProgress, postcardUnlocked, TEST_WON_TOURS } from '@/lib/packs';
 import { addPacksSeen, usePassport, type UserRoute } from '@/store/passport';
 
 const drop = { x: 0.5, y: 0.5, rot: 6, seed: 1 };
@@ -95,5 +95,31 @@ describe('packs vistos', () => {
     const old = { passport: { owner: 'Ana', issuedAt: 'x', pageOrder: [] }, routes: {} };
     expect(addPacksSeen(old)).toEqual({ ...old, packsSeen: {} });
     expect(addPacksSeen({ ...old, packsSeen: { a: true as const } }).packsSeen).toEqual({ a: true });
+  });
+
+  describe('modo prueba', () => {
+    const p = getPack('sevilla-otro-lado')!;
+    const tomares = { 'tomares-4-paradas': full('tomares-4-paradas') };
+
+    it('apagado: Triana no cuenta y el pack no se completa', () => {
+      expect(TEST_WON_TOURS).toContain('triana');
+      const r = packProgress(p, tomares);
+      expect(r.complete).toBe(false);
+      expect(r.stamps.find(x => x.id === 'triana')).toMatchObject({ won: false, testWon: false });
+      expect(postcardUnlocked(p, tomares, { testMode: false })).toBe(false);
+    });
+
+    it('encendido: Triana cuenta, pero sin Tomares no hay pack', () => {
+      expect(packProgress(p, {}, { testMode: true }).complete).toBe(false);
+      expect(packProgress(p, tomares, { testMode: true }).stamps.find(x => x.id === 'triana')).toMatchObject({ won: true, testWon: true });
+    });
+
+    it('encendido: al completar Tomares se completa el pack y se gana la postal', () => {
+      const opts = { testMode: true };
+      expect(packProgress(p, tomares, opts)).toMatchObject({ won: 2, total: 2, complete: true });
+      expect(postcardUnlocked(p, tomares, opts)).toBe(true);
+      expect(packCompletedAt(p, tomares, opts)).toBe('2026-10-01T10:00:00Z');
+      expect(collectionTotals(tomares, opts).postcards).toBe(1);
+    });
   });
 });

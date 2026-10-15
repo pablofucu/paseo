@@ -11,6 +11,7 @@ import { cumulative, formatDistance } from '@/lib/geo';
 import { PAPEL_POSTAL, tintaDeRuta } from '@/lib/ink';
 import { POSTCARD, POSTCARD_BLUR, POSTCARD_MID, POSTCARD_THUMB, postcardBlankXml, postcardFaceXml } from '@/lib/postcard';
 import { routeProgress, usePassport, type UserRoute } from '@/store/passport';
+import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 
 /** Caja de dibujo de la postal, con margen para la sombra */
@@ -220,6 +221,7 @@ function TourPostcardBack({ tour, route, width, accent }: { tour: Tour; route: U
 }
 
 function PackPostcardBack({ pack, routes, width, accent }: { pack: Pack; routes: Record<string, UserRoute>; width: number; accent: string }) {
+  const testMode = useSettings(s => s.testMode);
   const [today] = useState(() => new Date().toISOString());
   const city = getCity(pack.city)?.name ?? '';
   const titles = pack.tours.map(t => getTour(t.id)?.title ?? t.label);
@@ -230,7 +232,7 @@ function PackPostcardBack({ pack, routes, width, accent }: { pack: Pack; routes:
       message={`¡Hola! Ya tengo los ${pack.tours.length} sellos de «${pack.name}», en ${city}.`}
       list={titles.join(' · ')}
       place={city}
-      date={packCompletedAt(pack, routes) ?? today}
+      date={packCompletedAt(pack, routes, { testMode }) ?? today}
       stamp={packStampArt(pack, routes)}
     />
   );

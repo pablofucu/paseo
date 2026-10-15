@@ -23,6 +23,7 @@ import { useDebouncedSave } from '@/lib/useDebouncedSave';
 import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
 import { NOTE_MAX, routeProgress, usePassport, usePassportHydrated, useRoute } from '@/store/passport';
+import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { brand, neutral } from '@/theme/tokens';
 import { TourThemeProvider } from '@/theme/TourTheme';
@@ -47,6 +48,7 @@ export default function Done() {
   const p = tour.palette;
   const saved = useRoute(tour.id);
   const routes = usePassport(s => s.routes);
+  const testMode = useSettings(s => s.testMode);
   const packsSeen = usePassport(s => s.packsSeen);
   const endWalk = usePassport(s => s.endWalk);
   const markPackSeen = usePassport(s => s.markPackSeen);
@@ -56,7 +58,7 @@ export default function Done() {
   const prog = routeProgress(tour.id, saved);
   const hydrated = usePassportHydrated();
   const pack = packOf(tour.id);
-  const packProg = pack ? packProgress(pack, routes) : null;
+  const packProg = pack ? packProgress(pack, routes, { testMode }) : null;
   const [unlocked, setUnlocked] = useState(false);
   /** Este sello acaba de cerrar el pack: se queda así aunque luego se marque como visto */
   const [packWon, setPackWon] = useState(false);

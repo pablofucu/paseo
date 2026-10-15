@@ -10,6 +10,7 @@ import { PACKS, type Pack } from '@/data/packs';
 import { getCity, TOURS } from '@/data/tours';
 import { collectionTotals } from '@/lib/packs';
 import { usePassport } from '@/store/passport';
+import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
 import { type } from '@/theme/type';
@@ -24,6 +25,7 @@ export default function Coleccion() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const routes = usePassport(s => s.routes);
+  const testMode = useSettings(s => s.testMode);
   const [view, setView] = useState<'list' | 'map'>('list');
   const [tabs, setTabs] = useState<Record<string, { x: number; width: number }>>({});
   const on = tabs[view];
@@ -44,7 +46,7 @@ export default function Coleccion() {
   const openPostcard = (pack: Pack) => router.push({ pathname: '/postal/[id]', params: { id: pack.id } });
 
   const cities = [...new Set(PACKS.map(p => p.city))];
-  const totals = collectionTotals(routes);
+  const totals = collectionTotals(routes, { testMode });
   const cardW = Math.min(width - 32, 560);
 
   return (

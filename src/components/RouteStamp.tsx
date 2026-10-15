@@ -87,6 +87,8 @@ interface Props {
   rotate?: number;
   /** Sin conseguir: insignia de candado en la esquina (en lugar de la de en medio, en los de pago) */
   lockBadge?: boolean;
+  /** Ruta de pago bloqueada que cuenta como ganada (modo prueba): en color y sin candado */
+  won?: boolean;
   style?: ViewStyle;
 }
 
@@ -96,7 +98,7 @@ interface Props {
  * Sin conseguir (o sin comprar, con candado) se ve en blanco y negro; al
  * completarla, a todo color y limpio (sin matasellos encima).
  */
-export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotate = 0, lockBadge, style }: Props) {
+export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotate = 0, lockBadge, won, style }: Props) {
   const w = Math.round(h * 0.82);
   const r = Math.max(1.6, h / 22);
   const pad = r + Math.max(1.5, h / 26);
@@ -117,17 +119,21 @@ export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotat
             {!completed && done > 0 && h >= 44 && <Text style={[s.count, { fontSize: h / 6 }]}>{done}/{total}</Text>}
           </>
         ) : locked?.stamp ? (
+          won ? (
+            <Image source={locked.stamp.art} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={`Sello de la ruta ${locked.title}, ganado en modo prueba`} />
+          ) : (
           <>
             <GrayArt id={locked.id} art={locked.stamp.art} label={`Sello de la ruta ${locked.title}, bloqueado`} />
             {!lockBadge && <View style={s.center}>
               <View style={[s.lockBadge, { width: h * 0.36, height: h * 0.36, borderRadius: h * 0.18 }]}><Lock size={h * 0.24} color={neutral.ink} /></View>
             </View>}
           </>
+          )
         ) : (
           <Lock size={h * 0.32} />
         )}
       </View>
-      {lockBadge && !completed && (
+      {lockBadge && !completed && !won && (
         <View style={{ position: 'absolute', right: -h * 0.06, bottom: -h * 0.04 }}><LockDisc size={Math.max(14, h * 0.28)} /></View>
       )}
     </View>

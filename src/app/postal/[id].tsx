@@ -14,6 +14,7 @@ import { PackPostcard, postcardHeight } from '@/components/Postcard';
 import { postcardUnlocked } from '@/lib/packs';
 import { sharePackPostcard } from '@/lib/share';
 import { usePassport } from '@/store/passport';
+import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 
 /**
@@ -50,6 +51,7 @@ function Aviso({ title, text, action }: { title: string; text: string; action?: 
 
 function Postal({ pack }: { pack: Pack }) {
   const routes = usePassport(s => s.routes);
+  const testMode = useSettings(s => s.testMode);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduced = useReducedMotion();
@@ -60,7 +62,7 @@ function Postal({ pack }: { pack: Pack }) {
   useEffect(() => () => clearTimeout(flipTimer.current), []);
   const turn = useSharedValue(0);
   const card = useRef<View>(null);
-  const earned = postcardUnlocked(pack, routes);
+  const earned = postcardUnlocked(pack, routes, { testMode });
   const city = getCity(pack.city)?.name ?? '';
 
   // Cabe a lo ancho, o a lo alto en horizontal
