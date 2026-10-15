@@ -87,6 +87,7 @@ export default function Postales() {
                   <View style={s.meta}>
                     <View style={[s.dot, { backgroundColor: ink }]} />
                     <Text style={s.metaTitle} numberOfLines={1}>{t.title}</Text>
+                    {prog.completed && !route?.postcardSeen && <Text style={[s.newTag, { backgroundColor: ink }]}>Nueva</Text>}
                     <Text style={s.metaSub}>
                       {prog.completed ? fechaSello(prog.completedAt!) : prog.started ? `${prog.done} de ${prog.total} paradas` : 'sin empezar'}
                     </Text>
@@ -116,6 +117,7 @@ const s = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   metaTitle: { flex: 1, fontFamily: font.black, fontSize: 14.5, color: neutral.ink },
+  newTag: { fontFamily: font.black, fontSize: 10.5, letterSpacing: 0.6, color: '#fff', textTransform: 'uppercase', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden' },
   metaSub: { fontFamily: font.bold, fontSize: 13, color: neutral.ink3 },
   bar: { height: 4, borderRadius: 2, backgroundColor: neutral.line, marginHorizontal: 6, overflow: 'hidden' },
   fill: { height: 4, borderRadius: 2 },

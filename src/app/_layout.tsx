@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { getTour } from '@/data/tours';
 import '@/lib/arrivalWatch';
+import { RemindersBridge } from '@/lib/reminders';
 import { usePassport, usePassportHydrated } from '@/store/passport';
 import { fontAssets } from '@/theme/fonts';
 import { useSettingsHydrated } from '@/store/settings';
@@ -71,6 +72,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <StatusBar style="auto" />
         <ArrivalTap />
+        <RemindersBridge />
         {/*
           Transiciones: las pantallas nuevas entran desde la derecha con la de
           debajo desplazándose en paralaje (como en iOS, también en Android) y

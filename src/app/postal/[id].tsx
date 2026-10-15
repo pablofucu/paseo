@@ -12,7 +12,7 @@ import { IconButton } from '@/components/ui';
 import { getTour } from '@/data/tours';
 import type { Tour } from '@/data/types';
 import { sharePostcard } from '@/lib/share';
-import { routeProgress, useRoute } from '@/store/passport';
+import { routeProgress, usePassport, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
 /** Postal a pantalla completa: se le da la vuelta tocándola y se comparte */
@@ -57,6 +57,9 @@ function Postal({ tour }: { tour: Tour }) {
   const turn = useSharedValue(0);
   const card = useRef<View>(null);
   const earned = routeProgress(tour.id, route).completed;
+  // Al abrir una postal ganada deja de ser «nueva» en Postales
+  const markSeen = usePassport(s => s.markPostcardSeen);
+  useEffect(() => { if (earned && !route?.postcardSeen) markSeen(tour.id); }, [earned, route?.postcardSeen, markSeen, tour.id]);
 
   // Cabe a lo ancho, o a lo alto en horizontal
   const w = Math.min(width - 24, ((height - insets.top - insets.bottom - 200) * 928) / 628, 900);
