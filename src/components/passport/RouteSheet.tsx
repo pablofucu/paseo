@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { PassportPaper } from '@/components/Paper';
 import { paperOf, RubberStamp, stopInk } from '@/components/RubberStamp';
-import { RouteStamp } from '@/components/RouteStamp';
 import { InkDust, StampDrop } from '@/components/passport/StampDrop';
 import type { Tour } from '@/data/types';
 import { stampHit } from '@/lib/feedback';
@@ -54,23 +53,9 @@ export const RouteSheet = memo(function RouteSheet({ tour, route, width, pageNum
     <Animated.View style={[{ width, height: sheet.h }, s.sheet, knockStyle]}>
       <PassportPaper width={width} height={sheet.h} color={paper} />
       {/* El encabezado es el título de la hoja para el lector de pantalla y lleva el resumen */}
-      <View accessible accessibilityRole="header" accessibilityLabel={`Hoja ${pageNumber}: ${tour.title}, ${prog.done} de ${prog.total} sellos${prog.missing.length ? `. Faltan: ${prog.missing.map(m => m.name).join(', ')}` : ''}`} style={[s.head, { height: sheet.top }]} pointerEvents="none">
+      <View accessible accessibilityRole="header" accessibilityLabel={`Hoja ${pageNumber}: ${tour.title}, ${prog.done} de ${prog.total} sellos`} style={[s.head, { height: sheet.top }]} pointerEvents="none">
         <Text style={[s.city, { color: quiet, fontSize: 9.5 * k, letterSpacing: 3 * k }]}>{tour.city.toUpperCase()}</Text>
         <Text style={[s.title, { color: quiet, fontSize: 17 * k }]} numberOfLines={1}>{tour.title}</Text>
-      </View>
-
-      {/* Lo que falta, muy suave: huecos punteados con el nombre de cada parada y el marco del sello de ruta (gris hasta completarla, sin matasellos) */}
-      {prog.missing.length > 0 && (
-        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[s.slots, { left: 16 * k, bottom: sheet.bottom + 8 * k, maxWidth: width * 0.5, gap: 5 * k }]}>
-          {prog.missing.map(st => (
-            <View key={st.id} style={[s.slot, { borderColor: mezcla(tour.palette.deep, paper, 0.3), borderRadius: 6 * k, paddingHorizontal: 8 * k, paddingVertical: 3 * k }]}>
-              <Text style={[s.slotText, { color: quiet, fontSize: 9.5 * k }]} numberOfLines={1}>{st.name}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-      <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ position: 'absolute', right: 16 * k, bottom: sheet.bottom + 8 * k, opacity: prog.completed ? 1 : 0.8 }}>
-        <RouteStamp tour={tour} done={prog.done} total={prog.total} height={Math.round(76 * k)} rotate={4} />
       </View>
 
       {stamps.map(st => {
@@ -105,8 +90,5 @@ const s = StyleSheet.create({
   head: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 2, opacity: 0.85 },
   city: { fontFamily: font.black },
   title: { fontFamily: font.serifBold, letterSpacing: -0.2 },
-  slots: { position: 'absolute', alignItems: 'flex-start' },
-  slot: { borderWidth: 1, borderStyle: 'dashed', opacity: 0.8 },
-  slotText: { fontFamily: font.bold },
   page: { position: 'absolute', left: 0, right: 0, textAlign: 'center', fontFamily: font.heavy, fontVariant: ['tabular-nums'], opacity: 0.7 },
 });

@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale, rise } from '@/components/motion';
 import { PackStampRow } from '@/components/PackStampRow';
 import { RouteSheet } from '@/components/passport/RouteSheet';
-import { PostcardUnlock } from '@/components/PostcardUnlock';
 import { RouteStamp } from '@/components/RouteStamp';
 import { ShareMat } from '@/components/ShareMat';
 import { SunRays } from '@/components/SunRays';
@@ -37,7 +36,7 @@ const HERO_H = STAMP_H + 84;
  * Fin de la ruta. Completada: el sello de carta de la ruta cae grande sobre unos
  * rayos de sol, con el pack al que pertenece y lo que falta para su postal; la
  * hoja de sellos de goma queda tras un botón. Si este sello cierra el pack por
- * primera vez, sale «¡Pack completo!» y sube la tarjeta de la postal del pack.
+ * primera vez, sale «¡Pack completo!» con el botón «Ver la postal».
  * A medias: la hoja con los sellos y el resumen.
  */
 export default function Done() {
@@ -59,7 +58,6 @@ export default function Done() {
   const hydrated = usePassportHydrated();
   const pack = packOf(tour.id);
   const packProg = pack ? packProgress(pack, routes, { testMode }) : null;
-  const [unlocked, setUnlocked] = useState(false);
   /** Este sello acaba de cerrar el pack: se queda así aunque luego se marque como visto */
   const [packWon, setPackWon] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -67,12 +65,12 @@ export default function Done() {
   const sheetRef = useRef<View>(null);
   const [today] = useState(() => Date.now());
   useEffect(() => { endWalk(); }, [endWalk]);
-  // «Pack completo» sale una sola vez, cuando el pasaporte guardado ya se ha leído; luego sube la tarjeta de la postal (si ya está dibujada)
+  // «Pack completo» sale una sola vez, cuando el pasaporte guardado ya se ha leído; queda anotado como visto
   const pending = hydrated && prog.completed && !!pack && !!packProg?.complete && !packsSeen[pack.id];
   if (pending && !packWon) setPackWon(true);
   useEffect(() => {
     if (!pending || !pack) return;
-    const t = setTimeout(() => { if (pack.postcard) setUnlocked(true); markPackSeen(pack.id); }, 1100);
+    const t = setTimeout(() => { markPackSeen(pack.id); }, 1100);
     return () => clearTimeout(t);
   }, [pending, pack, markPackSeen]);
 
@@ -250,7 +248,6 @@ export default function Done() {
           </View>
         </TourThemeProvider>
       </Modal>
-      {unlocked && pack && <PostcardUnlock pack={pack} onClose={() => setUnlocked(false)} />}
     </TourThemeProvider>
   );
 }

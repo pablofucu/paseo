@@ -4,9 +4,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { PassportPaper } from '@/components/Paper';
 import { TOURS } from '@/data/tours';
-import { tintaDeRuta } from '@/lib/ink';
-import type { CityVisa } from '@/lib/visa';
-import { fechaRomana, fechaSello } from '@/lib/rubber';
+import { fechaRomana } from '@/lib/rubber';
 import { sheetFor } from '@/lib/sheet';
 import { useDebouncedSave } from '@/lib/useDebouncedSave';
 import { knownRoutes, routeProgress, usePassport } from '@/store/passport';
@@ -136,45 +134,6 @@ function Field({ label, k, children }: { label: string; k: number; children: Rea
   );
 }
 
-/**
- * Visado de una ciudad: cuando se completan todas sus rutas, sus sellos de ruta
- * (los que ya se tenían, no uno nuevo) juntos en una tira. No da ningún sello.
- */
-export const CityVisaPage = memo(function CityVisaPage({ width, pageNumber, visa }: { width: number; pageNumber: number; visa: CityVisa }) {
-  const routes = usePassport(s => s.routes);
-  const sheet = sheetFor(width);
-  const k = width / 330;
-  const gap = 8 * k;
-  const inner = width - 36 * k;
-  const per = Math.min(visa.tours.length, 3);
-  const itemW = (inner - gap * (per - 1)) / per;
-  const last = visa.tours.map(t => routeProgress(t.id, routes[t.id]).completedAt ?? '').sort().at(-1);
-  return (
-    <View style={{ width, height: sheet.h, borderRadius: 6, overflow: 'hidden' }}>
-      <PassportPaper width={width} height={sheet.h} />
-      <View style={{ flex: 1, padding: 18 * k }}>
-        <Text style={[h.over, { fontSize: 11 * k }]}>Visado</Text>
-        <Text accessibilityRole="header" accessibilityLabel={`Hoja ${pageNumber}: visado de ${visa.name}, ${visa.tours.length} rutas completadas`} style={[h.visaCity, { fontSize: 30 * k }]}>{visa.name}</Text>
-        <Text style={[h.nextSub, { fontSize: 13 * k, textAlign: 'left', marginTop: 2 * k }]}>Todas sus rutas, recorridas</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap, justifyContent: 'center', marginTop: 26 * k }}>
-          {visa.tours.map((t, n) => (
-            <View key={t.id} style={{ width: itemW, alignItems: 'center', transform: [{ rotate: `${(n % 2 ? 1.8 : -1.8)}deg` }] }}>
-              <View style={{ width: itemW, aspectRatio: 328 / 400, padding: 4 * k, backgroundColor: '#fbf7ec', borderWidth: 1, borderColor: '#d9ccab', borderStyle: 'dashed' }}>
-                <View style={{ flex: 1, overflow: 'hidden', borderWidth: 1.5, borderColor: tintaDeRuta(t.accent) }}>
-                  <Image source={t.stamp.art} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={`Sello de la ruta ${t.title}`} />
-                </View>
-              </View>
-              <Text style={[h.visaRoute, { fontSize: 10 * k }]} numberOfLines={2}>{t.title}</Text>
-            </View>
-          ))}
-        </View>
-        {last ? <Text style={[h.mrz, { fontSize: 10.5 * k }]}>{fechaSello(last)}</Text> : null}
-      </View>
-      <Text style={[h.page, { fontSize: 12 * k }]}>{pageNumber}</Text>
-    </View>
-  );
-});
-
 /** Hoja en blanco del final */
 export const NextRoute = memo(function NextRoute({ width, pageNumber }: { width: number; pageNumber: number }) {
   const sheet = sheetFor(width);
@@ -203,8 +162,6 @@ const h = StyleSheet.create({
   mrz: { marginTop: 'auto', fontFamily: 'monospace', letterSpacing: 1, color: '#6f6450' },
   page: { position: 'absolute', right: 16, bottom: 12, fontFamily: font.black, color: '#7d705a' },
   dash: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(90,67,32,0.3)', borderRadius: 12 },
-  visaCity: { fontFamily: font.serif, color: '#2b2418', marginTop: 4 },
-  visaRoute: { fontFamily: font.heavy, color: '#6f6450', textAlign: 'center', marginTop: 6 },
   nextTitle: { fontFamily: font.serif, color: '#2b2418' },
   nextSub: { fontFamily: font.bold, color: '#7d705a', textAlign: 'center', marginTop: 4 },
 });

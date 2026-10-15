@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Redirect, router, useFocusEffect, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,12 +26,11 @@ import { nextMapBearing, rotateMs, routeBearing } from '@/lib/mapBearing';
 import { FIT_BACK_M, FIT_FAR_M, FOLLOW_ZOOM, fitTwo } from '@/lib/mapFit';
 import { buildMapStyle, mapColors } from '@/lib/mapStyle';
 import { stampBox } from '@/lib/sheet';
-import { stopScript, wayScript } from '@/lib/spoken';
+import { stopScript } from '@/lib/spoken';
 import { TURN_PATTERNS, turnCue, type HapticKind, type TurnCue } from '@/lib/turnCue';
 import { usePausedWalk } from '@/lib/pausedWalk';
 import { useGuide } from '@/lib/useGuide';
 import { useAutoPause } from '@/lib/useAutoPause';
-import { useNarration } from '@/lib/useNarration';
 import { narrationMinutes, useNarrationPlayer } from '@/lib/useNarrationPlayer';
 import { useReroute } from '@/lib/useReroute';
 import { useTourParamSafe } from '@/lib/useTour';
@@ -234,7 +233,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
   }, []);
   useEffect(() => () => clearTimeout(followTimer.current), []);
   const arrive = usePassport(s => s.arrive);
-  const narration = useNarration();
   /** Guía abierta en la hoja: qué parada suena (o se lee) y si está subida encima del mapa */
   const [guide, setGuide] = useState<{ idx: number; play: boolean } | null>(null);
   const [guideUp, setGuideUp] = useState(false);
@@ -297,14 +295,13 @@ function WalkScreen({ tour }: { tour: Tour }) {
   }, [target]);
   /** Sube la guía de la parada en la hoja; con `play` suena (el usuario ha tocado escuchar) */
   const openStop = useCallback((n: number, play = false) => {
-    narration.stop();
     setSelected(null);
     snap(false);
     guideDy.set(0);
     if (guide?.idx === n) { if (play && !player.playing) player.play(); }
     else setGuide({ idx: n, play });
     setGuideUp(true);
-  }, [narration, snap, guideDy, guide?.idx, player]);
+  }, [snap, guideDy, guide?.idx, player]);
   const closeGuide = useCallback(() => setGuideUp(false), []);
   // Arrastrar la guía hacia abajo la baja al mapa (el audio sigue)
   const guideDrag = usePanGesture({
@@ -368,12 +365,11 @@ function WalkScreen({ tour }: { tour: Tour }) {
     if (idx !== target) jumpTo(idx);
     // Cada parada se sella una vez; si ya estaba sellada, la llegada solo queda en el historial
     const repeat = arrive(tour.id, st.id);
-    narration.stop();
     setSelected(null);
     lastArrival.current = { at: Date.now(), coord: from ?? st.coord, stopCoord: st.coord };
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     return repeat;
-  }, [tour, target, jumpTo, arrive, narration]);
+  }, [tour, target, jumpTo, arrive]);
   const doArrive = useCallback((idx: number, from: LngLat | null) => {
     register(idx, from);
     openStop(idx, true);
@@ -451,8 +447,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
   }, [leg, alongQ]);
 
   const frac = leg && g && leg.length > 0 ? Math.min(1, Math.max(0, g.along / leg.length)) : 0;
-  const way = tour.onTheWay.find(w => w.afterStop === target - 1);
-  const showWay = !!way && frac > 0.12 && frac < 0.65;
 
   // Giro del mapa: «ruta arriba» pone hacia arriba el camino que te toca seguir (solo mientras te sigue); «norte arriba», el norte
   const [rot, setRot] = useState({ bearing: 0, ms: 700 });
@@ -520,11 +514,9 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const skipNext = canSkip(ids, stamped, target) ? ids.findIndex((id, i) => i > target && !stamped.has(id)) : -1;
   const skip = () => {
     if (skipNext < 0) return;
-    narration.stop();
     skipStop(stop.id, skipNext);
   };
   const pause = () => {
-    narration.stop();
     usePausedWalk.getState().pause({ tourId: tour.id, target, skipped: skipped ?? [] });
     endWalk();
     router.back();
@@ -532,7 +524,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   // Terminar el paseo (sin guardar el progreso) pide confirmación; la salida normal es «Pausar paseo»
   const finish = () => Alert.alert('¿Terminar el paseo?', 'No se guardará para seguir más tarde. Tus sellos ya conseguidos se quedan.', [
     { text: 'Seguir paseando', style: 'cancel' },
-    { text: 'Terminar', style: 'destructive', onPress: () => { narration.stop(); endWalk(); router.back(); } },
+    { text: 'Terminar', style: 'destructive', onPress: () => { endWalk(); router.back(); } },
   ]);
   const goHere = (i: number) => {
     jumpTo(i);
@@ -755,12 +747,6 @@ function WalkScreen({ tour }: { tour: Tour }) {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[s.body, { paddingBottom: insets.bottom + 14 }]}
           >
-            {showWay && (
-              <Pressable accessibilityRole="button" accessibilityLabel={narration.speaking ? 'Parar el aviso del camino' : `Escuchar: ${way!.text}`} onPress={() => { if (narration.speaking) narration.stop(); else { player.pause(); narration.speak(wayScript(way!)); } }} style={[s.way, { backgroundColor: p.soft }]}>
-                <View style={[s.wayPlay, { backgroundColor: p.t }]}><Text style={{ color: p.on, fontFamily: font.black }}>{narration.speaking ? 'II' : '▶'}</Text></View>
-                <Text style={[s.wayText, { color: p.deep }]} numberOfLines={1}>{way!.text}</Text>
-              </Pressable>
-            )}
             <View>
               {tour.stops.map((st, i) => {
                 const done = stamped.has(st.id);
@@ -863,11 +849,22 @@ function ArrivalHeader({ tour, kind, idx, repeat, onListen, onLater }: ArrivalPr
   const mins = useMemo(() => narrationMinutes(stopScript(st)), [st]);
   const look = stampBox(st.rubber.shape, 40 / 0.325);
   const over = kind === 'arrived' ? `Has llegado · parada ${idx + 1} de ${tour.stops.length}` : kind === 'confirm' ? `¿Ya estás aquí? · parada ${idx + 1}` : 'Otra parada sin sellar';
-  const cta = kind === 'offer' ? 'Sí, sellarla' : kind === 'confirm' ? `▶  Sí, escuchar · ${mins} min` : `▶  Escuchar · ${mins} min`;
-  const hint = kind === 'offer' ? 'No es la que tocaba, pero puedes sellarla ahora.'
+  const offer = kind === 'offer';
+  const cta = `${kind === 'confirm' ? 'Sí, abrir la guía' : 'Abrir la guía'} · ${mins} min`;
+  const hint = offer ? 'No es la que tocaba, pero puedes sellarla ahora.'
     : kind === 'confirm' ? 'El GPS no lo tiene claro: si ya estás, escúchala y podrás sellar.'
     : repeat ? 'Ya tenías su sello. Si sigues andando, esto se pliega solo.'
-    : 'Tu sello te espera al terminar. Si sigues andando, esto se pliega solo.';
+    : 'Si sigues andando, esto se pliega solo.';
+  // Halo del botón: late unas 3 veces (~4 s) al aparecer la cabecera y se para.
+  const reduced = useReducedMotion();
+  const halo = useSharedValue(0);
+  useEffect(() => {
+    if (offer || reduced) return;
+    halo.set(0);
+    halo.set(withRepeat(withTiming(1, { duration: 1300 }), 3, false));
+    return () => cancelAnimation(halo);
+  }, [offer, reduced, halo]);
+  const haloStyle = useAnimatedStyle(() => ({ opacity: 0.55 * (1 - halo.get()), transform: [{ scale: 1 + 0.06 * halo.get() }] }));
   return (
     <Animated.View entering={FadeIn.duration(DUR.base).easing(EASE_OUT)} accessibilityLiveRegion="polite" style={s.arrive}>
       <View style={s.arriveTop}>
@@ -877,9 +874,24 @@ function ArrivalHeader({ tour, kind, idx, repeat, onListen, onLater }: ArrivalPr
           <Text accessibilityRole="header" style={s.arriveName} numberOfLines={2}>{st.name}</Text>
         </View>
       </View>
-      <PressableScale accessibilityRole="button" accessibilityLabel={kind === 'offer' ? `Sellar ${st.name}` : `Escuchar ${st.name}, ${mins} minutos`} onPress={onListen} scaleTo={0.97} style={[s.arriveBtn, { backgroundColor: p.t2 }]}>
-        <Text style={s.arriveBtnText}>{cta}</Text>
-      </PressableScale>
+      {offer ? (
+        <PressableScale accessibilityRole="button" accessibilityLabel={`Sellar ${st.name}`} onPress={onListen} scaleTo={0.97} style={[s.arriveBtn, { backgroundColor: p.t2 }]}>
+          <Text style={s.arriveBtnText}>Sí, sellarla</Text>
+        </PressableScale>
+      ) : (
+        <View style={{ gap: 8 }}>
+          <View>
+            {!reduced && <Animated.View pointerEvents="none" style={[s.arriveHalo, { borderColor: p.t2 }, haloStyle]} />}
+            <PressableScale accessibilityRole="button" accessibilityLabel={`Abrir la guía de ${st.name}: audio de ${mins} minutos, texto, fotos y tu sello`} onPress={onListen} scaleTo={0.97} style={[s.arriveGuide, { backgroundColor: p.deep }]}>
+              <View style={[s.arrivePlay, { backgroundColor: p.t2 }]}>
+                <Text style={s.arrivePlayGlyph}>▶</Text>
+              </View>
+              <Text style={s.arriveGuideText} numberOfLines={1}>{cta}</Text>
+            </PressableScale>
+          </View>
+          <Text style={s.arriveSub}>Audio, texto, fotos y tu sello</Text>
+        </View>
+      )}
       <View style={s.arriveHint}>
         <View style={{ width: 40, alignItems: 'center', opacity: repeat ? 0.9 : 0.3 }}>
           <RubberStamp tour={tour} stop={st} date={new Date().toISOString()} width={look.w} height={look.h} />
@@ -929,9 +941,6 @@ const s = StyleSheet.create({
   body: { gap: 12, paddingTop: 12 },
   bar: { flexDirection: 'row', gap: 4 },
   seg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', overflow: 'hidden' },
-  way: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.pill, padding: 5, paddingRight: 14 },
-  wayPlay: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  wayText: { flex: 1, fontFamily: font.heavy, fontSize: 13 },
   stopRow: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 12 },
   stopText: { fontFamily: font.heavy, fontSize: 15, color: neutral.ink2 },
   arrive: { paddingBottom: 6, gap: 12 },
@@ -941,6 +950,12 @@ const s = StyleSheet.create({
   arriveName: { fontFamily: font.serif, fontSize: 24, lineHeight: 27, color: neutral.ink, marginTop: 2 },
   arriveBtn: { height: 58, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   arriveBtnText: { fontFamily: font.black, fontSize: 18, color: neutral.ink },
+  arriveGuide: { height: 68, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', gap: 14, paddingLeft: 14, paddingRight: 22 },
+  arrivePlay: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  arrivePlayGlyph: { fontFamily: font.black, fontSize: 15, color: neutral.ink, marginLeft: 2 },
+  arriveGuideText: { flex: 1, fontFamily: font.black, fontSize: 19, color: '#fff' },
+  arriveHalo: { position: 'absolute', top: -5, bottom: -5, left: -5, right: -5, borderRadius: radius.pill, borderWidth: 3 },
+  arriveSub: { textAlign: 'center', fontFamily: font.heavy, fontSize: 13, color: neutral.ink3 },
   arriveHint: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   arriveHintText: { flex: 1, fontFamily: font.bold, fontSize: 13, color: neutral.ink3 },
   arriveLater: { fontFamily: font.black, fontSize: 14, color: neutral.ink2 },

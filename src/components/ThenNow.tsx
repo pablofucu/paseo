@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Linking, Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
+import { GestureDetector, GestureHandlerRootView, usePanGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '@/components/ui';
@@ -50,6 +50,8 @@ function ThenNowViewer({ stop, then, palette, visible, onClose }: { stop: Stop; 
   const h = Math.round(width * 0.92);
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      {/* En Android los gestos no llegan dentro de un Modal sin su propia raíz de gestos */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[s.viewer, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }]}>
         <IconButton label="Cerrar" icon="close" onPress={onClose} style={{ marginLeft: 16 }} />
         <View style={s.head}>
@@ -63,6 +65,7 @@ function ThenNowViewer({ stop, then, palette, visible, onClose }: { stop: Stop; 
           <Credit label="Ahora" credit={stop.photoCredit} />
         </View>
       </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -85,7 +88,9 @@ const clamp = (v: number) => {
 function Compare({ then, now, year, width, height, accent }: { then: Stop['photo']; now: Stop['photo']; year: number; width: number; height: number; accent: string }) {
   const pos = useSharedValue(0.5);
   const pan = usePanGesture({
+    // Activa al tocar (no hay scroll en el visor) y cede si el gesto es claramente vertical
     minDistance: 0,
+    failOffsetY: [-60, 60],
     onBegin: e => { 'worklet'; pos.set(withTiming(clamp(e.x / width), { duration: 120 })); },
     onUpdate: e => { 'worklet'; pos.set(clamp(e.x / width)); },
   });
@@ -102,6 +107,7 @@ function Compare({ then, now, year, width, height, accent }: { then: Stop['photo
         accessibilityHint="Desliza a los lados para ver más de una u otra foto"
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={e => step(e.nativeEvent.actionName === 'increment' ? 0.1 : -0.1)}
+        collapsable={false}
         style={{ width, height, overflow: 'hidden' }}
       >
         <Image source={now} contentFit="cover" style={StyleSheet.absoluteFill} />
