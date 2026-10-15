@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { lightTap, PressableScale, rise } from '@/components/motion';
 import { IconButton } from '@/components/ui';
 import { goBack } from '@/lib/nav';
+import { usePausedWalk } from '@/lib/pausedWalk';
+import { resyncReminders } from '@/lib/reminders';
 import { usePassport } from '@/store/passport';
 import { LANGUAGES, useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
@@ -41,7 +43,7 @@ export default function Ajustes() {
   const confirmReset = () =>
     Alert.alert('¿Borrar el pasaporte?', 'Se borrarán todos tus sellos y postales. No se puede deshacer.', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Borrar', style: 'destructive', onPress: () => { lightTap(); reset(); } },
+      { text: 'Borrar', style: 'destructive', onPress: () => { lightTap(); reset(); usePausedWalk.getState().clear(); resyncReminders(); } },
     ]);
 
   return (

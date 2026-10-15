@@ -3,8 +3,9 @@ import { Tabs } from 'expo-router/js-tabs';
 import type { ColorValue } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { font } from '@/theme/fonts';
+import { usePassport } from '@/store/passport';
 import { useSettings, useSettingsHydrated } from '@/store/settings';
-import { neutral } from '@/theme/tokens';
+import { brand, neutral } from '@/theme/tokens';
 
 const ICONS = {
   index: (c: string) => (
@@ -24,6 +25,9 @@ const ICONS = {
   ),
 };
 
+/** Punto sin número sobre el icono de la pestaña */
+const dot = { backgroundColor: brand.primary, minWidth: 9, height: 9, borderRadius: 4.5, paddingHorizontal: 0, top: 2 };
+
 const icon = (name: keyof typeof ICONS) =>
   function TabIcon({ color }: { color: ColorValue }) {
     return <Svg width={24} height={24} viewBox="0 0 24 24">{ICONS[name](String(color))}</Svg>;
@@ -32,6 +36,8 @@ const icon = (name: keyof typeof ICONS) =>
 export default function TabsLayout() {
   const hydrated = useSettingsHydrated();
   const language = useSettings(s => s.language);
+  // Punto en Postales mientras haya una postal ganada que aún no se ha abierto
+  const newPostcard = usePassport(s => Object.values(s.routes).some(r => !!r.postcardUnlockedAt && !r.postcardSeen));
   // La primera vez: bienvenida (idioma) antes de nada; la ciudad se elige en Inicio
   if (!hydrated) return null;
   if (!language) return <Redirect href="/bienvenida" />;
@@ -51,7 +57,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Inicio', tabBarIcon: icon('index') }} />
       <Tabs.Screen name="pasaporte" options={{ title: 'Pasaporte', tabBarIcon: icon('pasaporte') }} />
-      <Tabs.Screen name="postales" options={{ title: 'Postales', tabBarIcon: icon('postales') }} />
+      <Tabs.Screen name="postales" options={{ title: 'Postales', tabBarIcon: icon('postales'), ...(newPostcard ? { tabBarBadge: '', tabBarBadgeStyle: dot, tabBarAccessibilityLabel: 'Postales, hay una postal nueva' } : {}) }} />
     </Tabs>
   );
 }

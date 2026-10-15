@@ -8,6 +8,7 @@ import { tintaDeRuta } from '@/lib/ink';
 import type { CityVisa } from '@/lib/visa';
 import { fechaRomana, fechaSello } from '@/lib/rubber';
 import { sheetFor } from '@/lib/sheet';
+import { useDebouncedSave } from '@/lib/useDebouncedSave';
 import { knownRoutes, routeProgress, usePassport } from '@/store/passport';
 import { font } from '@/theme/fonts';
 
@@ -82,6 +83,8 @@ export const Holder = memo(function Holder({ width }: { width: number }) {
   const pages = useMemo(() => knownRoutes(passport.pageOrder), [passport.pageOrder]);
   const done = pages.filter(id => routeProgress(id, routes[id]).completed).length;
   const name = draft ?? passport.owner;
+  // El nombre se guarda mientras se escribe, no solo al salir del campo
+  useDebouncedSave(draft, v => setOwner(v.trim()));
   const mrz = `P<PASEO<<${plain(passport.owner || 'VIAJERO')}`.padEnd(40, '<').slice(0, 40) +
     `\n${plain(fechaRomana(passport.issuedAt)).replace(/<+/g, '<')}<${TOURS.length}R${pages.length}`.padEnd(41, '<').slice(0, 41);
   const k = width / 330;
@@ -89,7 +92,7 @@ export const Holder = memo(function Holder({ width }: { width: number }) {
     <View style={{ width, height: sheet.h, borderRadius: 6, overflow: 'hidden' }}>
       <PassportPaper width={width} height={sheet.h} />
       <View style={{ padding: 18 * k, flex: 1 }}>
-        <Text style={[h.over, { fontSize: 11 * k }]}>Titular</Text>
+        <Text accessibilityRole="header" style={[h.over, { fontSize: 11 * k }]}>Titular</Text>
         <View style={{ flexDirection: 'row', gap: 16 * k, marginTop: 14 * k }}>
           <View style={[h.photo, { width: 92 * k, height: 116 * k }]}>
             <Svg width={60 * k} height={70 * k} viewBox="0 0 60 70">
@@ -147,11 +150,11 @@ export const CityVisaPage = memo(function CityVisaPage({ width, pageNumber, visa
   const itemW = (inner - gap * (per - 1)) / per;
   const last = visa.tours.map(t => routeProgress(t.id, routes[t.id]).completedAt ?? '').sort().at(-1);
   return (
-    <View accessible accessibilityLabel={`Hoja ${pageNumber}: visado de ${visa.name}, ${visa.tours.length} rutas completadas`} style={{ width, height: sheet.h, borderRadius: 6, overflow: 'hidden' }}>
+    <View style={{ width, height: sheet.h, borderRadius: 6, overflow: 'hidden' }}>
       <PassportPaper width={width} height={sheet.h} />
       <View style={{ flex: 1, padding: 18 * k }}>
         <Text style={[h.over, { fontSize: 11 * k }]}>Visado</Text>
-        <Text style={[h.visaCity, { fontSize: 30 * k }]}>{visa.name}</Text>
+        <Text accessibilityRole="header" accessibilityLabel={`Hoja ${pageNumber}: visado de ${visa.name}, ${visa.tours.length} rutas completadas`} style={[h.visaCity, { fontSize: 30 * k }]}>{visa.name}</Text>
         <Text style={[h.nextSub, { fontSize: 13 * k, textAlign: 'left', marginTop: 2 * k }]}>Todas sus rutas, recorridas</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap, justifyContent: 'center', marginTop: 26 * k }}>
           {visa.tours.map((t, n) => (
@@ -181,7 +184,7 @@ export const NextRoute = memo(function NextRoute({ width, pageNumber }: { width:
       <PassportPaper width={width} height={sheet.h} />
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 * k }}>
         <View style={[h.dash, { width: width * 0.5, height: width * 0.5 }]} />
-        <Text style={[h.nextTitle, { fontSize: 22 * k, marginTop: 18 * k }]}>Próxima ruta</Text>
+        <Text accessibilityRole="header" style={[h.nextTitle, { fontSize: 22 * k, marginTop: 18 * k }]}>Próxima ruta</Text>
         <Text style={[h.nextSub, { fontSize: 13.5 * k }]}>Esta hoja aparecerá con tu próximo sello</Text>
       </View>
       <Text style={[h.mrz, { position: 'absolute', left: 18 * k, bottom: 14 * k, fontSize: 10.5 * k }]}>{'<'.repeat(24)}</Text>
