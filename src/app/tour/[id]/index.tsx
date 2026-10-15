@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { TourBanner } from '@/components/TourBanner';
@@ -13,9 +13,12 @@ import { TourMapPreview } from '@/components/TourMapPreview';
 import { Postcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { RouteStamp } from '@/components/RouteStamp';
-import { Chip, IconButton, PrimaryButton } from '@/components/ui';
+import { Chip, GhostButton, IconButton, PrimaryButton } from '@/components/ui';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
+import { formatDuration } from '@/lib/duration';
+import { metersToStart, startLabel, walkingDirectionsUrl } from '@/lib/nearby';
+import { useNearby } from '@/lib/useNearby';
 import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
 import { stampBox } from '@/lib/sheet';
@@ -27,9 +30,6 @@ import { type } from '@/theme/type';
 
 const HERO = 290;
 
-/** Los sellos asoman como tinta que se asienta, uno detrás de otro, sin rebote */
-const stampIn = (i: number) => ZoomIn.delay(350 + i * 80).duration(DUR.slow).easing(EASE_OUT).withInitialValues({ transform: [{ scale: 1.04 }] });
-
 export default function Cover() {
   const tour = useTourParam();
   const insets = useSafeAreaInsets();
@@ -37,6 +37,7 @@ export default function Cover() {
   const saved = useRoute(tour.id);
   const prog = routeProgress(tour.id, saved);
   const route = useTourRoute(tour);
+  const pos = useNearby();
   const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
   const p = tour.palette;
   const ink = inkOf(tour);
@@ -48,6 +49,13 @@ export default function Cover() {
   const walkFrom = (target: number) => {
     startWalk(tour.id, target);
     router.push({ pathname: '/tour/[id]/walk', params: { id: tour.id, target: String(target) } });
+  };
+  const first = tour.stops[0], last = tour.stops[tour.stops.length - 1];
+  const fromYou = pos ? startLabel(metersToStart(pos, tour)) : null;
+  // «Cómo llegar»: el mapa del móvil, a pie, hasta las coordenadas de la primera parada
+  const directions = () => {
+    const url = walkingDirectionsUrl(first.coord, first.name, Platform.OS);
+    Linking.openURL(url).catch(() => Linking.openURL(walkingDirectionsUrl(first.coord, first.name, 'web')).catch(() => {}));
   };
   const cell = tour.stops.length > 4 ? 300 * 0.21 : 300 * 0.25;
   const { onScroll, photo, veil } = useHeroMotion(HERO);
@@ -69,21 +77,26 @@ export default function Cover() {
         </View>
         <Animated.View entering={rise(1)} style={s.body}>
           <Text style={[type.overline, { color: p.t }]}>{tour.category} · {tour.city}</Text>
-          <Text style={type.title}>{tour.title}</Text>
+          <Text accessibilityRole="header" style={type.title}>{tour.title}</Text>
           <View style={s.chips}>
-            <Chip>{tour.durationMin} min</Chip>
+            <Chip>{formatDuration(tour.durationMin)}</Chip>
             <Chip>{formatDistance(meters)}</Chip>
             <Chip>{tour.stops.length} paradas</Chip>
           </View>
           <Text style={type.body}>{tour.intro}</Text>
+          <Text style={type.body}>Empieza en {first.name}{last.id !== first.id ? ` · Termina en ${last.name}` : ''}</Text>
+          {fromYou && <Text style={type.caption}>{fromYou}</Text>}
+          <View style={{ marginTop: 6, marginBottom: 4 }}>
+            <GhostButton label="Cómo llegar" onPress={directions} />
+          </View>
           <OfflinePack tour={tour} />
 
           <View style={{ marginTop: 14 }}>
             <TourMapPreview tour={tour} lines={routeLines} stamped={stampedIds} />
           </View>
-          <Text style={[type.headline, s.h]}>Paradas</Text>
+          <Text accessibilityRole="header" style={[type.headline, s.h]}>Paradas</Text>
           {tour.stops.map((st, i) => (
-            <Animated.View key={st.id} entering={rise(i + 3)}>
+            <View key={st.id}>
               <Pressable accessibilityRole="button" accessibilityLabel={`Parada ${i + 1}: ${st.name}. Ver foto y sello`} onPress={() => setPreview(i)} style={({ pressed }) => [s.stop, pressed && { opacity: 0.6 }]}>
                 <View style={[s.pin, { borderColor: p.t }]}><Text style={[s.pinText, { color: p.t }]}>{i + 1}</Text></View>
                 <DuotoneImage source={st.thumb} palette={p} style={s.thumb} />
@@ -93,9 +106,9 @@ export default function Cover() {
                 </View>
                 <Text style={s.chev}>›</Text>
               </Pressable>
-            </Animated.View>
+            </View>
           ))}
-          <Text style={[type.headline, s.h]}>Sellos que puedes conseguir</Text>
+          <Text accessibilityRole="header" style={[type.headline, s.h]}>Sellos que puedes conseguir</Text>
           <View style={s.progress}>
             <View style={[s.bar, { width: `${(prog.done / prog.total) * 100}%`, backgroundColor: ink }]} />
           </View>
@@ -105,23 +118,23 @@ export default function Cover() {
               const got = saved?.stamps.find(x => x.stopId === st.id);
               const b = stampBox(st.rubber.shape, cell * 2.5);
               return (
-                <Animated.View key={st.id} entering={stampIn(i)} style={[s.stampCell, { width: `${100 / Math.min(5, tour.stops.length)}%` }]}>
+                <View key={st.id} style={[s.stampCell, { width: `${100 / Math.min(5, tour.stops.length)}%` }]}>
                   <View style={{ height: cell * 0.85, justifyContent: 'center', opacity: got ? 1 : 0.22 }}>
                     <RubberStamp tour={tour} stop={st} date={got?.date ?? new Date().toISOString()} width={b.w} height={b.h} style={{ transform: [{ rotate: `${got ? got.rot / 2 : 0}deg` }] }} />
                   </View>
                   <Text style={s.stampName} numberOfLines={2}>{st.name}</Text>
-                </Animated.View>
+                </View>
               );
             })}
           </View>
 
-          <Text style={[type.headline, s.h]}>Sello de la ruta</Text>
+          <Text accessibilityRole="header" style={[type.headline, s.h]}>Sello de la ruta</Text>
           <View style={s.routeStamp}>
             <RouteStamp tour={tour} done={prog.done} total={prog.total} height={132} rotate={-3} />
             <Text style={[type.body, { flex: 1 }]}>{tour.stamp.symbol}</Text>
           </View>
 
-          <Text style={[type.headline, s.h]}>Tu postal</Text>
+          <Text accessibilityRole="header" style={[type.headline, s.h]}>Tu postal</Text>
           <Pressable accessibilityRole="button" disabled={!prog.completed} onPress={() => router.push({ pathname: '/postal/[id]', params: { id: tour.id } })} style={{ alignItems: 'center', gap: 6 }}>
             <Postcard tour={tour} route={saved} width={300} />
             <Text style={type.caption}>{prog.completed ? 'Ganada · tócala para verla' : 'Con todos los sellos te llevas esta postal'}</Text>

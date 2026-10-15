@@ -95,7 +95,7 @@ export const tomares: Tour = {
     p1: "Esta es la parroquia del pueblo. La fachada es blanca y las molduras rojo almagra la enmarcan. La portada en arco lleva el rótulo con su nombre.",
     look: "El retablo de azulejos con una Virgen, en la fachada.",
     p2: "Nuestra Señora de Belén es la patrona de Tomares. La espadaña luce remates en espiral. En la plaza, los naranjos dan sombra y aroma.",
-    fact: "El nombre Belén recuerda a Betlehem, la ciudad donde la tradición cristiana sitúa el nacimiento de Jesús.",
+    fact: "Su nombre recuerda a la ciudad palestina de Belén, donde la tradición cristiana sitúa el nacimiento de Jesús.",
     captions: ["Fachada almagra", "Espadaña y campanas", "Retablo de azulejos", "Naranjos en la plaza"],
   },
   {

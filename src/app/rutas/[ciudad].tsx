@@ -70,7 +70,7 @@ export default function CityRoutes() {
     <View style={{ flex: 1 }}>
       <ScrollView style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: insets.bottom + 32, paddingHorizontal: 20, gap: 12 }}>
         <IconButton label="Volver" icon="back" onPress={goBack} style={{ marginLeft: -4 }} />
-        <Animated.Text entering={rise(1)} style={s.city}>{city.name}</Animated.Text>
+        <Animated.Text entering={rise(1)} accessibilityRole="header" style={s.city}>{city.name}</Animated.Text>
         <Animated.View entering={rise(2)} style={s.dotsRow} accessible accessibilityLabel={`${completed} de ${open.length} rutas completadas`}>
           <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {open.map((t, i) => <RouteStamp key={t.id} tour={t} done={progress[i].done} total={progress[i].total} height={50} rotate={i % 2 ? 3 : -3} />)}
@@ -83,10 +83,10 @@ export default function CityRoutes() {
         {filtering && (
           <Animated.View entering={rise(3)} style={{ gap: 8 }}>
             <View style={s.chips}>
-              {DURATION_FILTERS.map(f => <FilterChip key={f.id} label={f.label} on={duration === f.id} onPress={() => setDuration(f.id)} />)}
+              {DURATION_FILTERS.map(f => <FilterChip key={f.id} label={f.label} on={duration === f.id} onPress={() => setDuration(duration === f.id ? 'all' : f.id)} />)}
             </View>
             <View style={s.chips}>
-              {PRICE_FILTERS.map(f => <FilterChip key={f.id} label={f.label} on={price === f.id} onPress={() => setPrice(f.id)} />)}
+              {PRICE_FILTERS.map(f => <FilterChip key={f.id} label={f.label} on={price === f.id} onPress={() => setPrice(price === f.id ? 'all' : f.id)} />)}
             </View>
           </Animated.View>
         )}

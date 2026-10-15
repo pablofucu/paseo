@@ -97,7 +97,7 @@ export default function Mapa() {
     setNote(null);
     const p = await askNearby();
     setBusy(false);
-    if (!p) { setNote('No pudimos ubicarte. Revisa el permiso de ubicación en los ajustes del móvil.'); return; }
+    if (!p) { setNote('No pudimos ubicarte. Revisa que la ubicación esté activada y el permiso en los ajustes del móvil, y prueba de nuevo.'); return; }
     setAsked(p);
     moved.current = true;
     if (TOURS.some(t => metersToStart(p, t) <= NEARBY_MAX_M)) cam.current?.flyTo({ center: p, zoom: 14.5, padding: pad, duration: 900, easing: 'fly' });
