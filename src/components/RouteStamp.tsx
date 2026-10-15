@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, type ImageSourcePropType, type ViewStyle } from
 import Svg, { Path, Rect } from 'react-native-svg';
 import type { LockedTour, Tour } from '@/data/types';
 import { font } from '@/theme/fonts';
-import { neutral } from '@/theme/tokens';
+import { brand, neutral } from '@/theme/tokens';
 
 /**
  * Borde dentado de sello de correos como un solo trazado (sin máscaras SVG,
@@ -56,12 +56,21 @@ function GrayArt({ id, art, label }: { id: string; art: ImageSourcePropType; lab
   );
 }
 
-function Lock({ size, color = '#B9B0A2' }: { size: number; color?: string }) {
+export function Lock({ size, color = '#B9B0A2' }: { size: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Rect x={4.5} y={10.5} width={15} height={10.5} rx={2.5} fill={color} />
       <Path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke={color} strokeWidth={2.4} strokeLinecap="round" />
     </Svg>
+  );
+}
+
+/** Disco oscuro con el candado en amarillo sol: «todavía no es tuyo» */
+export function LockDisc({ size }: { size: number }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: neutral.ink, alignItems: 'center', justifyContent: 'center' }}>
+      <Lock size={size * 0.58} color={brand.sun} />
+    </View>
   );
 }
 
@@ -76,6 +85,8 @@ interface Props {
   /** Alto del sello; el ancho sale de la proporción 0,82 */
   height: number;
   rotate?: number;
+  /** Sin conseguir: insignia de candado en la esquina (en lugar de la de en medio, en los de pago) */
+  lockBadge?: boolean;
   style?: ViewStyle;
 }
 
@@ -85,7 +96,7 @@ interface Props {
  * Sin conseguir (o sin comprar, con candado) se ve en blanco y negro; al
  * completarla, a todo color y limpio (sin matasellos encima).
  */
-export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotate = 0, style }: Props) {
+export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotate = 0, lockBadge, style }: Props) {
   const w = Math.round(h * 0.82);
   const r = Math.max(1.6, h / 22);
   const pad = r + Math.max(1.5, h / 26);
@@ -108,14 +119,17 @@ export function RouteStamp({ tour, locked, done = 0, total = 1, height: h, rotat
         ) : locked?.stamp ? (
           <>
             <GrayArt id={locked.id} art={locked.stamp.art} label={`Sello de la ruta ${locked.title}, bloqueado`} />
-            <View style={s.center}>
+            {!lockBadge && <View style={s.center}>
               <View style={[s.lockBadge, { width: h * 0.36, height: h * 0.36, borderRadius: h * 0.18 }]}><Lock size={h * 0.24} color={neutral.ink} /></View>
-            </View>
+            </View>}
           </>
         ) : (
           <Lock size={h * 0.32} />
         )}
       </View>
+      {lockBadge && !completed && (
+        <View style={{ position: 'absolute', right: -h * 0.06, bottom: -h * 0.04 }}><LockDisc size={Math.max(14, h * 0.28)} /></View>
+      )}
     </View>
   );
 }

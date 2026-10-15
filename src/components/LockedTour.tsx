@@ -89,7 +89,7 @@ export function LockedTourSheet({ tour, onClose }: { tour: LockedTour; onClose: 
         </View>
         <Text style={[type.overline, { color: p.t }]}>{tour.category} · {tour.city}</Text>
         <Text style={type.title}>{tour.title}</Text>
-        <Text style={type.caption}>{tour.durationMin} min · {tour.stops} paradas · audio, sellos y postal</Text>
+        <Text style={type.caption}>{tour.durationMin} min · {tour.stops} paradas · audio, sellos y sello de carta</Text>
         <Text style={[type.body, { marginTop: 6 }]}>{tour.intro}</Text>
         {tried && (
           <Animated.Text entering={appear()} style={s.soon}>Los pagos todavía no están disponibles. Este tour se podrá desbloquear muy pronto.</Animated.Text>
