@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { AppState, Platform } from 'react-native';
 import { getTour } from '@/data/tours';
-import { usePassport } from '@/store/passport';
+import { restoreWalk, usePassport } from '@/store/passport';
 import { distance } from './geo';
 import { accuracySlack, ARRIVE_RADIUS_M } from './guidance';
 import { MAX_ACCURACY_M } from './useWalkPosition';
@@ -11,6 +11,7 @@ const TASK = 'paseo-arrival-watch';
 const ASKED_BG = 'paseo-arrival-bg-asked';
 const ASKED_NOTIF = 'paseo-arrival-notif-asked';
 const NOTIFIED = 'paseo-arrival-notified';
+const CHANNEL = 'arrival';
 
 // Se cargan solo en nativo y a la hora de usarlos: no existen en la web
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -34,6 +35,19 @@ export function shouldNotify({ accuracy, distance: d, done, notified }: NotifyIn
   return d <= ARRIVE_RADIUS_M + accuracySlack(accuracy) / 2;
 }
 
+/** Canal de Android con importancia alta: sin él el aviso llega mudo y sin asomar en pantalla */
+async function ensureChannel() {
+  if (Platform.OS !== 'android') return;
+  const N = notifications();
+  await N.setNotificationChannelAsync(CHANNEL, {
+    name: 'Llegada a la parada',
+    importance: N.AndroidImportance.HIGH,
+    sound: 'default',
+    vibrationPattern: [0, 250, 150, 250],
+    lockscreenVisibility: N.AndroidNotificationVisibility.PUBLIC,
+  });
+}
+
 const sent = new Set<string>();
 const readSent = async () => {
   try {
@@ -49,10 +63,14 @@ async function onLocations(locations: Location.LocationObject[]) {
   const loc = locations.at(-1);
   if (!loc) return;
   if (!usePassport.persist.hasHydrated()) await usePassport.persist.rehydrate();
-  const { walk, routes } = usePassport.getState();
+  const state = usePassport.getState();
+  const { routes } = state;
+  // Un paseo caducado cuenta como ninguno
+  const walk = restoreWalk(state.walk, state.walkAt, Date.now());
   const tour = walk && getTour(walk.tourId);
   const stop = tour?.stops[walk?.target ?? -1];
-  if (!walk || !tour || !stop) return;
+  // Sin paseo (terminado, caducado o nunca guardado) no hay a qué avisar: se para el seguimiento y su notificación fija
+  if (!walk || !tour || !stop) { await stopArrivalWatch(); return; }
   const key = `${tour.id}:${stop.id}`;
   if (!sent.size) await readSent();
   const done = walk.arrived === stop.id || !!routes[tour.id]?.stamps.some(x => x.stopId === stop.id);
@@ -60,10 +78,12 @@ async function onLocations(locations: Location.LocationObject[]) {
   if (!shouldNotify({ accuracy: loc.coords.accuracy ?? null, distance: d, done, notified: sent.has(key) })) return;
   sent.add(key);
   await AsyncStorage.setItem(NOTIFIED, JSON.stringify([...sent])).catch(() => {});
-  await notifications().scheduleNotificationAsync({
+  const N = notifications();
+  await ensureChannel().catch(() => {});
+  await N.scheduleNotificationAsync({
     identifier: 'arrival',
-    content: { title: `Estás en ${stop.name}`, body: 'Toca para escuchar su historia.', data: { tourId: tour.id, n: walk.target } },
-    trigger: null,
+    content: { title: `Estás en ${stop.name}`, body: 'Toca para escuchar su historia.', sound: 'default', priority: N.AndroidNotificationPriority.HIGH, data: { tourId: tour.id, n: walk.target } },
+    trigger: Platform.OS === 'android' ? { channelId: CHANNEL } : null,
   });
 }
 
@@ -107,6 +127,7 @@ export async function startArrivalWatch() {
     if (!(await askOnce(ASKED_BG, await Location.getBackgroundPermissionsAsync(), Location.requestBackgroundPermissionsAsync))) return;
     const N = notifications();
     if (!(await askOnce(ASKED_NOTIF, await N.getPermissionsAsync(), N.requestPermissionsAsync))) return;
+    await ensureChannel().catch(() => {});
     // Si mientras tanto se ha parado el paseo (o se ha vuelto a pedir), no se arranca
     if (me !== run || (await Location.hasStartedLocationUpdatesAsync(TASK))) return;
     await Location.startLocationUpdatesAsync(TASK, {

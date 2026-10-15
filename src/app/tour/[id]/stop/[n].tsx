@@ -1,5 +1,5 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,8 +42,8 @@ function Pulse({ on, children }: { on: boolean; children: ReactNode }) {
 
 /**
  * Una parada. Se abre encima del mapa (al llegar, o tocando su pin) y al
- * cerrarla se vuelve al mapa. Al llegar, el audio empieza solo; el sello se
- * pone al final, con «Poner el sello», y solo si de verdad has llegado.
+ * cerrarla se vuelve al mapa. El audio nunca empieza solo: lo arranca el ▶. El
+ * sello se pone al final, con «Poner el sello», y solo si de verdad has llegado.
  */
 export default function StopScreen() {
   const params = useLocalSearchParams<{ id: string; n: string }>();
@@ -83,27 +83,32 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
   const [ctaH, setCtaH] = useState(90);
   const sheetW = Math.floor(Math.min(width - 48, (height - insets.top - insets.bottom - 260) * SHEET_RATIO, 440));
   const player = useNarrationPlayer(stopScript(stop));
-  // Sin voz cuando otra pantalla tapa la parada o la app queda en segundo plano
+  // Sin voz cuando otra pantalla tapa la parada (con el móvil bloqueado sigue sonando)
   useAutoPause(player.pause);
   // La foto de la siguiente parada ya está en caché cuando se abra
   const nextPhoto = tour.stops[n + 1]?.photo;
   useEffect(() => { prefetchPhoto(nextPhoto); }, [nextPhoto]);
 
-  // Al llegar, el aviso baja, se va solo y el audio arranca
-  const playRef = useRef(player.play);
-  useEffect(() => { playRef.current = player.play; });
+  // Al llegar, el aviso baja y se va solo; el audio solo suena si se toca ▶
   useEffect(() => {
     if (!arrivedNow) return;
-    const a = setTimeout(() => playRef.current(), 1400);
-    const b = setTimeout(() => setBanner(false), 3400);
-    return () => { clearTimeout(a); clearTimeout(b); };
+    const t = setTimeout(() => setBanner(false), 3400);
+    return () => clearTimeout(t);
   }, [arrivedNow]);
 
   // Foto: zoom lento continuo y paralaje al hacer scroll
   const { onScroll, photo: hero, veil: heroShade } = useHeroMotion(HERO);
 
   const close = () => { player.pause(); router.back(); };
+  // Tras la última parada, directo a la ruta completada (sin pasar por el mapa)
+  const finish = () => {
+    player.pause();
+    // Si el sello ya pasó el paseo a «terminado», no se avanza otra vez
+    if (!walk || walk.target <= n) advanceWalk();
+    router.replace({ pathname: '/tour/[id]/done', params: { id: tour.id } });
+  };
   const next = () => {
+    if (last) return finish();
     player.pause();
     advanceWalk();
     router.back();
@@ -165,7 +170,7 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
       {banner && (
         <Animated.View entering={reduced ? FadeIn : FadeInDown.duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: -12 }] })} exiting={FadeOut.duration(DUR.base)} pointerEvents="none" style={[s.banner, { top: insets.top + 64, backgroundColor: p.deep }]}>
           <Text style={[s.bannerOver, { color: p.t2 }]}>{params.arrived === 'repeat' ? 'Ya tenías este sello' : `Has llegado · parada ${n + 1} de ${tour.stops.length}`}</Text>
-          <Text style={s.bannerText}>El audio empieza ahora{canStamp ? '. Al terminar, pon tu sello.' : ''}</Text>
+          <Text style={s.bannerText}>Toca ▶ para escucharla{canStamp ? '. Al terminar, pon tu sello.' : ''}</Text>
         </Animated.View>
       )}
 
@@ -179,7 +184,7 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
             </Pulse>
           </>
         ) : mine && visitedHere && !current ? (
-          <PrimaryButton label={last ? 'Terminar tour' : 'Ir a la siguiente parada'} onPress={close} />
+          <PrimaryButton label={last ? 'Terminar tour' : 'Ir a la siguiente parada'} onPress={last ? finish : close} />
         ) : current && walk.arrived === stop.id ? (
           <PrimaryButton label={last ? 'Terminar tour' : 'Siguiente parada'} onPress={next} />
         ) : (
@@ -202,7 +207,7 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
       {placing && (
         <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(260)} style={[StyleSheet.absoluteFill, s.place, { backgroundColor: p.deep, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 20 }]}>
           {/* Con el sello puesto, tocar en cualquier sitio cierra esta pantalla */}
-          {justStamped && <Pressable accessibilityRole="button" accessibilityLabel="Seguir" onPress={() => setPlacing(false)} style={[StyleSheet.absoluteFill, { zIndex: 10 }]} />}
+          {justStamped && <Pressable accessibilityRole="button" accessibilityLabel="Seguir" onPress={last ? finish : () => setPlacing(false)} style={[StyleSheet.absoluteFill, { zIndex: 10 }]} />}
           <Animated.Text entering={rise(1)} style={[s.placeOver, { color: p.t2 }]}>{stop.name}</Animated.Text>
           <Animated.Text entering={rise(2)} style={s.placeTitle}>Pon tu sello</Animated.Text>
           <Animated.View entering={rise(3)}>

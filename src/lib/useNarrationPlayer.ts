@@ -50,6 +50,22 @@ export interface NarrationPlayer {
 }
 
 /**
+ * La voz es una audioguía: suena con el móvil en silencio y sigue con la pantalla
+ * bloqueada o la app en segundo plano. En iOS expo-speech usa la sesión de audio
+ * de la app, así que se configura aquí (junto a UIBackgroundModes audio); en
+ * Android lo mantiene vivo el servicio en primer plano del seguimiento del paseo.
+ */
+function configureNarrationAudio() {
+  try {
+    // Se carga a la hora de usarlo: sin módulo nativo (pruebas, web) no hay modo que configurar
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    (require('expo-audio') as typeof import('expo-audio')).setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: 'duckOthers' }).catch(() => {});
+  } catch {
+    // Sin modo de audio: la voz suena con el del sistema
+  }
+}
+
+/**
  * Reproductor de la narración. Mientras no haya audios grabados usa la voz del
  * sistema (expo-speech); el tiempo de cada frase se estima por su longitud.
  */
@@ -73,6 +89,7 @@ export function useNarrationPlayer(text: string): NarrationPlayer {
     Speech.stop();
     if (i >= sentences.length) { setPlaying(false); setEnded(true); setIndex(sentences.length - 1); setElapsed(durs.at(-1) ?? 0); return; }
     setIndex(i); setElapsed(0); setPlaying(true); setEnded(false);
+    configureNarrationAudio();
     Speech.speak(sentences[i], {
       language: 'es-ES',
       rate: r,

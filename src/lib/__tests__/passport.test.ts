@@ -214,3 +214,52 @@ describe('rutas a medias', () => {
     expect(usePassport.getState().routes[tour.id]?.stamps ?? []).toHaveLength(0);
   });
 });
+
+describe('paseo en curso guardado', () => {
+  const load = () => require('@/store/passport') as typeof import('@/store/passport'); // eslint-disable-line @typescript-eslint/no-require-imports
+  const tour = TOURS.find(t => t.city === 'Tomares')!;
+  const walk = { tourId: tour.id, target: 2, arrived: null, guide: null };
+  const T0 = 1_700_000_000_000;
+
+  it('restoreWalk: vigente antes de 12 h, caducado después', () => {
+    const { restoreWalk, WALK_TTL_MS } = load();
+    expect(restoreWalk(walk, T0, T0 + WALK_TTL_MS - 1000)).toEqual(walk);
+    expect(restoreWalk(walk, T0, T0 + WALK_TTL_MS + 1000)).toBeNull();
+  });
+
+  it('restoreWalk: descarta lo que no se puede fiar', () => {
+    const { restoreWalk } = load();
+    expect(restoreWalk(null, T0, T0)).toBeNull();
+    expect(restoreWalk(walk, null, T0)).toBeNull();
+    expect(restoreWalk({ ...walk, tourId: 'no-existe' }, T0, T0)).toBeNull();
+    expect(restoreWalk({ ...walk, target: -1 }, T0, T0)).toBeNull();
+    expect(restoreWalk({ ...walk, target: tour.stops.length + 1 }, T0, T0)).toBeNull();
+  });
+
+  it('al hidratar recupera el paseo reciente y descarta el caducado', async () => {
+    const AsyncStorage = require('@react-native-async-storage/async-storage') as typeof import('@react-native-async-storage/async-storage').default; // eslint-disable-line @typescript-eslint/no-require-imports
+    const { usePassport } = load();
+    const save = (walkAt: number) => AsyncStorage.setItem('paseo-passport', JSON.stringify({ state: { passport: { owner: 'Ana', issuedAt: 'x', pageOrder: [] }, routes: {}, walk, walkAt }, version: 2 }));
+    await save(Date.now() - 3600_000);
+    await usePassport.persist.rehydrate();
+    expect(usePassport.getState().walk).toEqual(walk);
+    expect(usePassport.getState().passport.owner).toBe('Ana');
+    await save(Date.now() - 13 * 3600_000);
+    await usePassport.persist.rehydrate();
+    expect(usePassport.getState().walk).toBeNull();
+    expect(usePassport.getState().walkAt).toBeNull();
+    // Un estado guardado de antes (sin paseo) sigue valiendo
+    await AsyncStorage.setItem('paseo-passport', JSON.stringify({ state: { passport: { owner: 'Bea', issuedAt: 'x', pageOrder: [] }, routes: {} }, version: 2 }));
+    await usePassport.persist.rehydrate();
+    expect(usePassport.getState().walk).toBeNull();
+    expect(usePassport.getState().passport.owner).toBe('Bea');
+  });
+
+  it('cada cambio del paseo renueva su marca de tiempo', () => {
+    const { usePassport } = load();
+    usePassport.getState().startWalk(tour.id, 0);
+    expect(usePassport.getState().walkAt).not.toBeNull();
+    usePassport.getState().endWalk();
+    expect(usePassport.getState().walkAt).toBeNull();
+  });
+});

@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { getTour } from '@/data/tours';
 import '@/lib/arrivalWatch';
-import { usePassport } from '@/store/passport';
+import { usePassport, usePassportHydrated } from '@/store/passport';
 import { fontAssets } from '@/theme/fonts';
 import { useSettingsHydrated } from '@/store/settings';
 import { brand, neutral } from '@/theme/tokens';
@@ -21,10 +21,13 @@ const notifications = () => require('expo-notifications') as typeof import('expo
 
 /**
  * Toque en el aviso de llegada: si el paseo sigue en esa parada se registra la
- * llegada y se abre su guía con el audio; si no, se vuelve al mapa del paseo.
+ * llegada y se abre su guía (sin audio: lo arranca el usuario); si no, se vuelve
+ * al mapa del paseo, o a la ficha de la ruta si ya no hay paseo. En arranque en
+ * frío espera a que el paseo guardado se haya leído.
  */
 function ArrivalTap() {
-  const ready = !!useRootNavigationState()?.key;
+  const hydrated = usePassportHydrated();
+  const ready = !!useRootNavigationState()?.key && hydrated;
   const pathname = usePathname();
   const at = useRef(pathname);
   useEffect(() => { at.current = pathname; }, [pathname]);
@@ -41,8 +44,8 @@ function ArrivalTap() {
       const { tourId, n } = req.content.data as { tourId?: string; n?: number };
       const tour = tourId ? getTour(tourId) : undefined;
       if (!tourId || !tour) return;
-      if (!at.current.startsWith(`/tour/${tourId}`)) router.push({ pathname: '/tour/[id]/walk', params: { id: tourId } });
       const { walk, arrive } = usePassport.getState();
+      if (!at.current.startsWith(`/tour/${tourId}`)) router.push(walk?.tourId === tourId ? { pathname: '/tour/[id]/walk', params: { id: tourId } } : { pathname: '/tour/[id]', params: { id: tourId } });
       const stop = typeof n === 'number' ? tour.stops[n] : undefined;
       if (walk?.tourId !== tourId || walk.target !== n || !stop) return;
       const repeat = arrive(tourId, stop.id);
