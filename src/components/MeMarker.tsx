@@ -9,7 +9,7 @@ import { functional } from '@/theme/tokens';
 /** Cada cuánto se mueve el punto mientras se desliza hasta la nueva lectura (~10 Hz) */
 const FRAME_MS = 100;
 /** Alcance del cono de dirección, en metros, y su abertura a cada lado, en grados */
-const CONE_M = 24;
+const CONE_M = 30;
 const CONE_HALF_DEG = 32;
 
 /** Sector de circunferencia hacia donde miras, como polígono */
@@ -59,8 +59,8 @@ export function MeMarker({ position, heading }: { position: LngLat; heading: num
         </GeoJSONSource>
       )}
       <GeoJSONSource id="me" data={dot}>
-        <Layer id="me-halo" type="circle" paint={{ 'circle-radius': 19, 'circle-color': functional.me, 'circle-opacity': 0.2 }} />
-        <Layer id="me-dot" type="circle" paint={{ 'circle-radius': 8, 'circle-color': functional.me, 'circle-stroke-width': 4, 'circle-stroke-color': '#ffffff' }} />
+        <Layer id="me-halo" type="circle" paint={{ 'circle-radius': 25, 'circle-color': functional.me, 'circle-opacity': 0.2 }} />
+        <Layer id="me-dot" type="circle" paint={{ 'circle-radius': 10.5, 'circle-color': functional.me, 'circle-stroke-width': 5, 'circle-stroke-color': '#ffffff' }} />
       </GeoJSONSource>
     </>
   );

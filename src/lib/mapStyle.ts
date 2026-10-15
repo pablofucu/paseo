@@ -49,7 +49,8 @@ const byClass = (classes: string[]) => ['in', ['get', 'class'], ['literal', clas
 /** Ancho en píxeles según el zoom: [zoom, ancho] */
 const width = (...stops: [number, number][]) => ['interpolate', ['exponential', 1.6], ['zoom'], ...stops.flat()] as unknown as number;
 
-export function buildMapStyle(p: TourPalette): StyleSpecification {
+/** `labelSize`: tamaño de los nombres de las calles (el paseo los lleva más grandes, para leerlos andando). */
+export function buildMapStyle(p: TourPalette, labelSize = 10): StyleSpecification {
   const c = mapColors(p);
   const round = { 'line-cap': 'round', 'line-join': 'round' } as const;
   const line = (id: string, classes: string[], color: string, w: [number, number][], extra: object = {}): LayerSpecification =>
@@ -77,7 +78,7 @@ export function buildMapStyle(p: TourPalette): StyleSpecification {
       line('major', MAJOR, c.road, wMajor),
       {
         id: 'road-label', type: 'symbol', source: 'omt', 'source-layer': 'transportation_name', minzoom: 15,
-        layout: { 'symbol-placement': 'line', 'text-field': ['upcase', ['coalesce', ['get', 'name:es'], ['get', 'name']]], 'text-font': LABEL_FONT, 'text-size': 10, 'text-letter-spacing': 0.12 },
+        layout: { 'symbol-placement': 'line', 'text-field': ['upcase', ['coalesce', ['get', 'name:es'], ['get', 'name']]], 'text-font': LABEL_FONT, 'text-size': labelSize, 'text-letter-spacing': 0.12 },
         paint: { 'text-color': c.label, 'text-halo-color': c.halo, 'text-halo-width': 1.4 },
       },
     ],

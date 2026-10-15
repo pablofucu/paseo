@@ -41,13 +41,15 @@ interface StopPinProps {
   selected: boolean;
   palette: TourPalette;
   onPress: () => void;
+  /** Pins un 30 % más grandes, para ir andando con el mapa inclinado */
+  large?: boolean;
 }
 
 /**
  * Pin de una parada: al abrir el mapa aparecen uno detrás de otro con un fundido
  * suave; la parada a la que vas late con calma; la elegida crece un poco.
  */
-export const StopPin = memo(function StopPin({ index, name, stamped, state, selected, palette: p, onPress }: StopPinProps) {
+export const StopPin = memo(function StopPin({ index, name, stamped, state, selected, palette: p, onPress, large }: StopPinProps) {
   const reduced = useReducedMotion();
   const drop = useSharedValue(reduced ? 1 : 0);
   const sel = useSharedValue(0);
@@ -65,19 +67,20 @@ export const StopPin = memo(function StopPin({ index, name, stamped, state, sele
       accessibilityRole="button"
       accessibilityLabel={`Parada ${index + 1}${name ? `: ${name}` : ''}${stamped ? ', sellada' : state === 'now' ? ', tu próxima parada' : ''}`}
       accessibilityState={{ selected }}
-      onPress={onPress} hitSlop={10} scaleTo={0.85} style={s.pinHit}>
-      {now && <Pulse size={48} color={p.t2} />}
+      onPress={onPress} hitSlop={10} scaleTo={0.85} style={[s.pinHit, large && s.pinHitL]}>
+      {now && <Pulse size={large ? 62 : 48} color={p.t2} />}
       <Animated.View
         style={[
           s.pin,
+          large && s.pinL,
           state === 'done' && { backgroundColor: p.t, opacity: 0.6, borderColor: p.t },
-          now && [s.pinNow, { backgroundColor: p.t2 }],
+          now && [s.pinNow, large && s.pinNowL, { backgroundColor: p.t2 }],
           state === 'next' && { borderColor: p.t },
           selected && { borderColor: neutral.ink },
           style,
         ]}
       >
-        <Text style={[s.pinText, { color: state === 'done' ? p.on : now ? neutral.ink : p.t }]}>{index + 1}</Text>
+        <Text style={[s.pinText, large && s.pinTextL, { color: state === 'done' ? p.on : now ? neutral.ink : p.t }]}>{index + 1}</Text>
       </Animated.View>
     </PressableScale>
   );
@@ -91,16 +94,17 @@ interface StopMarkersProps {
   selected: number | null;
   palette: TourPalette;
   onSelect: (index: number) => void;
+  large?: boolean;
 }
 
 /**
  * Los pins de todas las paradas. Está aparte y memoizado para que no se
  * repinten con cada lectura del GPS: solo cuando cambia la parada, la selección o los sellos.
  */
-export const StopMarkers = memo(function StopMarkers({ stops, stamped, target, selected, palette, onSelect }: StopMarkersProps) {
+export const StopMarkers = memo(function StopMarkers({ stops, stamped, target, selected, palette, onSelect, large }: StopMarkersProps) {
   return stops.map((st, i) => (
     <Marker key={st.id} id={`stop-${st.id}`} lngLat={st.coord} anchor="center">
-      <StopPin index={i} name={st.name} stamped={stamped.has(st.id)} state={stamped.has(st.id) ? 'done' : i === target ? 'now' : 'next'} selected={selected === i} palette={palette} onPress={() => onSelect(i)} />
+      <StopPin index={i} name={st.name} stamped={stamped.has(st.id)} state={stamped.has(st.id) ? 'done' : i === target ? 'now' : 'next'} selected={selected === i} palette={palette} onPress={() => onSelect(i)} large={large} />
     </Marker>
   ));
 });
@@ -188,6 +192,10 @@ const s = StyleSheet.create({
   pin: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, borderColor: '#fff', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadow[2] },
   pinNow: { width: 46, height: 46, borderRadius: 23, borderWidth: 4, borderColor: '#fff' },
   pinText: { fontFamily: font.black, fontSize: 16 },
+  pinHitL: { width: 68, height: 68 },
+  pinL: { width: 44, height: 44, borderRadius: 22, borderWidth: 4 },
+  pinNowL: { width: 60, height: 60, borderRadius: 30, borderWidth: 5 },
+  pinTextL: { fontSize: 20 },
   meWrap: { width: 70, height: 70, alignItems: 'center', justifyContent: 'center' },
   cone: { position: 'absolute', width: 0, height: 0, top: 2, borderLeftWidth: 14, borderRightWidth: 14, borderBottomWidth: 32, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: 'rgba(45,127,249,0.25)', transformOrigin: 'center 33px' },
   me: { width: 22, height: 22, borderRadius: 11, backgroundColor: functional.me, borderWidth: 4, borderColor: '#fff', ...shadow[2] },
