@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Compass } from '@/components/Compass';
@@ -13,7 +13,13 @@ import { brand, neutral } from '@/theme/tokens';
 
 /** Entrada suave: sube 14 px y aparece, sin rebote */
 const up = (delay: number, duration: number = DUR.slow) =>
-  FadeInDown.delay(delay).duration(duration).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] });
+  // En la web una entrada a medida deja el bloque fuera del flujo (ver `rise`): allí, solo fundido
+  Platform.OS === 'web'
+    ? FadeIn.delay(delay).duration(duration).easing(EASE_OUT)
+    : FadeInDown.delay(delay).duration(duration).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] });
+
+/** Cómo funciona, en tres frases */
+const HOW = ['Camina por la ruta, parada a parada.', 'Escucha la audioguía cuando quieras.', 'Sella cada parada y gana tu postal.'];
 
 /** Emblema: una brújula que gira hasta su sitio sobre un camino de paradas */
 function Emblem() {
@@ -60,12 +66,15 @@ export default function Bienvenida() {
       <StatusBar style="light" />
       <View style={s.brand}>
         <Emblem />
-        <View style={s.word}>
+        <View style={s.word} accessible accessibilityRole="header" accessibilityLabel="Paseo">
           {'Paseo'.split('').map((ch, i) => (
             <Animated.Text key={i} entering={up(350 + i * 70)} style={s.wordText}>{ch}</Animated.Text>
           ))}
         </View>
         <Animated.Text entering={FadeIn.delay(800).duration(500)} style={s.tag}>Rutas a pie con audio, sellos y postales</Animated.Text>
+        <Animated.View entering={FadeIn.delay(900).duration(500)} style={s.how}>
+          {HOW.map(t => <Text key={t} style={s.howText}>{t}</Text>)}
+        </Animated.View>
       </View>
 
       {!HAS_LANGUAGE_STEP ? (
@@ -76,7 +85,7 @@ export default function Bienvenida() {
         </Animated.View>
       ) : (
       <View style={{ gap: 12 }}>
-        <Animated.Text entering={up(950, DUR.base)} style={s.ask}>Elige tu idioma · Choose your language</Animated.Text>
+        <Animated.Text entering={up(950, DUR.base)} accessibilityRole="header" style={s.ask}>Elige tu idioma · Choose your language</Animated.Text>
         {LANGUAGES.map((l, i) => {
           const on = language === l.id;
           return (
@@ -113,6 +122,8 @@ const s = StyleSheet.create({
   word: { flexDirection: 'row' },
   wordText: { fontFamily: font.serifBold, fontSize: 64, lineHeight: 70, color: neutral.white, letterSpacing: -1.5 },
   tag: { fontFamily: font.bold, fontSize: 16, color: 'rgba(255,255,255,0.78)', textAlign: 'center' },
+  how: { gap: 6, marginTop: 6 },
+  howText: { fontFamily: font.bold, fontSize: 15, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
   ask: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: brand.sun, textAlign: 'center', marginBottom: 2 },
   lang: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 22, backgroundColor: neutral.white },
   langOn: { borderWidth: 2, borderColor: brand.sun },

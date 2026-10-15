@@ -9,6 +9,7 @@ import { PressableScale } from '@/components/motion';
 import { RouteStamp } from '@/components/RouteStamp';
 import { stopInk } from '@/components/RubberStamp';
 import type { LockedTour, Tour } from '@/data/types';
+import { formatDuration } from '@/lib/duration';
 import { startLabel } from '@/lib/nearby';
 import { routeProgress, type UserRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
@@ -53,7 +54,7 @@ export function stopInks(tour: Tour, route: UserRoute | undefined) {
   return tour.stops.map(st => (stamped.has(st.id) ? stopInk(tour, st.id) : null));
 }
 
-export const durationLabel = (min: number) => (min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60}` : ''}`);
+export const durationLabel = formatDuration;
 
 /* ── Rastro de pasos ──────────────────────────────────────────────── */
 
@@ -69,6 +70,7 @@ export function Trail({ minutes, color }: { minutes: number; color: string }) {
   const step = 15, size = 15;
   return (
     <View style={s.trail} accessible accessibilityLabel={`${minutes} minutos a pie`}>
+      <View style={{ flexShrink: 1, overflow: 'hidden' }}>
       <Svg width={n * step + 4} height={22}>
         {Array.from({ length: n }, (_, i) => {
           const up = i % 2 === 0;
@@ -80,7 +82,8 @@ export function Trail({ minutes, color }: { minutes: number; color: string }) {
           );
         })}
       </Svg>
-      <Text maxFontSizeMultiplier={1.3} style={s.trailText}>{durationLabel(minutes)}</Text>
+      </View>
+      <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={s.trailText}>{durationLabel(minutes)}</Text>
     </View>
   );
 }
@@ -182,7 +185,7 @@ const s = StyleSheet.create({
   tagText: { fontFamily: font.black, fontSize: 12 },
   trail: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   near: { fontFamily: font.bold, fontSize: 12.5, color: neutral.ink2 },
-  trailText: { fontFamily: font.black, fontSize: 14, color: neutral.ink },
+  trailText: { flexShrink: 0, fontFamily: font.black, fontSize: 14, color: neutral.ink },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   statText: { fontFamily: font.black, fontSize: 13.5, color: neutral.ink },
 });

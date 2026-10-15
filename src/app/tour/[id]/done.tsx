@@ -8,7 +8,8 @@ import { RouteSheet } from '@/components/passport/RouteSheet';
 import { PostcardUnlock } from '@/components/PostcardUnlock';
 import { ShareMat } from '@/components/ShareMat';
 import { GhostButton } from '@/components/ui';
-import { cumulative, formatDistance } from '@/lib/geo';
+import { formatDuration } from '@/lib/duration';
+import { cumulative, formatDistance, walkedMeters } from '@/lib/geo';
 import { shareStampSheet } from '@/lib/share';
 import { useDebouncedSave } from '@/lib/useDebouncedSave';
 import { SHEET_RATIO } from '@/lib/sheet';
@@ -49,7 +50,9 @@ export default function Done() {
   }, [pending, markPostcardSeen, tour.id]);
 
   const route = useTourRoute(tour);
-  const meters = route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0);
+  // Ruta a medias: la distancia andada (hasta la parada sellada más lejana), no la de la ruta entera
+  const stampedIdx = tour.stops.flatMap((st, i) => (saved?.stamps.some(x => x.stopId === st.id) ? [i] : []));
+  const meters = prog.allStamped ? route.legs.reduce((a, l) => a + cumulative(l.line).at(-1)!, 0) : walkedMeters(route.legs.map(l => cumulative(l.line).at(-1)!), stampedIdx);
   const dates = (saved?.stamps ?? []).map(s => +new Date(s.date));
   // Tiempo del paseo: del primer al último sello; si pasaron más de 8 h no fue un solo paseo
   const span = dates.length > 1 ? Math.max(...dates) - Math.min(...dates) : 0;
@@ -58,7 +61,7 @@ export default function Done() {
   const saveNote = () => { if (draft != null) setNote(tour.id, draft); setDraft(null); };
   // La nota se guarda mientras se escribe, no solo al salir del campo
   useDebouncedSave(draft, v => setNote(tour.id, v));
-  const stats = [[`${prog.done}/${prog.total}`, 'sellos'], [formatDistance(meters), 'recorridos'], [minutes ? (minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`) : '—', 'tiempo']];
+  const stats = [[`${prog.done}/${prog.total}`, 'sellos'], [formatDistance(meters), 'recorridos'], [minutes ? formatDuration(minutes) : '—', 'tiempo']];
   const sheetW = Math.floor(Math.min(width - 32, (height - insets.top - 260) * SHEET_RATIO, 480));
 
   return (
@@ -66,7 +69,7 @@ export default function Done() {
       <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" style={{ flex: 1, backgroundColor: p.deep }} contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24, paddingHorizontal: 16, gap: 16, alignItems: 'center' }}>
         <Animated.View entering={rise(0)} style={{ alignItems: 'center' }}>
           <Text style={[s.over, { color: p.t2 }]}>{prog.allStamped ? 'Todas las paradas selladas' : `${prog.done} de ${prog.total} paradas`}</Text>
-          <Text style={s.title}>{prog.allStamped ? '¡Ruta completada!' : 'Ruta a medias'}</Text>
+          <Text accessibilityRole="header" style={s.title}>{prog.allStamped ? '¡Ruta completada!' : 'Ruta a medias'}</Text>
           <Text style={s.sub}>{tour.title}</Text>
           <Text style={[s.date, { color: p.t2 }]}>{when}</Text>
         </Animated.View>
