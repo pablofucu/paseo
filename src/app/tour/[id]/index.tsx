@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DuotoneImage } from '@/components/DuotoneImage';
@@ -13,12 +13,12 @@ import { TourMapPreview } from '@/components/TourMapPreview';
 import { PackPostcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { RouteStamp } from '@/components/RouteStamp';
-import { Chip, GhostButton, IconButton, PrimaryButton } from '@/components/ui';
+import { Chip, IconButton, PrimaryButton } from '@/components/ui';
 import { packOf } from '@/data/packs';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { formatDuration } from '@/lib/duration';
-import { metersToStart, startLabel, walkingDirectionsUrl } from '@/lib/nearby';
+import { metersToStart, startLabel } from '@/lib/nearby';
 import { packProgress, postcardUnlocked } from '@/lib/packs';
 import { useNearby } from '@/lib/useNearby';
 import { useTourParam } from '@/lib/useTour';
@@ -60,11 +60,6 @@ export default function Cover() {
   };
   const first = tour.stops[0], last = tour.stops[tour.stops.length - 1];
   const fromYou = pos ? startLabel(metersToStart(pos, tour)) : null;
-  // «Cómo llegar»: el mapa del móvil, a pie, hasta las coordenadas de la primera parada
-  const directions = () => {
-    const url = walkingDirectionsUrl(first.coord, first.name, Platform.OS);
-    Linking.openURL(url).catch(() => Linking.openURL(walkingDirectionsUrl(first.coord, first.name, 'web')).catch(() => {}));
-  };
   const cell = tour.stops.length > 4 ? 300 * 0.21 : 300 * 0.25;
   const { onScroll, photo, veil } = useHeroMotion(HERO);
   // Parada abierta en la vista previa (foto y sello de goma)
@@ -94,10 +89,9 @@ export default function Cover() {
           <Text style={type.body}>{tour.intro}</Text>
           <Text style={type.body}>Empieza en {first.name}{last.id !== first.id ? ` · Termina en ${last.name}` : ''}</Text>
           {fromYou && <Text style={type.caption}>{fromYou}</Text>}
-          <View style={{ marginTop: 6, marginBottom: 4 }}>
-            <GhostButton label="Cómo llegar" onPress={directions} />
+          <View style={{ marginTop: 6 }}>
+            <OfflinePack tour={tour} />
           </View>
-          <OfflinePack tour={tour} />
 
           <View style={{ marginTop: 14 }}>
             <TourMapPreview tour={tour} lines={routeLines} stamped={stampedIds} />

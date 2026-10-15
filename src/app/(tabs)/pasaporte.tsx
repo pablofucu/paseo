@@ -4,14 +4,12 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { rise } from '@/components/motion';
-import { Book, type BookTab, type Leaf } from '@/components/passport/Book';
-import { CityVisaPage, Cover, Holder, NextRoute, SheetBack } from '@/components/passport/Pages';
+import { Book, type Leaf } from '@/components/passport/Book';
+import { Cover, Holder, NextRoute, SheetBack } from '@/components/passport/Pages';
 import { RouteSheet } from '@/components/passport/RouteSheet';
 import { StampMemory, type Picked } from '@/components/passport/StampMemory';
 import { getTour } from '@/data/tours';
-import { tintaDeRuta } from '@/lib/ink';
 import { SHEET_RATIO } from '@/lib/sheet';
-import { cityVisas } from '@/lib/visa';
 import type { Tour } from '@/data/types';
 import { knownRoutes, usePassport, usePassportHydrated, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
@@ -41,11 +39,7 @@ export default function Pasaporte() {
   const pageW = Math.floor(Math.min(spread ? (width - 64) / 2 : width - 32, maxH * SHEET_RATIO, 520));
 
   const pages = useMemo(() => knownRoutes(passport.pageOrder), [passport.pageOrder]);
-  // Las hojas no se rehacen con cada sello: cada hoja de ruta lee su ruta del almacén.
-  // Los visados solo cambian al completar todas las rutas de una ciudad
-  const visaKey = cityVisas(routes).map(v => v.area).join(',');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const visas = useMemo(() => cityVisas(routes), [visaKey]);
+  // Las hojas no se rehacen con cada sello: cada hoja de ruta lee su ruta del almacén
 
   const [opened, setOpened] = useState<string | undefined>();
   if (opened !== (hydrated ? ruta : undefined)) {
@@ -56,32 +50,22 @@ export default function Pasaporte() {
   // Una vez abierta la hoja se quita el parámetro: la próxima visita vuelve a contar
   useEffect(() => { if (opened) router.setParams({ ruta: undefined }); }, [opened]);
 
-  const { leaves, tabs } = useMemo(() => {
+  const leaves = useMemo(() => {
     const out: Leaf[] = [
       { key: 'cover', front: <Cover width={pageW} />, back: <SheetBack width={pageW} lining />, stiff: true },
       { key: 'holder', front: <Holder width={pageW} />, back: <SheetBack width={pageW} /> },
     ];
-    const tabs: BookTab[] = [];
     pages.forEach((id, i) => {
       const tour = getTour(id)!;
-      tabs.push({ key: id, color: tintaDeRuta(tour.accent), label: tour.title, index: out.length });
       out.push({
         key: id,
         front: <RouteLeaf tour={tour} width={pageW} pageNumber={i + 2} onPick={setPicked} />,
         back: <SheetBack width={pageW} />,
       });
     });
-    // Visado de cada ciudad con todas sus rutas completadas
-    visas.forEach((visa, i) => {
-      out.push({
-        key: `visa-${visa.area}`,
-        front: <CityVisaPage width={pageW} pageNumber={pages.length + 2 + i} visa={visa} />,
-        back: <SheetBack width={pageW} />,
-      });
-    });
-    out.push({ key: 'next', front: <NextRoute width={pageW} pageNumber={pages.length + visas.length + 2} />, back: <SheetBack width={pageW} /> });
-    return { leaves: out, tabs };
-  }, [pages, visas, pageW, setPicked]);
+    out.push({ key: 'next', front: <NextRoute width={pageW} pageNumber={pages.length + 2} />, back: <SheetBack width={pageW} /> });
+    return out;
+  }, [pages, pageW, setPicked]);
 
   const stamps = pages.reduce((a, id) => a + (routes[id]?.stamps.length ?? 0), 0);
 
@@ -98,7 +82,7 @@ export default function Pasaporte() {
       {/* La libreta aparece suave, subiendo un poco hasta la mano */}
       <Animated.View entering={rise(2)}>
       {hydrated ? (
-        <Book leaves={leaves} width={pageW} spread={spread} index={Math.min(index, leaves.length - 1)} onIndex={setIndex} tabs={tabs} />
+        <Book leaves={leaves} width={pageW} spread={spread} index={Math.min(index, leaves.length - 1)} onIndex={setIndex} />
       ) : (
         // Hasta leer el pasaporte guardado solo se ve la tapa cerrada (sin hojas a medias)
         <View accessibilityLabel="Cargando el pasaporte" style={{ opacity: 0.9 }}><Cover width={pageW} /></View>

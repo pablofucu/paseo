@@ -10,7 +10,7 @@ import { lightTap, PressableScale, rise } from '@/components/motion';
 import { ResumeStrip } from '@/components/ResumeStrip';
 import { durationLabel, Icon } from '@/components/RouteCard';
 import { IconButton } from '@/components/ui';
-import { CITIES, getCity, getTour, toursIn, TOURS, type City } from '@/data/tours';
+import { CITIES, getTour, toursIn, TOURS, type City } from '@/data/tours';
 import type { LngLat } from '@/data/types';
 import { nearestStart, sortByDistance, startLabel, NEARBY_MAX_M } from '@/lib/nearby';
 import { shortestFree } from '@/lib/routeFilter';
@@ -85,8 +85,8 @@ export default function Home() {
     const m = nearestStart(pos, toursIn(c.id).open)?.meters;
     return m != null && m <= NEARBY_MAX_M ? m : null;
   });
-  // Tu colección: todos los sellos, los más recientes delante
-  const stamps = TOURS.flatMap(t => (routes[t.id]?.stamps ?? []).map(st => ({ date: st.date, ink: getCity(t.area)?.palette.t ?? brand.primary }))).sort((a, b) => b.date.localeCompare(a.date));
+  // Cuántos sellos lleva en total (sin ninguno, se sugiere la primera ruta)
+  const stamps = TOURS.flatMap(t => routes[t.id]?.stamps ?? []);
 
   // Sin ningún sello aún: se sugiere la ruta gratis más corta
   const first = stamps.length === 0 ? shortestFree(TOURS) : undefined;
@@ -111,16 +111,6 @@ export default function Home() {
             <Text style={s.firstMeta}>{durationLabel(first.durationMin)} · {first.stops.length} paradas · gratis</Text>
           </PressableScale>
         ) : null}
-        {stamps.length > 0 && <View style={{ flexDirection: 'row' }}>
-        <PressableScale accessibilityRole="button" accessibilityLabel={`Tu colección: ${stamps.length} sellos. Abrir el pasaporte`} onPress={() => router.push('/pasaporte')} style={s.sumpill}>
-          {stamps.length > 0 && (
-            <View style={{ flexDirection: 'row' }}>
-              {stamps.slice(0, 4).map((st, i) => <View key={i} style={[s.mini, { backgroundColor: st.ink, marginLeft: i ? -7 : 0 }]} />)}
-            </View>
-          )}
-          <Text maxFontSizeMultiplier={1.3} style={s.sumText}>Tu colección · {stamps.length} {stamps.length === 1 ? 'sello' : 'sellos'}</Text>
-        </PressableScale>
-        </View>}
         {stamps.length === 0 && !first && <Text style={[type.caption, { marginLeft: 6 }]}>Haz tu primera ruta para ganar un sello</Text>}
       </Animated.View>
 
@@ -144,9 +134,6 @@ const s = StyleSheet.create({
   firstOver: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase' },
   firstTitle: { fontFamily: font.serifBold, fontSize: 22, lineHeight: 26, color: neutral.white },
   firstMeta: { fontFamily: font.bold, fontSize: 13.5, color: 'rgba(255,255,255,0.85)' },
-  sumpill: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36, paddingVertical: 4, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: neutral.ink },
-  mini: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: neutral.ink },
-  sumText: { fontFamily: font.black, fontSize: 13, color: neutral.white, paddingLeft: 6 },
   card: { borderRadius: 24, overflow: 'hidden', backgroundColor: neutral.ink, ...shadow[2] },
   art: { aspectRatio: ART_RATIO },
   cardText: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, gap: 2 },

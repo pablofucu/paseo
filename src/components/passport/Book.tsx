@@ -42,20 +42,7 @@ interface Props {
   spread?: boolean;
   index: number;
   onIndex: (i: number) => void;
-  /** Pestañas del canto para saltar a una hoja (una por ruta, del color de la ruta) */
-  tabs?: BookTab[];
 }
-
-export interface BookTab {
-  key: string;
-  color: string;
-  label: string;
-  /** Posición de su hoja en `leaves` */
-  index: number;
-}
-
-/** Ancho que sobresale el canto con las pestañas */
-const TAB_W = 14;
 
 /**
  * El pasaporte como libreta: las hojas giran sobre el borde izquierdo. Se
@@ -68,7 +55,7 @@ const TAB_W = 14;
  * terminar un giro la hoja volvería un instante a su sitio antes de que
  * llegase el índice nuevo.
  */
-export function Book({ leaves, width, spread, index, onIndex, tabs }: Props) {
+export function Book({ leaves, width, spread, index, onIndex }: Props) {
   const height = sheetFor(width).h;
   const reduced = useReducedMotion();
   const deg = useSharedValue(0);
@@ -100,16 +87,6 @@ export function Book({ leaves, width, spread, index, onIndex, tabs }: Props) {
       'worklet';
       land(i, dir, true);
     }));
-  };
-
-  // Salto a una hoja desde una pestaña: la vecina se pasa con el giro; las lejanas, directas
-  const jump = (to: number) => {
-    const idx = indexSV.value;
-    if (turningSV.value >= 0 || to === idx || to < 0 || to >= leaves.length) return;
-    if (Math.abs(to - idx) === 1) return flip(to > idx ? 1 : -1);
-    pageTurn();
-    indexSV.set(to);
-    onIndex(to);
   };
 
   // Al posarse la hoja, el índice y la pila cambian en el mismo fotograma
@@ -208,7 +185,7 @@ export function Book({ leaves, width, spread, index, onIndex, tabs }: Props) {
 
   return (
     <View style={{ alignItems: 'center', gap: 14 }}>
-      <View style={{ width: (spread ? width * 2 : width) + (tabs?.length ? TAB_W : 0), height }}>
+      <View style={{ width: spread ? width * 2 : width, height }}>
       <GestureDetector gesture={pan}>
         {/* Sin recortar: la hoja sale del lomo hacia el espectador y sigue más allá del borde */}
         <Animated.View style={[{ width: spread ? width * 2 : width, height }, camera]}>
@@ -221,17 +198,6 @@ export function Book({ leaves, width, spread, index, onIndex, tabs }: Props) {
           <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: spread ? width : 0, top: 0, width, height, zIndex: 999 }, s.cast, cast]} />
         </Animated.View>
       </GestureDetector>
-      {tabs?.map((t, n) => (
-        <Pressable
-          key={t.key}
-          accessibilityRole="button"
-          accessibilityLabel={`Ir a la hoja ${t.index + 1}: ${t.label}`}
-          accessibilityState={{ selected: t.index === index }}
-          hitSlop={{ top: 3, bottom: 3, left: 6, right: 10 }}
-          onPress={() => jump(t.index)}
-          style={[s.tab, { left: spread ? width * 2 : width, top: 34 + n * 38, backgroundColor: t.color, width: t.index === index ? TAB_W : TAB_W - 4 }]}
-        />
-      ))}
       </View>
       <View style={s.nav}>
         <Pressable accessibilityRole="button" accessibilityLabel="Hoja anterior" disabled={index === 0} onPress={() => flip(-1)} style={({ pressed }) => [s.navBtn, index === 0 && { opacity: 0.35 }, pressed && { transform: [{ scale: 0.95 }] }]}>
@@ -391,7 +357,6 @@ const s = StyleSheet.create({
   cast: { experimental_backgroundImage: 'linear-gradient(90deg, rgba(40,28,10,0.35), rgba(40,28,10,0) 55%)', borderRadius: 6 },
   shade: { experimental_backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.18), rgba(0,0,0,0) 40%)', borderRadius: 6 },
   shadeBack: { experimental_backgroundImage: 'linear-gradient(270deg, rgba(0,0,0,0.25), rgba(0,0,0,0) 50%)', borderRadius: 6 },
-  tab: { position: 'absolute', height: 30, borderTopRightRadius: 6, borderBottomRightRadius: 6, boxShadow: '1px 1px 3px rgba(0,0,0,0.25)', zIndex: 2000 },
   nav: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   navBtn: { height: 40, paddingHorizontal: 14, justifyContent: 'center', borderRadius: 999, backgroundColor: 'rgba(28,26,23,0.06)' },
   navText: { fontFamily: font.black, fontSize: 14, color: '#1c1a17' },

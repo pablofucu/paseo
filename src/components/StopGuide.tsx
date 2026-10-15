@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +38,8 @@ function Pulse({ on, children }: { on: boolean; children: ReactNode }) {
 const HERO = 330;
 /** En la hoja del paseo la foto es más baja: el mapa asoma por arriba */
 const HERO_EMBEDDED = 250;
+/** Con el sello puesto, cuánto se ve caer el sello antes de cerrar la guía */
+const STAMPED_MS = 1600;
 
 export interface StopGuideProps {
   tour: Tour;
@@ -54,7 +56,9 @@ export interface StopGuideProps {
 /**
  * La guía de una parada: foto, audio, texto y el sello. Se usa como pantalla
  * propia y dentro de la hoja del paseo; al cerrarla se vuelve al mapa. El sello
- * se pone al final, con «Poner el sello», y solo si de verdad has llegado.
+ * se pone al final, con «Poner el sello», y solo si de verdad has llegado. Con el
+ * sello puesto la guía se cierra sola (a los ~1,6 s o al tocar) y vuelves al mapa;
+ * tras la última parada, al resumen final.
  */
 export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopGuideProps) {
   const stop = tour.stops[n];
@@ -109,6 +113,22 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
     setJustStamped(true);
     advanceWalk();
   };
+  // Con el sello puesto, la guía se cierra sola tras ver caer el sello (o al tocar): al mapa, o al resumen si era la última
+  const settled = useRef(false);
+  const settle = () => {
+    if (settled.current) return;
+    settled.current = true;
+    if (last) return finish();
+    setPlacing(false);
+    onClose();
+  };
+  const settleRef = useRef(settle);
+  settleRef.current = settle;
+  useEffect(() => {
+    if (!justStamped) return;
+    const t = setTimeout(() => settleRef.current(), STAMPED_MS);
+    return () => clearTimeout(t);
+  }, [justStamped]);
   const look = stampBox(stop.rubber.shape, 84 / 0.325);
 
   return (
@@ -197,8 +217,8 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
 
       {placing && (
         <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(260)} style={[StyleSheet.absoluteFill, s.place, { backgroundColor: p.deep, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 20 }]}>
-          {/* Con el sello puesto, tocar en cualquier sitio cierra esta pantalla */}
-          {justStamped && <Pressable accessibilityRole="button" accessibilityLabel="Seguir" onPress={last ? finish : () => setPlacing(false)} style={[StyleSheet.absoluteFill, { zIndex: 10 }]} />}
+          {/* Con el sello puesto, tocar en cualquier sitio cierra la guía sin esperar */}
+          {justStamped && <Pressable accessibilityRole="button" accessibilityLabel="Seguir" onPress={settle} style={[StyleSheet.absoluteFill, { zIndex: 10 }]} />}
           <Animated.Text entering={rise(1)} style={[s.placeOver, { color: p.t2 }]}>{stop.name}</Animated.Text>
           <Animated.Text entering={rise(2)} style={s.placeTitle}>Pon tu sello</Animated.Text>
           <Animated.View entering={rise(3)}>
@@ -206,7 +226,7 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
           </Animated.View>
           {justStamped && (
             <Animated.Text entering={FadeIn.delay(500).duration(400)} style={[s.placeBack, { marginTop: 'auto' }]}>
-              {last ? 'Ruta terminada · toca para seguir' : `Siguiente: ${tour.stops[n + 1].name} · toca para seguir`}
+              {last ? 'Ruta terminada · toca para seguir' : `Siguiente: ${tour.stops[n + 1].name} · volvemos al mapa`}
             </Animated.Text>
           )}
         </Animated.View>
