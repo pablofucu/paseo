@@ -51,8 +51,9 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
   const [hand, setHand] = useState<{ x: number; y: number } | null>(null);
   const done = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const remindTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const previewDate = useMemo(() => new Date().toISOString(), []);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => () => { clearTimeout(timer.current); clearTimeout(remindTimer.current); }, []);
 
   const gx = useSharedValue(width / 2);
   const gy = useSharedValue(sheet.top + (sheet.h - sheet.top - sheet.bottom) / 2);
@@ -75,7 +76,7 @@ export function StampPlacer({ tour, width, target, pageNumber, onDrop, onStamped
     setFresh(target);
     timer.current = setTimeout(() => onStamped?.(), 300);
     // Primer sello: se pide permiso para los avisos (un poco después, con el sello ya asentado)
-    setTimeout(() => syncReminders(knownRoutes(st.passport.pageOrder), st.routes, true), 1800);
+    remindTimer.current = setTimeout(() => { const cur = usePassport.getState(); syncReminders(knownRoutes(cur.passport.pageOrder), cur.routes, true); }, 1800);
   };
 
   // Como mucho un 35 % encima de otro sello

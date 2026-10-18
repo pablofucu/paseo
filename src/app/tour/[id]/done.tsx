@@ -23,7 +23,7 @@ import { useDebouncedSave } from '@/lib/useDebouncedSave';
 import { usePausedWalk } from '@/lib/pausedWalk';
 import { useTourParamSafe } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
-import { NOTE_MAX, routeProgress, usePassport, usePassportHydrated, useRoute } from '@/store/passport';
+import { knownRoutes, NOTE_MAX, routeProgress, usePassport, usePassportHydrated, useRoute } from '@/store/passport';
 import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { brand, neutral } from '@/theme/tokens';
@@ -62,7 +62,7 @@ function DoneScreen({ tour }: { tour: Tour }) {
   const markPackSeen = usePassport(s => s.markPackSeen);
   const setNote = usePassport(s => s.setNote);
   // Sin ningún sello la ruta aún no tiene hoja: sería la siguiente
-  const pageNumber = usePassport(s => { const i = s.passport.pageOrder.indexOf(tour.id); return (i < 0 ? s.passport.pageOrder.length : i) + 2; });
+  const pageNumber = usePassport(s => { const pages = knownRoutes(s.passport.pageOrder); const i = pages.indexOf(tour.id); return (i < 0 ? pages.length : i) + 2; });
   const prog = routeProgress(tour.id, saved);
   const hydrated = usePassportHydrated();
   const pack = packOf(tour.id);

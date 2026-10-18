@@ -6,6 +6,7 @@ import { PACKS } from '@/data/packs';
 import { getTour } from '@/data/tours';
 import { randomSpot, stampRotation } from '@/lib/placement';
 import { rng } from '@/lib/rubber';
+import { nextTarget } from '@/lib/walkPlan';
 import { placedBoxes, sheetFor, stampInk } from '@/lib/sheet';
 
 /*
@@ -127,7 +128,16 @@ export const usePassport = create<PassportState>()(
       startWalk: (tourId, target, skipped) => set({ walk: { tourId, target, arrived: null, guide: null, ...(skipped?.length ? { skipped } : {}) }, walkAt: Date.now() }),
       skipStop: (stopId, target) =>
         set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null, skipped: s.walk.skipped?.includes(stopId) ? s.walk.skipped : [...(s.walk.skipped ?? []), stopId] }, walkAt: Date.now() } : s)),
-      advanceWalk: () => set(s => (s.walk ? { walk: { ...s.walk, target: s.walk.target + 1, arrived: null }, walkAt: Date.now() } : s)),
+      // La siguiente sin sellar; si no quedan delante, vuelve a una saltada; si no, el final
+      advanceWalk: () =>
+        set(s => {
+          if (!s.walk) return s;
+          const tour = getTour(s.walk.tourId);
+          const next = tour
+            ? nextTarget(tour.stops.map(st => st.id), new Set(s.routes[s.walk.tourId]?.stamps.map(st => st.stopId)), s.walk.target, s.walk.skipped)
+            : s.walk.target + 1;
+          return { walk: { ...s.walk, target: next, arrived: null }, walkAt: Date.now() };
+        }),
       goTo: target => set(s => (s.walk ? { walk: { ...s.walk, target, arrived: null }, walkAt: Date.now() } : s)),
       endWalk: () => set({ walk: null, walkAt: null }),
       arrive: (tourId, stopId) => {

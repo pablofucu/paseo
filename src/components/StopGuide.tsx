@@ -16,8 +16,9 @@ import { GhostButton, IconButton, PrimaryButton } from '@/components/ui';
 import { creditPending, KIND_LABEL, type Tour } from '@/data/types';
 import { SHEET_RATIO, stampBox } from '@/lib/sheet';
 import { prefetchPhoto } from '@/lib/prefetch';
+import { nextTarget } from '@/lib/walkPlan';
 import type { NarrationPlayer } from '@/lib/useNarrationPlayer';
-import { usePassport, useRoute } from '@/store/passport';
+import { knownRoutes, usePassport, useRoute } from '@/store/passport';
 import { font } from '@/theme/fonts';
 import { neutral, radius } from '@/theme/tokens';
 import { TourThemeProvider } from '@/theme/TourTheme';
@@ -73,12 +74,15 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
   const advanceWalk = usePassport(s => s.advanceWalk);
   const arrive = usePassport(s => s.arrive);
   const mine = saved?.stamps.find(x => x.stopId === stop.id);
-  const pageNumber = Math.max(0, usePassport(s => s.passport.pageOrder.indexOf(tour.id))) + 2;
+  // Sin ningún sello la ruta aún no tiene hoja: sería la siguiente
+  const pageNumber = usePassport(s => { const pages = knownRoutes(s.passport.pageOrder); const i = pages.indexOf(tour.id); return (i < 0 ? pages.length : i) + 2; });
   const onWalk = walk?.tourId === tour.id;
   const current = onWalk && walk.target === n;
   // Solo se sella la parada a la que se ha llegado de verdad, y una sola vez
   const canStamp = current && walk.arrived === stop.id && !mine;
-  const last = n === tour.stops.length - 1;
+  // A dónde sigue el paseo tras esta parada (con su sello ya contado): una saltada pendiente, o el final
+  const nextIdx = nextTarget(tour.stops.map(st => st.id), new Set([...(saved?.stamps.map(x => x.stopId) ?? []), stop.id]), n, onWalk ? walk.skipped : undefined);
+  const last = nextIdx >= tour.stops.length;
   // Esta es la parada visitada (su guía se abre y se cierra con el botón del mapa)
   const visitedHere = onWalk && walk.guide === n;
   const [placing, setPlacing] = useState(false);
@@ -87,7 +91,7 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
   const [ctaH, setCtaH] = useState(90);
   const sheetW = Math.floor(Math.min(width - 48, (height - insets.top - insets.bottom - 260) * SHEET_RATIO, 440));
   // La foto de la siguiente parada ya está en caché cuando se abra
-  const nextPhoto = tour.stops[n + 1]?.photo;
+  const nextPhoto = tour.stops[nextIdx]?.photo;
   useEffect(() => { prefetchPhoto(nextPhoto); }, [nextPhoto]);
 
   // Foto: zoom lento continuo y paralaje al hacer scroll
@@ -173,8 +177,8 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
         </View>
       </Animated.ScrollView>
 
-      <IconButton label="Volver al mapa" icon="close" onPress={close} style={{ position: 'absolute', left: 16, top: top + 8 }} />
-      <Pressable accessibilityRole="switch" accessibilityLabel="Ver la foto en color" accessibilityState={{ checked: color }} onPress={() => setColor(v => !v)} style={[s.colorBtn, { top: top + 14 }]}>
+      <IconButton label={onWalk ? 'Volver al mapa' : 'Volver'} icon="close" onPress={close} style={{ position: 'absolute', left: 16, top: top + 8 }} />
+      <Pressable accessibilityRole="switch" accessibilityLabel="Ver la foto en color" accessibilityState={{ checked: color }} onPress={() => setColor(v => !v)} hitSlop={8} style={[s.colorBtn, { top: top + 14 }]}>
         <Text style={s.colorText}>{color ? 'Duotono' : 'Ver en color'}</Text>
       </Pressable>
 
@@ -207,7 +211,7 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
                 <PrimaryButton label="Estoy aquí: poner el sello" onPress={() => { arrive(tour.id, stop.id); }} />
               </>
             )}
-            <GhostButton label="Volver al mapa" onPress={close} />
+            <GhostButton label={onWalk ? 'Volver al mapa' : 'Volver'} onPress={close} />
           </>
         )}
       </Animated.View>
@@ -226,7 +230,7 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
           </Animated.View>
           {justStamped && (
             <Animated.Text entering={FadeIn.delay(500).duration(400)} style={[s.placeBack, { marginTop: 'auto' }]}>
-              {last ? 'Ruta terminada · toca para seguir' : `Siguiente: ${tour.stops[n + 1].name} · volvemos al mapa`}
+              {last ? 'Ruta terminada · toca para seguir' : `Siguiente: ${tour.stops[nextIdx].name} · volvemos al mapa`}
             </Animated.Text>
           )}
         </Animated.View>

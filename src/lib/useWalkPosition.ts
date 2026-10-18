@@ -98,6 +98,8 @@ export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null,
   const opts = useRef(sim);
   useEffect(() => { opts.current = sim; }, [sim]);
   const lastFix = useRef(0);
+  /** Se pasó por el paseo simulado: al volver al GPS se descarta su punto */
+  const fromSim = useRef(false);
   const lastPoint = useRef<LngLat | null>(null);
   const granted = state.permission === 'granted';
   const { far, heading: headingOn } = gps;
@@ -117,8 +119,11 @@ export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null,
     if (source !== 'gps') return;
     let pos: Location.LocationSubscription | undefined;
     let cancelled = false;
+    // Venimos del paseo simulado: su punto no es una lectura de GPS
+    lastFix.current = 0; lastPoint.current = null;
     (async () => {
       try {
+        if (fromSim.current) { fromSim.current = false; setState(s => ({ ...s, position: null, accuracy: null, course: null })); }
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (cancelled) return;
         if (status !== 'granted') { setState(s => ({ ...s, permission: 'denied' })); return; }
@@ -183,6 +188,7 @@ export function useWalkPosition(source: PositionSource, leg: PreparedLeg | null,
   useEffect(() => {
     if (source !== 'simulated' || !leg) return;
     along.current = 0;
+    fromSim.current = true;
     const step = (dt: number) => {
       if (opts.current.paused && dt > 0) return;
       along.current = Math.min(leg.length, along.current + WALK_MS * opts.current.speed * dt);

@@ -355,7 +355,9 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const lastArrival = useRef<{ at: number; coord: LngLat; stopCoord: LngLat } | null>(null);
   /** Ir a otra parada: las que quedan por el camino sin sellar se dejan «saltadas» para sellarlas luego */
   const jumpTo = useCallback((i: number) => {
-    if (i > target) ids.slice(target, i).filter(id => !stamped.has(id)).forEach(id => skipStop(id, i));
+    const toSkip = i > target ? ids.slice(target, i).filter(id => !stamped.has(id)) : [];
+    // Si no hay nada que saltar (todo lo de en medio ya está sellado), basta con mover el destino
+    if (toSkip.length) toSkip.forEach(id => skipStop(id, i));
     else goTo(i);
   }, [ids, stamped, target, skipStop, goTo]);
   /** Registra la llegada (vibra y deja sellar); devuelve si la parada ya estaba sellada */
@@ -922,7 +924,7 @@ const s = StyleSheet.create({
   cardTitle: { fontFamily: font.black, fontSize: 15, color: neutral.ink },
   cardText: { fontFamily: font.bold, fontSize: 13, color: neutral.ink2 },
   cardRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
-  cardBtn: { height: 38, paddingHorizontal: 16, borderRadius: radius.pill, justifyContent: 'center' },
+  cardBtn: { minHeight: 44, paddingHorizontal: 16, borderRadius: radius.pill, justifyContent: 'center' },
   cardBtnGhost: { backgroundColor: neutral.bg2 },
   cardBtnText: { fontFamily: font.black, fontSize: 14 },
   center: { position: 'absolute', right: 14, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.95)', ...shadow[2] },
@@ -971,8 +973,8 @@ const s = StyleSheet.create({
   listenTitle: { fontFamily: font.serif, fontSize: 21, color: neutral.ink },
   listenSub: { fontFamily: font.bold, fontSize: 14, color: neutral.ink3, marginTop: 1 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  action: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: neutral.bg2, justifyContent: 'center' },
-  actionQuiet: { height: 36, paddingHorizontal: 8, justifyContent: 'center' },
+  action: { minHeight: 44, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: neutral.bg2, justifyContent: 'center' },
+  actionQuiet: { minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' },
   actionQuietText: { fontFamily: font.heavy, fontSize: 13, color: DANGER },
   actionText: { fontFamily: font.heavy, fontSize: 13, color: neutral.ink2 },
 });

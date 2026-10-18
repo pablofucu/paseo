@@ -181,6 +181,18 @@ describe('paseo en curso', () => {
     usePassport.getState().goTo(3);
     expect(usePassport.getState().walk?.target).toBe(3);
   });
+
+  it('al acabar la última parada vuelve a la saltada en vez de terminar', () => {
+    const { usePassport } = require('@/store/passport') as typeof import('@/store/passport'); // eslint-disable-line @typescript-eslint/no-require-imports
+    const tour = TOURS.find(t => t.stops.length >= 3)!;
+    const st = usePassport.getState();
+    st.startWalk(tour.id, 0);
+    st.skipStop(tour.stops[0].id, 1);
+    for (let i = 1; i < tour.stops.length; i++) usePassport.getState().placeStamp(tour.id, tour.stops[i].id, { x: 0.5, y: 0.5, rot: 0, seed: i });
+    usePassport.getState().goTo(tour.stops.length - 1);
+    usePassport.getState().advanceWalk();
+    expect(usePassport.getState().walk?.target).toBe(0);
+  });
 });
 
 describe('rutas a medias', () => {
