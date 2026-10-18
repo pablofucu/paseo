@@ -1,0 +1,3 @@
+<manifest>
+  <!-- Los permisos de Bluetooth los añade el config plugin (app.plugin.js). -->
+</manifest>
