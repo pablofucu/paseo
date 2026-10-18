@@ -27,7 +27,7 @@ export function planReminders(tourIds: string[], routes: Record<string, UserRout
     if (!tour || !last) return [];
     const missing = routeProgress(id, routes[id]).missing.length;
     const at = new Date(Math.max(+new Date(last) + REMINDER_DAYS * DAY, now + 2 * 3_600_000));
-    const body = missing === 1 ? `Te falta 1 sello para tu postal de ${tour.title}` : `Te faltan ${missing} sellos para tu postal de ${tour.title}`;
+    const body = missing === 1 ? `Te falta 1 sello para completar ${tour.title} y ganar su sello de ruta` : `Te faltan ${missing} sellos para completar ${tour.title} y ganar su sello de ruta`;
     return [{ tourId: id, body, at }];
   });
 }

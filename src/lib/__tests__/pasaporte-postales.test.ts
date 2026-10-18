@@ -90,7 +90,7 @@ describe('avisos de ruta a medias', () => {
   const part = (n: number, date: string): UserRoute => ({ routeId: tour.id, stamps: stampsOf(tour, n, date), postcardUnlockedAt: null, history: [] });
   it('avisa a los 3 días del último sello, con los sellos que faltan', () => {
     const [a] = planReminders([tour.id], { [tour.id]: part(tour.stops.length - 1, '2026-10-01T10:00:00Z') }, +new Date('2026-10-02T10:00:00Z'));
-    expect(a.body).toBe(`Te falta 1 sello para tu postal de ${tour.title}`);
+    expect(a.body).toBe(`Te falta 1 sello para completar ${tour.title} y ganar su sello de ruta`);
     expect(a.at.toISOString()).toBe('2026-10-04T10:00:00.000Z');
     const [b] = planReminders([tour.id], { [tour.id]: part(1, '2026-10-01T10:00:00Z') }, +new Date('2026-10-02T10:00:00Z'));
     expect(b.body).toContain(`Te faltan ${tour.stops.length - 1} sellos`);

@@ -19,7 +19,7 @@ const up = (delay: number, duration: number = DUR.slow) =>
     : FadeInDown.delay(delay).duration(duration).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] });
 
 /** Cómo funciona, en tres frases */
-const HOW = ['Camina por la ruta, parada a parada.', 'Escucha la audioguía cuando quieras.', 'Sella cada parada y gana tu postal.'];
+const HOW = ['Camina por la ruta, parada a parada.', 'Escucha la audioguía cuando quieras.', 'Sella cada parada y gana el sello de la ruta.'];
 
 /** Emblema: una brújula que gira hasta su sitio sobre un camino de paradas */
 function Emblem() {

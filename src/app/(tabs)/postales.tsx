@@ -61,7 +61,7 @@ export default function Coleccion() {
           {/* La píldora oscura se desliza de una opción a la otra */}
           <Animated.View style={[s.tOn, pill]} />
           {(['list', 'map'] as const).map(v => (
-            <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} onLayout={e => { const { x, width } = e.nativeEvent.layout; setTabs(t => ({ ...t, [v]: { x, width } })); }} style={s.tBtn}>
+            <Pressable key={v} accessibilityRole="tab" accessibilityState={{ selected: view === v }} onPress={() => setView(v)} hitSlop={{ top: 6, bottom: 6 }} onLayout={e => { const { x, width } = e.nativeEvent.layout; setTabs(t => ({ ...t, [v]: { x, width } })); }} style={s.tBtn}>
               <Text style={[s.tText, view === v && { color: '#fff' }]}>{v === 'list' ? 'Álbum' : 'Mapa'}</Text>
             </Pressable>
           ))}

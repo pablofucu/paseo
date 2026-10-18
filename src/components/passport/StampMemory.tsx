@@ -28,7 +28,7 @@ export function StampMemory({ picked, onClose }: { picked: Picked | null; onClos
 
   return (
     <Modal visible={!!(tour && stop && memory)} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable accessibilityLabel="Cerrar" style={s.backdrop} onPress={onClose}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" style={s.backdrop} onPress={onClose}>
         {tour && stop && memory && (
           <Pressable accessible={false} style={[s.card, { backgroundColor: paperOf(tour) }]}>
             <View style={{ width: box.w, height: box.h, transform: [{ rotate: `${memory.stamp.rot}deg` }] }}>

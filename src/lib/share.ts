@@ -25,10 +25,6 @@ export async function shareImage(ref: RefObject<View | null>, title: string, mes
   await Share.share({ message: withLink(message) }).catch(() => {});
 }
 
-/** Comparte la postal (con el sello de su ruta en el pie) */
-export const sharePostcard = (ref: RefObject<View | null>, title: string) =>
-  shareImage(ref, title, `He completado «${title}» con ${APP_NAME} y me he ganado su postal.`);
-
 /** Comparte la postal de un pack (con su sello en el pie) */
 export const sharePackPostcard = (ref: RefObject<View | null>, name: string) =>
   shareImage(ref, name, `He juntado todos los sellos de «${name}» con ${APP_NAME} y me he ganado su postal.`);
