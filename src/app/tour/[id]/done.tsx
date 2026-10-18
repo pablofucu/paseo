@@ -21,6 +21,7 @@ import { SHEET_RATIO } from '@/lib/sheet';
 import { useDebouncedSave } from '@/lib/useDebouncedSave';
 import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
+import { useGroup } from '@/store/group';
 import { NOTE_MAX, routeProgress, usePassport, usePassportHydrated, useRoute } from '@/store/passport';
 import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
@@ -65,6 +66,13 @@ export default function Done() {
   const sheetRef = useRef<View>(null);
   const [today] = useState(() => Date.now());
   useEffect(() => { endWalk(); }, [endWalk]);
+  // Al final de la ruta se acaba el grupo de este tour: el anfitrión lo cierra (los invitados van a su propio final) y el invitado sale
+  useEffect(() => {
+    const g = useGroup.getState();
+    if (g.tourId !== tour.id) return;
+    if (g.role === 'host') g.endGroup();
+    else if (g.role === 'guest') g.leaveGroup();
+  }, [tour.id]);
   // «Pack completo» sale una sola vez, cuando el pasaporte guardado ya se ha leído; queda anotado como visto
   const pending = hydrated && prog.completed && !!pack && !!packProg?.complete && !packsSeen[pack.id];
   if (pending && !packWon) setPackWon(true);

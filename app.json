@@ -59,6 +59,14 @@
       ],
       "@maplibre/maplibre-react-native",
       "expo-sharing",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Paseo usa la cámara para escanear el código QR de una visita en grupo.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "./modules/paseo-ble/app.plugin.js"
     ],
     "experiments": {

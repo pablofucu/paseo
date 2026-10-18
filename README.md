@@ -28,6 +28,7 @@ Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales**
 - **Ruta completada.** Con el último sello la ruta queda completada y, al terminar, el **sello de correos** de la ruta cae grande sobre unos rayos de sol («Nuevo sello de carta»), con el pack al que pertenece y lo que falta para su postal. Si ese sello cierra el pack por primera vez, sale «¡Pack completo!» y sube la tarjeta de **postal desbloqueada**. La hoja de sellos de goma queda tras el botón «Hoja de sellos». No se estampa ningún sello de goma extra por completarla.
 - **Hoja de la ruta.** Papel con un velo suave del color de la ruta y, arriba, solo su nombre y su ciudad, discretos.
 - **Pasaporte** (pestaña): portada de piel azul con dorado, hoja del titular, una hoja por ruta en el orden del primer sello y «Próxima ruta». Las hojas giran sobre el lomo arrastrando con el dedo (doble página en pantallas anchas).
+- **Visita en grupo** (`docs/visita-en-grupo.md`). En la portada de un tour, «Pasear en grupo» abre un grupo: QR grande sobre papel, el código de 6 letras, por dónde se puede unir la gente («Por internet ✓», «Bluetooth ✓» o por qué no) y quién se ha unido (hasta 8 con el anfitrión). Los demás entran desde «Unirse a un grupo» en Inicio (cámara o código tecleado) o escaneando el QR con la cámara del móvil, que abre la app y se une directamente. Cada uno escucha la guía en su móvil al ritmo del anfitrión: su parada sigue a la del anfitrión, la llegada del anfitrión vale para todos («Has llegado» + «▶ Escuchar» también en el móvil del invitado) y cuando el anfitrión pone a sonar una parada, al invitado se le abre su guía y suena a la vez (en grupo la guía sí se abre sola, solo para los invitados). Si el invitado toca su reproductor va «a su aire» hasta «Volver al ritmo del grupo». En el mapa, el anfitrión lleva la pastilla «Grupo · N» (QR, lista, «Cerrar el grupo») y el invitado «Con Ana · por internet / por Bluetooth / reconectando…» («Salir del grupo»). El invitado lo gana todo en su pasaporte (sellos de goma y sello de correos, la ruta queda con `via: 'grupo'`), y un tour de pago lo hace gratis mientras está en el grupo de alguien que lo tenga. Si el anfitrión cierra el grupo, el invitado va a su final si ya completó la ruta; si no, sigue por su cuenta.
 - **Colección** (pestaña, `postales.tsx`): álbum por ciudad con una tarjeta por pack: arriba su postal (difuminada con candado y «Te faltan N sellos» hasta tener todos los sellos de correos, rayada si aún está por dibujar) y debajo la fila de sus sellos, en color los ganados y en gris con candado los que faltan. La postal ganada se abre a pantalla completa, se le da la vuelta y se comparte. Vista secundaria en mapa (los sellos de cada ruta).
 
 ## Tecnología
@@ -38,6 +39,7 @@ Sellos, pasaporte y postales siguen la **Guía de sellos, pasaporte y postales**
 - `react-native-svg` para los sellos, las postales y las fotos en duotono; `react-native-reanimated` y `react-native-gesture-handler` para estampar y pasar hojas
 - `expo-audio` + `expo-haptics` para el golpe del sello; `react-native-view-shot` + `expo-sharing` para compartir postales
 - `zustand` + AsyncStorage para el pasaporte (funciona sin conexión)
+- Visita en grupo: Supabase Realtime (`@supabase/supabase-js`, sin tablas) por internet y Bluetooth LE (módulo local `modules/paseo-ble`) sin datos; `expo-camera` para escanear el QR y `react-native-qrcode-svg` para dibujarlo
 
 ## Arrancar
 
@@ -69,6 +71,18 @@ Actívalo con el interruptor **Modo prueba** al final de la pantalla de inicio (
 
 En **Inicio**, con el modo prueba activo, hay un enlace para borrar el pasaporte (sellos y postales).
 
+### Visita en grupo
+
+El modo con datos usa Supabase Realtime y se configura con dos variables de entorno (en `.env` o en los secretos de EAS); sin ellas no hay modo por internet y el grupo va solo por Bluetooth:
+
+```bash
+EXPO_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<clave anon>
+```
+
+- **Con un solo móvil:** en modo prueba, la sala del grupo (portada → «Pasear en grupo») y la hoja «Grupo · N» del mapa tienen **«Simular invitado»**, que añade invitados de mentira por un transporte en memoria (hasta llenar los 8). En la portada de un tour de pago aún sin comprar, «Modo prueba: simular compra» lo da por comprado.
+- **Con dos móviles** (build de desarrollo; Bluetooth no existe en Expo Go ni en la web): en uno, portada → «Pasear en grupo» → «Empezar el paseo». En el otro, Inicio → «Unirse a un grupo» y escanea el QR (o teclea el código), o escanéalo con la cámara del sistema. Con datos en los dos va por internet; con los datos apagados, por Bluetooth. En el mapa del anfitrión «⚑ Llegar» (modo prueba) hace llegar a todo el grupo.
+
 ## Comprobaciones
 
 ```bash
@@ -92,14 +106,22 @@ src/
     tour/[id]/walk.tsx       mapa (pantalla central del tour), indicaciones y llegada
     tour/[id]/stop/[n].tsx   parada como pantalla propia (portada, pasaporte, notificación); en el paseo la guía sube en la hoja (components/StopGuide)
     tour/[id]/done.tsx       final: sello de carta nuevo, pack, resumen y hoja de la ruta; «Pack completo» con la postal
+    grupo/[id].tsx           visita en grupo, anfitrión antes de salir: QR, código, transportes y quién se ha unido
+    unirse.tsx               unirse a un grupo: enlace del QR (paseo://unirse?c=…), cámara o código tecleado
   components/passport/       hoja de ruta, colocar sello, caída del sello, libreta
   components/                sello de goma, papel, postal, botones
+  components/group/          QR del grupo sobre papel, lista de personas, pastilla y hoja del grupo en el paseo
+  lib/group/                 visita en grupo: protocolo, transportes (Supabase, Bluetooth, memoria), anfitrión, invitado y hooks de audio y paseo
+  lib/entitlements.ts        quién puede hacer un tour (gratis, comprado o invitado) y abrir grupo
   data/packs.ts              packs de rutas por ciudad y su postal
   data/stamps/images.ts      dibujos horneados de los sellos (generado, ver abajo)
   lib/rubber.ts              marcos y fecha de los sellos, matasellos
   lib/placement.ts           reglas para colocar sellos
   lib/ink.ts                 tintaDeRuta y contraste
   store/passport.ts          UserPassport y UserRoute (con migración del formato anterior)
+  store/group.ts             la visita en grupo de ahora (rol, código, personas, transportes)
+  store/purchases.ts         tours comprados (sin pagos todavía; «Simular compra» en modo prueba)
+modules/paseo-ble/           módulo nativo de Bluetooth LE para el grupo sin datos
 design/stamps/*.svg          sellos de goma de cada parada (fuente)
 design/postcards/*.svg       ilustración de cada postal (fuente)
 design/route-stamps/*.svg    sello de correos de cada ruta (fuente)

@@ -10,6 +10,7 @@ import { RouteStamp } from '@/components/RouteStamp';
 import { stopInk } from '@/components/RubberStamp';
 import type { LockedTour, Tour } from '@/data/types';
 import { formatDuration } from '@/lib/duration';
+import { useCanPlay } from '@/lib/entitlements';
 import { formatDistance, routeMeters } from '@/lib/geo';
 import { NEARBY_MAX_M, startLabel } from '@/lib/nearby';
 import { routeProgress, type UserRoute } from '@/store/passport';
@@ -160,8 +161,11 @@ export function TourRouteCard({ tour, route, startMeters }: { tour: Tour; route:
   const near = startLabel(startMeters);
   const meters = routeMeters(tour);
   // Solo el precio: si la ruta está hecha o a medias ya lo dicen el sello y la línea
+  // De pago pero ya se puede hacer (comprado, o de invitado en un grupo): sin candado
+  const unlocked = useCanPlay(tour.id);
   const tag = tour.price === 'free'
     ? <Tag label="Gratis" bg={brand.sun} color={neutral.ink} />
+    : unlocked ? <Tag label="Desbloqueado" bg={functional.premium} color={neutral.white} />
     : <Tag label={euros(tour.price.eur)} bg={functional.premium} color={neutral.white} icon={<Icon name="lock" color={functional.gold} size={12} />} />;
   const label = `${tour.title}. ${prog.completed ? 'Completada' : prog.started ? `Vas por la parada ${next + 1} de ${prog.total}` : `${prog.total} paradas`}. ${durationLabel(tour.durationMin)}, ${formatDistance(meters)}${near ? `. ${near}` : ''}`;
 

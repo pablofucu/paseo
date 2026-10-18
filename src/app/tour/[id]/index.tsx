@@ -13,18 +13,22 @@ import { TourMapPreview } from '@/components/TourMapPreview';
 import { PackPostcard } from '@/components/Postcard';
 import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { RouteStamp } from '@/components/RouteStamp';
-import { Chip, IconButton, PrimaryButton } from '@/components/ui';
+import { euros } from '@/components/LockedTour';
+import { Chip, GhostButton, IconButton, PrimaryButton } from '@/components/ui';
 import { packOf } from '@/data/packs';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { formatDuration } from '@/lib/duration';
+import { tourPrice, useCanHost, useCanPlay } from '@/lib/entitlements';
 import { metersToStart, startLabel } from '@/lib/nearby';
 import { packProgress, postcardUnlocked } from '@/lib/packs';
 import { useNearby } from '@/lib/useNearby';
 import { useTourParam } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
 import { stampBox } from '@/lib/sheet';
+import { useGroup } from '@/store/group';
 import { routeProgress, usePassport, useRoute } from '@/store/passport';
+import { usePurchases } from '@/store/purchases';
 import { useSettings } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { neutral } from '@/theme/tokens';
@@ -41,6 +45,12 @@ export default function Cover() {
   const prog = routeProgress(tour.id, saved);
   const routes = usePassport(s => s.routes);
   const testMode = useSettings(s => s.testMode);
+  const canPlay = useCanPlay(tour.id);
+  const canHost = useCanHost(tour.id);
+  const price = tourPrice(tour.id);
+  const simulateBuy = usePurchases(s => s.simulateBuy);
+  // Ya hay un grupo de este tour: se vuelve a él (anfitrión a su sala, invitado al paseo)
+  const groupRole = useGroup(s => (s.tourId === tour.id ? s.role : null));
   const pack = packOf(tour.id);
   const packProg = pack ? packProgress(pack, routes, { testMode }) : null;
   const packPost = pack ? postcardUnlocked(pack, routes, { testMode }) : false;
@@ -64,12 +74,13 @@ export default function Cover() {
   const { onScroll, photo, veil } = useHeroMotion(HERO);
   // Parada abierta en la vista previa (foto y sello de goma)
   const [preview, setPreview] = useState<number | null>(null);
+  const [soon, setSoon] = useState(false);
   const shown = preview == null ? null : tour.stops[preview];
   const shownStamp = shown && saved?.stamps.find(x => x.stopId === shown.id);
 
   return (
     <TourThemeProvider palette={p}>
-      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1, backgroundColor: neutral.bg }} contentContainerStyle={{ paddingBottom: (canHost ? 180 : 120) + insets.bottom }}>
         <View style={{ height: HERO, overflow: 'hidden' }}>
           <Animated.View style={[StyleSheet.absoluteFill, photo]}>
             <TourBanner tour={tour} />
@@ -174,7 +185,17 @@ export default function Cover() {
       <IconButton label="Volver" icon="back" onPress={() => router.back()} style={{ position: 'absolute', left: 16, top: insets.top + 8 }} />
       {/* El botón de empezar aparece con una subida corta cuando la ficha ya está en pantalla */}
       <Animated.View entering={FadeInDown.delay(300).duration(DUR.base).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })} style={[s.cta, { paddingBottom: insets.bottom + 16 }]}>
-        {nextStop >= 0 ? (
+        {!canPlay && price != null ? (
+          <>
+            <PrimaryButton label={`Desbloquear por ${euros(price)}`} onPress={() => setSoon(true)} />
+            {soon && <Text style={s.soon}>Los pagos todavía no están disponibles. También puedes hacerlo gratis como invitado en el grupo de alguien que lo tenga.</Text>}
+            {testMode && (
+              <Pressable accessibilityRole="button" onPress={() => simulateBuy(tour.id)} style={s.restart} hitSlop={6}>
+                <Text style={s.restartText}>Modo prueba: simular compra</Text>
+              </Pressable>
+            )}
+          </>
+        ) : nextStop >= 0 ? (
           <>
             <PrimaryButton label={`Continuar · parada ${nextStop + 1} de ${tour.stops.length}`} onPress={() => walkFrom(nextStop)} />
             <Pressable accessibilityRole="button" onPress={() => walkFrom(0)} style={s.restart} hitSlop={6}>
@@ -183,6 +204,11 @@ export default function Cover() {
           </>
         ) : (
           <PrimaryButton label={prog.completed ? 'Volver a hacer la ruta' : 'Empezar tour'} onPress={() => walkFrom(0)} />
+        )}
+        {groupRole === 'guest' ? (
+          <GhostButton label="Volver al paseo en grupo" onPress={() => router.push({ pathname: '/tour/[id]/walk', params: { id: tour.id } })} />
+        ) : canHost && (
+          <GhostButton label={groupRole === 'host' ? 'Tu grupo · ver el QR' : 'Pasear en grupo'} onPress={() => router.push({ pathname: '/grupo/[id]', params: { id: tour.id } })} />
         )}
       </Animated.View>
     </TourThemeProvider>
@@ -211,7 +237,8 @@ const s = StyleSheet.create({
   cardPhoto: { height: 220 },
   cardBody: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
   cardHint: { fontFamily: font.bold, fontSize: 12.5, color: neutral.ink3, paddingHorizontal: 16, paddingBottom: 16, marginTop: -4 },
-  restart: { alignSelf: 'center', paddingTop: 10 },
+  restart: { alignSelf: 'center', paddingTop: 2 },
   restartText: { fontFamily: font.heavy, fontSize: 14, color: neutral.ink2, textDecorationLine: 'underline' },
-  cta: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 14, backgroundColor: neutral.bg, borderTopWidth: 1, borderTopColor: neutral.line },
+  soon: { fontFamily: font.bold, fontSize: 13.5, lineHeight: 19, color: neutral.ink2, textAlign: 'center', paddingTop: 8 },
+  cta: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 14, gap: 8, backgroundColor: neutral.bg, borderTopWidth: 1, borderTopColor: neutral.line },
 });

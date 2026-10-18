@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CityArt } from '@/components/CityArt';
@@ -103,6 +103,11 @@ export default function Home() {
         <IconButton label="Ajustes" icon="settings" onPress={() => router.push('/ajustes')} style={s.settings} />
       </Animated.View>
       <Animated.Text entering={rise(1)} accessibilityRole="header" style={s.hello}>¿Dónde paseamos hoy?</Animated.Text>
+      <Animated.View entering={rise(1)} style={s.joinRow}>
+        <Pressable accessibilityRole="link" accessibilityHint="Escanea el QR de quien guía o teclea su código" onPress={() => router.push('/unirse')} hitSlop={8}>
+          <Text style={s.join}>¿Te han invitado? <Text style={s.joinLink}>Unirse a un grupo</Text></Text>
+        </Pressable>
+      </Animated.View>
       <Animated.View entering={rise(2)} style={{ gap: 6 }}>
         {first ? (
           <PressableScale accessibilityRole="button" accessibilityLabel={`Tu primer paseo: ${first.title}, ${durationLabel(first.durationMin)}, ${first.stops.length} paradas, gratis`} onPress={() => router.push({ pathname: '/tour/[id]', params: { id: first.id } })} scaleTo={0.975} style={[s.first, { backgroundColor: first.palette.deep }]}>
@@ -129,6 +134,9 @@ const s = StyleSheet.create({
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   settings: { width: 38, height: 38, backgroundColor: neutral.surface, ...shadow[1] },
+  joinRow: { flexDirection: 'row', marginTop: -6 },
+  join: { fontFamily: font.bold, fontSize: 14, color: neutral.ink3 },
+  joinLink: { fontFamily: font.black, color: brand.primary, textDecorationLine: 'underline' },
   hello: { fontFamily: font.serifBold, fontSize: 30, lineHeight: 34, color: neutral.ink },
   first: { borderRadius: 20, padding: 16, gap: 3, ...shadow[1] },
   firstOver: { fontFamily: font.black, fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase' },

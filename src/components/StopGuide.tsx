@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AudioPlayer } from '@/components/AudioPlayer';
+import { AudioPlayer, type PlayerGroup } from '@/components/AudioPlayer';
 import { DuotoneImage } from '@/components/DuotoneImage';
 import { GuideButton } from '@/components/GuideButton';
 import { useHeroMotion } from '@/components/HeroMotion';
@@ -51,6 +51,8 @@ export interface StopGuideProps {
   arrived?: '1' | 'repeat' | null;
   /** Dentro de la hoja del paseo, encima del mapa (no ocupa toda la pantalla) */
   embedded?: boolean;
+  /** Visita en grupo: lo que devuelve useGroupAudio para este reproductor */
+  group?: PlayerGroup;
 }
 
 /**
@@ -60,7 +62,7 @@ export interface StopGuideProps {
  * sello puesto la guía se cierra sola (a los ~1,6 s o al tocar) y vuelves al mapa;
  * tras la última parada, al resumen final.
  */
-export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopGuideProps) {
+export function StopGuide({ tour, n, player, onClose, arrived, embedded, group }: StopGuideProps) {
   const stop = tour.stops[n];
   const p = tour.palette;
   const insets = useSafeAreaInsets();
@@ -152,7 +154,7 @@ export function StopGuide({ tour, n, player, onClose, arrived, embedded }: StopG
         <View style={s.body}>
           <Animated.Text entering={rise(1)} style={[type.overline, { color: p.t }]}>Parada {n + 1} de {tour.stops.length} · {KIND_LABEL[stop.kind]}</Animated.Text>
           <Animated.Text entering={rise(2)} accessibilityRole="header" style={type.title}>{stop.name}</Animated.Text>
-          <Animated.View entering={rise(3)}><AudioPlayer title={stop.audioTitle} player={player} /></Animated.View>
+          <Animated.View entering={rise(3)}><AudioPlayer title={stop.audioTitle} player={player} group={group} /></Animated.View>
           <Animated.Text entering={rise(4)} style={type.body}>{stop.p1}</Animated.Text>
           <Animated.View entering={rise(5)} style={[s.look, { backgroundColor: p.soft }]}>
             <View style={{ width: 84, alignItems: 'center', opacity: mine ? 1 : 0.25 }}>

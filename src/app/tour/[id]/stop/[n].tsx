@@ -1,9 +1,10 @@
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StopGuide } from '@/components/StopGuide';
 import { getTour } from '@/data/tours';
 import type { Tour } from '@/data/types';
 import { stopScript } from '@/lib/spoken';
+import { stopAudioKey, useGroupAudio } from '@/lib/group/useGroupAudio';
 import { useAutoPause } from '@/lib/useAutoPause';
 import { useNarrationPlayer } from '@/lib/useNarrationPlayer';
 
@@ -25,9 +26,12 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
   const params = useLocalSearchParams<{ arrived?: string }>();
   const arrived = params.arrived === '1' || params.arrived === 'repeat' ? params.arrived : null;
   const [banner, setBanner] = useState(arrived != null);
-  const player = useNarrationPlayer(stopScript(tour.stops[n]));
+  const raw = useNarrationPlayer(stopScript(tour.stops[n]));
   // Sin voz cuando otra pantalla tapa la parada (con el móvil bloqueado sigue sonando)
-  useAutoPause(player.pause);
+  useAutoPause(raw.pause);
+  // En un grupo: el anfitrión la publica y el invitado la sigue (solo mientras esta pantalla está delante)
+  const group = useGroupAudio(raw, stopAudioKey(tour.stops[n].id), { enabled: useIsFocused() });
+  const player = group.player;
 
   // Desde la notificación de llegada: el aviso baja y se va solo; el audio solo suena si se toca ▶
   useEffect(() => {
@@ -36,5 +40,5 @@ function Stop({ tour, n }: { tour: Tour; n: number }) {
     return () => clearTimeout(t);
   }, [arrived]);
 
-  return <StopGuide tour={tour} n={n} player={player} onClose={() => router.back()} arrived={banner ? arrived : null} />;
+  return <StopGuide tour={tour} n={n} player={player} group={group} onClose={() => router.back()} arrived={banner ? arrived : null} />;
 }

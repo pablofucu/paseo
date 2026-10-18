@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
+import type { GroupAudio } from '@/lib/group/useGroupAudio';
 import type { NarrationPlayer } from '@/lib/useNarrationPlayer';
 import { font } from '@/theme/fonts';
 import { neutral, radius } from '@/theme/tokens';
@@ -59,8 +60,14 @@ function PlayGlyph({ playing, color }: { playing: boolean; color: string }) {
   );
 }
 
-/** Reproductor completo: onda con progreso (tócala para saltar), tiempos, ±15 s, velocidad y transcripción. */
-export function AudioPlayer({ title, player }: { title: string; player: NarrationPlayer }) {
+/** Lo del grupo que enseña el reproductor del invitado */
+export type PlayerGroup = Pick<GroupAudio, 'role' | 'adrift' | 'following' | 'rejoin'>;
+
+/**
+ * Reproductor completo: onda con progreso (tócala para saltar), tiempos, ±15 s, velocidad y transcripción.
+ * En una visita en grupo (`group`), el invitado ve «Sonando con el grupo» o, si tocó los controles, «Volver al ritmo del grupo».
+ */
+export function AudioPlayer({ title, player, group }: { title: string; player: NarrationPlayer; group?: PlayerGroup }) {
   const p = usePalette();
   const wave = useMemo(() => waveFor(title), [title]);
   const [waveW, setWaveW] = useState(1);
@@ -114,6 +121,14 @@ export function AudioPlayer({ title, player }: { title: string; player: Narratio
         </Pressable>
       </View>
 
+      {group?.role === 'guest' && (group.adrift ? (
+        <Pressable accessibilityRole="button" accessibilityHint="Tu audio vuelve a sonar a la vez que el de quien guía" onPress={group.rejoin} style={[s.rejoin, { backgroundColor: p.t2 }]}>
+          <Text style={s.rejoinText}>Volver al ritmo del grupo</Text>
+        </Pressable>
+      ) : group.following ? (
+        <Text accessibilityLiveRegion="polite" style={[s.with, { color: p.t2 }]}>● Sonando con el grupo</Text>
+      ) : null)}
+
       <Pressable accessibilityRole="button" onPress={() => setTranscript(v => !v)} style={s.trBtn}>
         <Text style={s.trBtnText}>{transcript ? 'Ocultar transcripción' : 'Ver transcripción'}</Text>
       </Pressable>
@@ -142,6 +157,9 @@ const s = StyleSheet.create({
   skip: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   skipText: { position: 'absolute', fontFamily: font.black, fontSize: 9, color: '#fff', top: 17 },
   big: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  rejoin: { alignSelf: 'center', marginTop: 12, minHeight: 40, paddingHorizontal: 18, borderRadius: radius.pill, justifyContent: 'center' },
+  rejoinText: { fontFamily: font.black, fontSize: 14, color: neutral.ink },
+  with: { alignSelf: 'center', marginTop: 10, fontFamily: font.black, fontSize: 12.5, letterSpacing: 0.4 },
   trBtn: { alignSelf: 'center', marginTop: 10, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill },
   trBtnText: { fontFamily: font.heavy, fontSize: 13, color: 'rgba(255,255,255,0.85)', textDecorationLine: 'underline' },
   tr: { marginTop: 8, fontFamily: font.body, fontSize: 14.5, lineHeight: 22, color: 'rgba(255,255,255,0.62)' },

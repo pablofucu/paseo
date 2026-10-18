@@ -9,6 +9,7 @@ import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, useW
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { DuotoneImage } from '@/components/DuotoneImage';
+import { GroupPill, GroupSheet } from '@/components/group/GroupSheet';
 import { GuideButton } from '@/components/GuideButton';
 import { ManeuverIcon, type ManeuverKind } from '@/components/ManeuverIcon';
 import { StopMarkers, StopPopup } from '@/components/MapPins';
@@ -20,7 +21,10 @@ import { StopGuide } from '@/components/StopGuide';
 import type { LngLat, Tour } from '@/data/types';
 import { distance, formatDistance, pointAlong, projectOnRoute, walkingMinutes } from '@/lib/geo';
 import { startArrivalWatch, stopArrivalWatch } from '@/lib/arrivalWatch';
+import { useCanPlay } from '@/lib/entitlements';
 import { entryMode } from '@/lib/entry';
+import { stopAudioKey, useGroupAudio } from '@/lib/group/useGroupAudio';
+import { useGuestWalkSync, useHostWalkPublish, type GroupArrival } from '@/lib/group/useGroupWalk';
 import { accuracySlack, arriveRadiusOf, arrivalAllowed, DWELL_MS, dwellRestart, instruction, prepareLeg, PREVIEW_RADIUS_M } from '@/lib/guidance';
 import { nextMapBearing, rotateMs, routeBearing } from '@/lib/mapBearing';
 import { FIT_BACK_M, FIT_FAR_M, FOLLOW_ZOOM, fitTwo } from '@/lib/mapFit';
@@ -37,7 +41,9 @@ import { useTourParamSafe } from '@/lib/useTour';
 import { useApproachRoute, useTourRoute } from '@/lib/useTourRoute';
 import { MAX_ACCURACY_M, useWalkPosition, type PositionSource } from '@/lib/useWalkPosition';
 import { canSkip, legStart, nextTarget } from '@/lib/walkPlan';
-import { usePassport } from '@/store/passport';
+import { useGroup } from '@/store/group';
+import { routeProgress, usePassport } from '@/store/passport';
+import { usePurchases } from '@/store/purchases';
 import { useSettings, type SimSpeed } from '@/store/settings';
 import { font } from '@/theme/fonts';
 import { brand, functional, neutral, radius, shadow } from '@/theme/tokens';
@@ -120,7 +126,34 @@ export default function Walk() {
   const tour = useTourParamSafe();
   // Un id que no existe (enlace viejo) lleva al inicio en vez de romper la app
   if (!tour) return <Redirect href="/" />;
-  return <WalkScreen tour={tour} />;
+  return <WalkGate tour={tour} />;
+}
+
+/**
+ * Un tour de pago solo se empieza si se puede hacer (comprado, o de invitado en
+ * un grupo vivo de ese tour). Se mira al entrar: si luego el grupo se pierde o
+ * se sale de él, el paseo sigue (lo ganado se queda).
+ */
+function WalkGate({ tour }: { tour: Tour }) {
+  const canPlay = useCanPlay(tour.id);
+  const [allowed, setAllowed] = useState(canPlay);
+  if (canPlay && !allowed) setAllowed(true);
+  if (allowed) return <WalkScreen tour={tour} />;
+  // Las compras guardadas aún no se han leído: se espera antes de decidir
+  if (!usePurchases.persist.hasHydrated()) return null;
+  return <Redirect href={{ pathname: '/tour/[id]', params: { id: tour.id } }} />;
+}
+
+/** Invitado: el paseo va al paso del anfitrión (parada y llegadas). Se monta solo en el paseo del tour del grupo. */
+function GuestSync({ onArrive }: { onArrive: (a: GroupArrival) => void }) {
+  useGuestWalkSync(onArrive);
+  return null;
+}
+
+/** Anfitrión: publica la parada a la que va y a la que ha llegado */
+function HostPublish() {
+  useHostWalkPublish();
+  return null;
 }
 
 function WalkScreen({ tour }: { tour: Tour }) {
@@ -142,8 +175,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const ids = useMemo(() => tour.stops.map(st => st.id), [tour]);
   const stamped = useMemo(() => new Set(saved?.stamps.map(x => x.stopId)), [saved]);
   const [selected, setSelected] = useState<number | null>(null);
-  /** Aviso «Has llegado» en la hoja tras llegar (el GPS es fiable): escuchar o dejarlo para luego */
-  const [prompt, setPrompt] = useState<{ idx: number; repeat: boolean } | null>(null);
+  /** Aviso «Has llegado» en la hoja tras llegar (el GPS es fiable, o llegó el anfitrión del grupo): escuchar o dejarlo para luego */
+  const [prompt, setPrompt] = useState<{ idx: number; repeat: boolean; group?: boolean } | null>(null);
   /** Hoja inferior: alto de su cabecera (asa + escuchar), de lo que hay debajo, y si está subida */
   const [headerH, setHeaderH] = useState(80);
   const [bodyH, setBodyH] = useState(0);
@@ -233,13 +266,26 @@ function WalkScreen({ tour }: { tour: Tour }) {
   }, []);
   useEffect(() => () => clearTimeout(followTimer.current), []);
   const arrive = usePassport(s => s.arrive);
+  // Visita en grupo de este tour (docs/visita-en-grupo.md)
+  const groupRole = useGroup(s => (s.tourId === tour.id ? s.role : null));
+  const groupHostName = useGroup(s => s.host?.name ?? null);
+  const endGroup = useGroup(s => s.endGroup);
+  const leaveGroup = useGroup(s => s.leaveGroup);
+  /** Lo que suena en el grupo (invitado) */
+  const groupAudio = useGroup(s => (s.role === 'guest' && s.tourId === tour.id ? s.state?.audio ?? null : null));
+  const [groupSheet, setGroupSheet] = useState(false);
+  /** Aviso del grupo arriba («Ana ha cerrado el grupo», «El grupo se ha perdido»), unos segundos */
+  const [groupNotice, setGroupNotice] = useState<string | null>(null);
   /** Guía abierta en la hoja: qué parada suena (o se lee) y si está subida encima del mapa */
   const [guide, setGuide] = useState<{ idx: number; play: boolean } | null>(null);
   const [guideUp, setGuideUp] = useState(false);
   const guideStop = guide ? tour.stops[guide.idx] : null;
-  const player = useNarrationPlayer(guideStop ? stopScript(guideStop) : '', guide?.play ?? false);
+  const rawPlayer = useNarrationPlayer(guideStop ? stopScript(guideStop) : '', guide?.play ?? false);
   // Sin voz si otra pantalla tapa el paseo o la app pasa a segundo plano (como en la guía)
-  useAutoPause(player.pause);
+  useAutoPause(rawPlayer.pause);
+  // En un grupo, el anfitrión publica su audio y el invitado lo sigue; si el invitado toca `player`, va a su aire
+  const groupPlayer = useGroupAudio(rawPlayer, guideStop ? stopAudioKey(guideStop.id) : '', { enabled: focused && groupRole != null });
+  const player = groupPlayer.player;
   /** Arrastre de la guía hacia abajo (px) */
   const guideDy = useSharedValue(0);
   const guideVel = useSharedValue(0);
@@ -289,7 +335,8 @@ function WalkScreen({ tour }: { tour: Tour }) {
     setResumeFrom(undefined);
     setPaused(false);
     setSelected(null);
-    setPrompt(null);
+    // La llegada del grupo cambia la parada y avisa a la vez: ese aviso se queda
+    setPrompt(pr => (pr?.group && pr.idx === target ? pr : null));
     setFollow(true);
     setConfirmFor(null);
   }, [target]);
@@ -298,10 +345,10 @@ function WalkScreen({ tour }: { tour: Tour }) {
     setSelected(null);
     snap(false);
     guideDy.set(0);
-    if (guide?.idx === n) { if (play && !player.playing) player.play(); }
+    if (guide?.idx === n) { if (play && !rawPlayer.playing) rawPlayer.play(); }
     else setGuide({ idx: n, play });
     setGuideUp(true);
-  }, [snap, guideDy, guide?.idx, player]);
+  }, [snap, guideDy, guide?.idx, rawPlayer]);
   const closeGuide = useCallback(() => setGuideUp(false), []);
   // Arrastrar la guía hacia abajo la baja al mapa (el audio sigue)
   const guideDrag = usePanGesture({
@@ -374,6 +421,58 @@ function WalkScreen({ tour }: { tour: Tour }) {
     register(idx, from);
     openStop(idx, true);
   }, [register, openStop]);
+
+  // ---- Visita en grupo ----
+  // El anfitrión ha llegado: la llegada vale para el invitado (ya registrada por la sincronía) y sale «Has llegado» en la hoja
+  const onGroupArrive = useCallback((a: GroupArrival) => {
+    arrivedFor.current = a.idx;
+    setSelected(null);
+    setPrompt({ idx: a.idx, repeat: a.repeat, group: true });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  }, []);
+  // Lo que necesitan los avisos del grupo, siempre al día (se leen desde la suscripción al store)
+  const live = useRef({ focused, guideIdx: guide?.idx, openStop, host: groupRole === 'guest' ? groupHostName : null });
+  useEffect(() => {
+    live.current = { focused, guideIdx: guide?.idx, openStop, host: groupRole === 'guest' && groupHostName ? groupHostName : live.current.host };
+  });
+  const autoOpened = useRef<string | null>(null);
+  useEffect(() => useGroup.subscribe((st, prev) => {
+    const now = live.current;
+    // Cómo acabó el grupo del invitado: con la ruta completa, a su final; si no, aviso y sigue solo
+    // (solo si en este paseo se iba de invitado: `host` se recuerda mientras dura el grupo)
+    if (st.outcome && st.outcome !== prev.outcome && now.host) {
+      const out = st.outcome;
+      st.clearOutcome();
+      setGroupSheet(false);
+      if (out === 'ended' && now.focused && routeProgress(tour.id, usePassport.getState().routes[tour.id]).completed) {
+        router.replace({ pathname: '/tour/[id]/done', params: { id: tour.id } });
+        return;
+      }
+      setGroupNotice(out === 'ended' ? `${now.host ?? 'Quien guiaba'} ha cerrado el grupo · sigues por tu cuenta` : out === 'lost' ? 'El grupo se ha perdido · sigues por tu cuenta' : 'El grupo está lleno');
+      return;
+    }
+    // Invitado: cuando el anfitrión pone a sonar una parada, su guía sube sola (en el grupo seguir al anfitrión es lo esperado; sin grupo la guía nunca se abre sola)
+    const audio = st.role === 'guest' && st.tourId === tour.id ? st.state?.audio : null;
+    const key = audio?.playing ? audio.key : null;
+    if (!key || key === autoOpened.current || !now.focused) return;
+    autoOpened.current = key;
+    const idx = tour.stops.findIndex(x => stopAudioKey(x.id) === key);
+    if (idx < 0 || now.guideIdx === idx) return;
+    setGroupSheet(false);
+    now.openStop(idx);
+  }), [tour]);
+  useEffect(() => {
+    if (!groupNotice) return;
+    const t = setTimeout(() => setGroupNotice(null), 6000);
+    return () => clearTimeout(t);
+  }, [groupNotice]);
+  /** «Volver al ritmo del grupo»: si el grupo suena en otra parada, se abre esa */
+  const rejoin = useCallback(() => {
+    groupPlayer.rejoin();
+    const idx = groupAudio ? tour.stops.findIndex(st => stopAudioKey(st.id) === groupAudio.key) : -1;
+    if (idx >= 0 && guide?.idx !== idx) openStop(idx);
+  }, [groupPlayer, groupAudio, tour.stops, guide?.idx, openStop]);
+  const guideGroup = useMemo(() => ({ role: groupPlayer.role, adrift: groupPlayer.adrift, following: groupPlayer.following, rejoin }), [groupPlayer.role, groupPlayer.adrift, groupPlayer.following, rejoin]);
   useEffect(() => {
     if (!g?.arrived || finished || !position || arrivedFor.current === target) return;
     // Ya se llegó a esta parada (aunque la pantalla se haya vuelto a montar): no se repite
@@ -489,6 +588,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const notice = (() => {
     if (blocked || farStart) return null;
     const parts: string[] = [];
+    if (groupNotice) parts.push(groupNotice);
     if (source === 'gps' && permission === 'granted' && !position) parts.push('Buscando tu posición…');
     else if (poorGps) parts.push('Señal GPS débil');
     if (leg && quality === 'loading') parts.push('Calculando la ruta por calles…');
@@ -496,7 +596,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
     return parts.length ? parts.join(' · ') : null;
   })();
   // Lo demás cuelga de la tarjeta de indicación (y del aviso, si lo hay)
-  const belowTop = insets.top + 8 + bannerH + 8 + (notice ? 40 : 0);
+  const belowTop = insets.top + 8 + bannerH + 8 + (notice ? 40 : 0) + (groupRole ? 40 : 0);
 
   const kind: ManeuverKind = !g ? 'wait' : g.offRoute ? 'back' : near || g.arrived ? 'arrive' : g.next ? g.next.direction : 'straight';
   const text = rerouting
@@ -524,7 +624,11 @@ function WalkScreen({ tour }: { tour: Tour }) {
   // Terminar el paseo (sin guardar el progreso) pide confirmación; la salida normal es «Pausar paseo»
   const finish = () => Alert.alert('¿Terminar el paseo?', 'No se guardará para seguir más tarde. Tus sellos ya conseguidos se quedan.', [
     { text: 'Seguir paseando', style: 'cancel' },
-    { text: 'Terminar', style: 'destructive', onPress: () => { endWalk(); router.back(); } },
+    { text: 'Terminar', style: 'destructive', onPress: () => { if (groupRole === 'host') endGroup(); else if (groupRole === 'guest') leaveGroup(); endWalk(); router.back(); } },
+  ]);
+  const leaveConfirm = () => Alert.alert('¿Salir del grupo?', 'Sigues el paseo por tu cuenta y te quedas con tus sellos.', [
+    { text: 'Seguir en el grupo', style: 'cancel' },
+    { text: 'Salir del grupo', style: 'destructive', onPress: () => { leaveGroup(); } },
   ]);
   const goHere = (i: number) => {
     jumpTo(i);
@@ -558,7 +662,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
   const pending = offer >= 0 ? { kind: 'offer' as const, idx: offer } : promptOn ? { kind: 'arrived' as const, idx: prompt.idx } : confirmOn ? { kind: 'confirm' as const, idx: target } : null;
   const arrival = pending && !guideUp ? pending : null;
   // Tras llegar, si sigues andando el aviso se pliega solo
-  if (prompt && position && distance(position, tour.stops[prompt.idx].coord) > arriveRadiusOf(tour.stops[prompt.idx]) + FOLD_AWAY_M) setPrompt(null);
+  if (prompt && !prompt.group && position && distance(position, tour.stops[prompt.idx].coord) > arriveRadiusOf(tour.stops[prompt.idx]) + FOLD_AWAY_M) setPrompt(null);
   /** «Luego»: pliega el aviso de la hoja (también deslizándola hacia abajo) */
   const fold = () => {
     if (!arrival) return;
@@ -625,9 +729,17 @@ function WalkScreen({ tour }: { tour: Tour }) {
           </View>
         </View>
 
-        {notice && (
-          <View accessibilityLiveRegion="polite" style={[s.notice, { top: insets.top + 8 + bannerH + 8 }]}>
-            <Text style={s.noticeText}>{notice}</Text>
+        {groupRole === 'guest' && <GuestSync onArrive={onGroupArrive} />}
+        {groupRole === 'host' && <HostPublish />}
+        {/* Debajo de la indicación: la pastilla del grupo y, si lo hay, el aviso */}
+        {(groupRole || notice) && (
+          <View pointerEvents="box-none" style={[s.under, { top: insets.top + 8 + bannerH + 8 }]}>
+            {groupRole && !expanded && <GroupPill onPress={() => { lightTap(); setGroupSheet(true); }} />}
+            {notice && (
+              <View accessibilityLiveRegion="polite" style={s.notice}>
+                <Text style={s.noticeText}>{notice}</Text>
+              </View>
+            )}
           </View>
         )}
         {blocked && (
@@ -714,7 +826,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
                     <DuotoneImage source={nowPlaying.thumb} palette={p} style={s.nowPic} />
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={s.listenTitle} numberOfLines={1}>{nowPlaying.name}</Text>
-                      <Text style={s.listenSub} numberOfLines={1}>{player.playing ? 'Sonando' : 'En pausa'} · {clock(player.position)} de {clock(player.duration)} · sube para leer</Text>
+                      <Text style={s.listenSub} numberOfLines={1}>{player.playing ? (groupPlayer.following ? 'Con el grupo' : 'Sonando') : groupPlayer.adrift ? 'A tu aire' : 'En pausa'} · {clock(player.position)} de {clock(player.duration)} · sube para leer</Text>
                     </View>
                   </Pressable>
                   <PressableScale accessibilityRole="button" accessibilityLabel={player.playing ? 'Pausar' : 'Seguir escuchando'} onPress={player.toggle} scaleTo={0.94} style={[s.listenPlay, { backgroundColor: p.t2 }]}>
@@ -768,6 +880,11 @@ function WalkScreen({ tour }: { tour: Tour }) {
               })}
             </View>
             <View style={s.actions}>
+              {groupRole && (
+                <PressableScale accessibilityRole="button" onPress={groupRole === 'host' ? () => { snap(false); setGroupSheet(true); } : leaveConfirm} scaleTo={0.96} style={s.action}>
+                  <Text style={s.actionText}>{groupRole === 'host' ? 'Tu grupo · QR' : 'Salir del grupo'}</Text>
+                </PressableScale>
+              )}
               {skipNext >= 0 && (
                 <PressableScale accessibilityRole="button" accessibilityHint="Pasa a la siguiente parada; esta queda sin sellar" onPress={skip} scaleTo={0.96} style={s.action}>
                   <Text style={s.actionText}>Saltar esta parada</Text>
@@ -815,7 +932,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
             style={[s.guide, { top: insets.top + 12 }]}
           >
             <Animated.View style={[s.guideIn, guideMove]}>
-              <StopGuide tour={tour} n={guide.idx} player={player} onClose={closeGuide} embedded />
+              <StopGuide tour={tour} n={guide.idx} player={player} group={guideGroup} onClose={closeGuide} embedded />
               <GestureDetector gesture={guideDrag}>
                 <View accessible accessibilityRole="button" accessibilityLabel="Bajar la guía al mapa" accessibilityHint="También puedes deslizarla hacia abajo" onAccessibilityTap={closeGuide} style={s.guideGrip}>
                   <View style={s.guideHandle} />
@@ -824,6 +941,7 @@ function WalkScreen({ tour }: { tour: Tour }) {
             </Animated.View>
           </Animated.View>
         )}
+        {groupSheet && groupRole && <GroupSheet onClose={() => setGroupSheet(false)} />}
       </View>
     </TourThemeProvider>
   );
@@ -916,7 +1034,8 @@ const s = StyleSheet.create({
   thenPic: { width: 30, height: 30, borderRadius: 9 },
   thenText: { flex: 1, fontFamily: font.heavy, fontSize: 15, color: '#fff' },
   thenCount: { fontFamily: font.black, fontSize: 15, color: '#fff', fontVariant: ['tabular-nums'] },
-  notice: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(28,26,23,0.82)', borderRadius: radius.pill, paddingHorizontal: 14, minHeight: 32, justifyContent: 'center' },
+  under: { position: 'absolute', left: 12, right: 12, alignItems: 'center', gap: 8 },
+  notice: { backgroundColor: 'rgba(28,26,23,0.82)', borderRadius: radius.pill, paddingHorizontal: 14, minHeight: 32, justifyContent: 'center' },
   noticeText: { fontFamily: font.black, fontSize: 12, color: '#fff' },
   card: { position: 'absolute', left: 12, right: 12, backgroundColor: neutral.surface, borderRadius: 20, padding: 14, gap: 6, ...shadow[3] },
   cardTitle: { fontFamily: font.black, fontSize: 15, color: neutral.ink },
