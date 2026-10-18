@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
@@ -13,13 +13,15 @@ import { ShareMat } from '@/components/ShareMat';
 import { SunRays } from '@/components/SunRays';
 import { GhostButton, IconButton } from '@/components/ui';
 import { packOf } from '@/data/packs';
+import type { Tour } from '@/data/types';
 import { formatDuration } from '@/lib/duration';
 import { cumulative, formatDistance, walkedMeters } from '@/lib/geo';
 import { packProgress } from '@/lib/packs';
 import { shareStampSheet } from '@/lib/share';
 import { SHEET_RATIO } from '@/lib/sheet';
 import { useDebouncedSave } from '@/lib/useDebouncedSave';
-import { useTourParam } from '@/lib/useTour';
+import { usePausedWalk } from '@/lib/pausedWalk';
+import { useTourParamSafe } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
 import { NOTE_MAX, routeProgress, usePassport, usePassportHydrated, useRoute } from '@/store/passport';
 import { useSettings } from '@/store/settings';
@@ -40,7 +42,13 @@ const HERO_H = STAMP_H + 84;
  * A medias: la hoja con los sellos y el resumen.
  */
 export default function Done() {
-  const tour = useTourParam();
+  const tour = useTourParamSafe();
+  // Un id que no existe (enlace viejo) lleva al inicio en vez de romper la app
+  if (!tour) return <Redirect href="/" />;
+  return <DoneScreen tour={tour} />;
+}
+
+function DoneScreen({ tour }: { tour: Tour }) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduced = useReducedMotion();
@@ -50,6 +58,7 @@ export default function Done() {
   const testMode = useSettings(s => s.testMode);
   const packsSeen = usePassport(s => s.packsSeen);
   const endWalk = usePassport(s => s.endWalk);
+  const clearPauseFor = usePausedWalk(s => s.clearFor);
   const markPackSeen = usePassport(s => s.markPackSeen);
   const setNote = usePassport(s => s.setNote);
   // Sin ningún sello la ruta aún no tiene hoja: sería la siguiente
@@ -64,7 +73,7 @@ export default function Done() {
   const [draft, setDraft] = useState<string | null>(null);
   const sheetRef = useRef<View>(null);
   const [today] = useState(() => Date.now());
-  useEffect(() => { endWalk(); }, [endWalk]);
+  useEffect(() => { endWalk(); clearPauseFor(tour.id); }, [endWalk, clearPauseFor, tour.id]);
   // «Pack completo» sale una sola vez, cuando el pasaporte guardado ya se ha leído; queda anotado como visto
   const pending = hydrated && prog.completed && !!pack && !!packProg?.complete && !packsSeen[pack.id];
   if (pending && !packWon) setPackWon(true);

@@ -14,6 +14,8 @@ interface PausedState {
   paused: PausedWalk | null;
   pause: (w: Omit<PausedWalk, 'at'>) => void;
   clear: () => void;
+  /** Borra la pausa solo si es de esta ruta (al seguirla o terminarla desde otro sitio) */
+  clearFor: (tourId: string) => void;
 }
 
 /**
@@ -26,6 +28,7 @@ export const usePausedWalk = create<PausedState>()(
       paused: null,
       pause: w => set({ paused: { ...w, at: new Date().toISOString() } }),
       clear: () => set({ paused: null }),
+      clearFor: tourId => set(st => (st.paused?.tourId === tourId ? { paused: null } : st)),
     }),
     { name: 'paseo-paused-walk', version: 1, storage: createJSONStorage(() => AsyncStorage) },
   ),

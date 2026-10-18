@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -15,13 +15,15 @@ import { inkOf, RubberStamp } from '@/components/RubberStamp';
 import { RouteStamp } from '@/components/RouteStamp';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
 import { packOf } from '@/data/packs';
+import type { Tour } from '@/data/types';
 import { KIND_LABEL } from '@/data/types';
 import { cumulative, formatDistance } from '@/lib/geo';
 import { formatDuration } from '@/lib/duration';
 import { metersToStart, startLabel } from '@/lib/nearby';
 import { packProgress, postcardUnlocked } from '@/lib/packs';
 import { useNearby } from '@/lib/useNearby';
-import { useTourParam } from '@/lib/useTour';
+import { usePausedWalk } from '@/lib/pausedWalk';
+import { useTourParamSafe } from '@/lib/useTour';
 import { useTourRoute } from '@/lib/useTourRoute';
 import { stampBox } from '@/lib/sheet';
 import { routeProgress, usePassport, useRoute } from '@/store/passport';
@@ -34,9 +36,16 @@ import { type } from '@/theme/type';
 const HERO = 290;
 
 export default function Cover() {
-  const tour = useTourParam();
+  const tour = useTourParamSafe();
+  // Un id que no existe (enlace viejo) lleva al inicio en vez de romper la app
+  if (!tour) return <Redirect href="/" />;
+  return <CoverScreen tour={tour} />;
+}
+
+function CoverScreen({ tour }: { tour: Tour }) {
   const insets = useSafeAreaInsets();
   const startWalk = usePassport(s => s.startWalk);
+  const clearPauseFor = usePausedWalk(s => s.clearFor);
   const saved = useRoute(tour.id);
   const prog = routeProgress(tour.id, saved);
   const routes = usePassport(s => s.routes);
@@ -56,6 +65,7 @@ export default function Cover() {
   const nextStop = prog.started && !prog.allStamped ? tour.stops.findIndex(st => !saved?.stamps.some(x => x.stopId === st.id)) : -1;
   const walkFrom = (target: number) => {
     startWalk(tour.id, target);
+    clearPauseFor(tour.id);
     router.push({ pathname: '/tour/[id]/walk', params: { id: tour.id, target: String(target) } });
   };
   const first = tour.stops[0], last = tour.stops[tour.stops.length - 1];

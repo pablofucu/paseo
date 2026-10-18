@@ -25,14 +25,18 @@ export function ResumeStrip({ tourIds }: { tourIds: string[] }) {
   const pausedWalk = usePausedWalk(s => s.paused);
   const clearPause = usePausedWalk(s => s.clear);
   // Un paseo en pausa va primero; si su ruta ya no existe, se ignora
-  const pausedTour = pausedWalk && tourIds.includes(pausedWalk.tourId) ? getTour(pausedWalk.tourId) : undefined;
+  const pausedCandidate = pausedWalk && tourIds.includes(pausedWalk.tourId) ? getTour(pausedWalk.tourId) : undefined;
+  // Una pausa vieja no vale si la ruta ya está completada o la parada a la que iba ya tiene sello
+  const pausedStop = pausedCandidate && pausedWalk ? pausedCandidate.stops[pausedWalk.target] : undefined;
+  const pausedStale = !!pausedCandidate && !!pausedWalk && (routeProgress(pausedCandidate.id, routes[pausedCandidate.id]).completed || !pausedStop || !!routes[pausedCandidate.id]?.stamps.some(x => x.stopId === pausedStop.id));
+  const pausedTour = pausedStale ? undefined : pausedCandidate;
   const id = pausedTour ? pausedTour.id : unfinishedRoutes(tourIds, routes)[0];
   const tour = id ? getTour(id) : undefined;
   if (!tour) return null;
   const route = routes[tour.id];
   const prog = routeProgress(tour.id, route);
   const firstMissing = tour.stops.findIndex(st => !route?.stamps.some(x => x.stopId === st.id));
-  const paused = pausedTour && pausedWalk && pausedWalk.target < tour.stops.length ? pausedWalk : null;
+  const paused = pausedTour && pausedWalk ? pausedWalk : null;
   const next = paused ? paused.target : firstMissing;
   if (next < 0) return null;
   const p = tour.palette;
