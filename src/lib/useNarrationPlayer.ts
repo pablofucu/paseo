@@ -48,6 +48,8 @@ export interface NarrationPlayer {
   pause: () => void;
   toggle: () => void;
   seek: (seconds: number) => void;
+  /** Suena desde el segundo `seconds` (desde el principio de su frase): un `seek` y un `play` a la vez */
+  playAt: (seconds: number) => void;
   skip: (delta: number) => void;
   setRate: (r: number) => void;
 }
@@ -134,16 +136,21 @@ export function useNarrationPlayer(text: string, autoplay = false): NarrationPla
 
   const pause = useCallback(() => { token.current++; Speech.stop(); setPlaying(false); }, []);
   const play = useCallback(() => speakFrom(index >= sentences.length - 1 && elapsed >= (durs.at(-1) ?? 0) - 0.2 ? 0 : index, rate), [speakFrom, index, sentences.length, elapsed, durs, rate]);
-  const seek = useCallback((t: number) => {
+  /** La frase en la que cae el segundo `t` */
+  const indexAt = useCallback((t: number) => {
     const clamped = Math.max(0, Math.min(duration - 0.01, t));
-    let i = starts.findIndex((st, k) => clamped >= st && clamped < st + durs[k]);
-    if (i < 0) i = sentences.length - 1;
+    const i = starts.findIndex((st, k) => clamped >= st && clamped < st + durs[k]);
+    return i < 0 ? sentences.length - 1 : i;
+  }, [duration, starts, durs, sentences.length]);
+  const seek = useCallback((t: number) => {
+    const i = indexAt(t);
     if (playing) speakFrom(i, rate);
     else { setIndex(i); setElapsed(0); setEnded(false); }
-  }, [duration, starts, durs, sentences.length, playing, speakFrom, rate]);
+  }, [indexAt, playing, speakFrom, rate]);
+  const playAt = useCallback((t: number) => { if (sentences.length) speakFrom(indexAt(t), rate); }, [indexAt, speakFrom, rate, sentences.length]);
   const position = (starts[index] ?? 0) + elapsed;
   const skip = useCallback((d: number) => seek(position + d), [seek, position]);
   const setRate = useCallback((r: number) => { setRateState(r); if (playing) speakFrom(index, r); }, [playing, speakFrom, index]);
 
-  return { sentences, starts, index, playing, ended, rate, position, duration, play, pause, toggle: playing ? pause : play, seek, skip, setRate };
+  return { sentences, starts, index, playing, ended, rate, position, duration, play, pause, toggle: playing ? pause : play, seek, playAt, skip, setRate };
 }

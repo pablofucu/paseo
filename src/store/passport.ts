@@ -39,6 +39,8 @@ export interface UserRoute {
   note?: string;
   /** Cada vez que se llega a una parada, aunque ya estuviera sellada */
   history: { stopId: string; date: string }[];
+  /** La ruta se empezó como invitado de una visita en grupo (un recuerdo: cuenta igual que las demás) */
+  via?: 'grupo';
 }
 
 export interface UserPassport {
@@ -84,6 +86,8 @@ interface PassportState {
   endWalk: () => void;
   /** Llegada a una parada: queda en el historial y desde ese momento se puede sellar. Devuelve si ya estaba sellada. */
   arrive: (tourId: string, stopId: string) => boolean;
+  /** Invitado en un grupo: si la ruta aún no tiene sellos, queda como empezada en grupo (`via: 'grupo'`) */
+  markGroupRoute: (tourId: string) => void;
   placeStamp: (tourId: string, stopId: string, drop: Drop) => void;
   markPostcardSeen: (tourId: string) => void;
   /** Se enseñó el «Pack completo» de este pack */
@@ -143,6 +147,12 @@ export const usePassport = create<PassportState>()(
         });
         return already;
       },
+      markGroupRoute: tourId =>
+        set(s => {
+          const route = s.routes[tourId] ?? emptyRoute(tourId);
+          if (route.via === 'grupo' || route.stamps.length) return s;
+          return { routes: { ...s.routes, [tourId]: { ...route, via: 'grupo' } } };
+        }),
       placeStamp: (tourId, stopId, drop) =>
         set(s => {
           const route = s.routes[tourId] ?? emptyRoute(tourId);
